@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdlib>
+
 enum ASTType {
     INT,
     FLOAT,
@@ -11,6 +13,8 @@ struct Exp;
 struct FuncRParams {
     FuncRParams *func_rparams;
     Exp *exp;
+
+    ~FuncRParams();
 };
 
 struct LVal {
@@ -27,6 +31,8 @@ struct LVal {
             Exp *exp;
         } INDEX;
     } data;
+
+    ~LVal();
 };
 
 struct Exp {
@@ -99,6 +105,8 @@ struct Exp {
             } val;
         } NUMBER;
     } data;
+
+    ~Exp();
 };
 
 struct BlockItems;
@@ -137,6 +145,8 @@ struct Stmt {
 
         Exp *RETURN;
     } data;
+
+    ~Stmt();
 };
 
 struct InitVal {
@@ -153,22 +163,40 @@ struct InitVal {
             InitVal *init_val;
         } ARRAY;
     } data;
+
+    ~InitVal();
 };
 
 struct Dims {
     Dims *dims;
     Exp *const_exp;
+
+    ~Dims() {
+        delete dims;
+        delete const_exp;
+    }
 };
 
 struct VarDef {
     char *ident;
     Dims *dims;
     InitVal *init_val;
+
+    ~VarDef() {
+        free(ident);
+        delete dims;
+        delete init_val;
+    }
 };
 
 struct VarDefs {
     VarDefs *var_defs;
     VarDef *var_def;
+
+    ~VarDefs() {
+        delete var_defs;
+        delete var_def;
+    }
 };
 
 struct Decl {
@@ -179,6 +207,8 @@ struct Decl {
 
     ASTType btype;
     VarDefs *var_defs;
+
+    ~Decl() { delete var_defs; }
 };
 
 struct BlockItem {
@@ -190,22 +220,39 @@ struct BlockItem {
         Decl *DECL;
         Stmt *STMT;
     } data;
+
+    ~BlockItem();
 };
 
 struct BlockItems {
     BlockItems *block_items;
     BlockItem *block_item;
+
+    ~BlockItems() {
+        delete block_items;
+        delete block_item;
+    }
 };
 
 struct FuncFParam {
     ASTType btype;
     char *ident;
     Dims *dims;
+
+    ~FuncFParam() {
+        free(ident);
+        delete dims;
+    }
 };
 
 struct FuncFParams {
     FuncFParams *func_fparams;
     FuncFParam *func_fparam;
+
+    ~FuncFParams() {
+        delete func_fparams;
+        delete func_fparam;
+    }
 };
 
 struct FuncDef {
@@ -213,6 +260,12 @@ struct FuncDef {
     char *ident;
     FuncFParams *func_fparams;
     BlockItems *block;
+
+    ~FuncDef() {
+        free(ident);
+        delete func_fparams;
+        delete block;
+    }
 };
 
 struct CompUnit {
@@ -232,6 +285,8 @@ struct CompUnit {
             FuncDef *func_def;
         } FUNC;
     } data;
+
+    ~CompUnit();
 };
 
 /**
