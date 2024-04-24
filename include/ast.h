@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <iostream>
 
 enum ASTType {
     INT,
@@ -15,6 +16,7 @@ struct FuncRParams {
     Exp *exp;
 
     ~FuncRParams();
+    void print(std::ostream& out);
 };
 
 struct LVal {
@@ -33,6 +35,7 @@ struct LVal {
     } data;
 
     ~LVal();
+    void print(std::ostream& out);
 };
 
 struct Exp {
@@ -107,6 +110,7 @@ struct Exp {
     } data;
 
     ~Exp();
+    void print(std::ostream& out);
 };
 
 struct BlockItems;
@@ -147,6 +151,7 @@ struct Stmt {
     } data;
 
     ~Stmt();
+    void print(std::ostream& out);
 };
 
 struct InitVal {
@@ -165,6 +170,7 @@ struct InitVal {
     } data;
 
     ~InitVal();
+    void print(std::ostream& out);
 };
 
 struct Dims {
@@ -175,6 +181,7 @@ struct Dims {
         delete dims;
         delete const_exp;
     }
+    void print(std::ostream& out);
 };
 
 struct VarDef {
@@ -187,6 +194,7 @@ struct VarDef {
         delete dims;
         delete init_val;
     }
+    void print(std::ostream& out);
 };
 
 struct VarDefs {
@@ -197,6 +205,7 @@ struct VarDefs {
         delete var_defs;
         delete var_def;
     }
+    void print(std::ostream& out);
 };
 
 struct Decl {
@@ -209,6 +218,7 @@ struct Decl {
     VarDefs *var_defs;
 
     ~Decl() { delete var_defs; }
+    void print(std::ostream& out);
 };
 
 struct BlockItem {
@@ -222,6 +232,7 @@ struct BlockItem {
     } data;
 
     ~BlockItem();
+    void print(std::ostream& out);
 };
 
 struct BlockItems {
@@ -232,6 +243,7 @@ struct BlockItems {
         delete block_items;
         delete block_item;
     }
+    void print(std::ostream& out);
 };
 
 struct FuncFParam {
@@ -243,6 +255,7 @@ struct FuncFParam {
         free(ident);
         delete dims;
     }
+    void print(std::ostream& out);
 };
 
 struct FuncFParams {
@@ -253,6 +266,7 @@ struct FuncFParams {
         delete func_fparams;
         delete func_fparam;
     }
+    void print(std::ostream& out);
 };
 
 struct FuncDef {
@@ -266,6 +280,7 @@ struct FuncDef {
         delete func_fparams;
         delete block;
     }
+    void print(std::ostream& out);
 };
 
 struct CompUnit {
@@ -287,6 +302,7 @@ struct CompUnit {
     } data;
 
     ~CompUnit();
+    void print(std::ostream& out);
 };
 
 /**
