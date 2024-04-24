@@ -218,14 +218,26 @@ void Stmt::print(std::ostream &out) {
     out << "}";
 }
 
+ArrayInitVal::~ArrayInitVal() {
+    delete init_vals;
+    delete init_val;
+}
+
+void ArrayInitVal::print(std::ostream &out) {
+    out << "{";
+    PRINT_ATTR(init_vals, init_vals);
+    out << ",";
+    PRINT_ATTR(init_val, init_val);
+    out << "}";
+}
+
 InitVal::~InitVal() {
     if (tag == EXP) {
         auto d = data.EXP;
         delete d;
     } else {
         auto d = data.ARRAY;
-        delete d.init_vals;
-        delete d.init_val;
+        delete d;
     }
 }
 
@@ -236,9 +248,7 @@ void InitVal::print(std::ostream &out) {
         PRINT_ATTR(exp, d);
     } else {
         auto d = data.ARRAY;
-        PRINT_ATTR(init_vals, d.init_vals);
-        out << ",";
-        PRINT_ATTR(init_val, d.init_val);
+        PRINT_ATTR(init_vals, d);
     }
     out << "}";
 }
