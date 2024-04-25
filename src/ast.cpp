@@ -12,24 +12,6 @@
 
 #define PRINT_VAL(name, val) out << "\"" #name "\": " << val;
 
-#define PRINT_ARRAY                                                            \
-    out << "[";                                                                \
-    for (auto item : items) {                                                  \
-        if (item != items[0]) {                                                \
-            out << ",";                                                        \
-        }                                                                      \
-        item->print(out);                                                      \
-    }                                                                          \
-    out << "]";
-
-FuncRParams::~FuncRParams() {
-    for (auto item : items) {
-        delete item;
-    }
-}
-
-void FuncRParams::print(std::ostream &out) { PRINT_ARRAY; }
-
 LVal::~LVal() {
     if (tag == IDENT) {
         auto d = data.IDENT;
@@ -223,14 +205,6 @@ void Stmt::print(std::ostream &out) {
     out << "}";
 }
 
-ArrayInitVal::~ArrayInitVal() {
-    for (auto item : items) {
-        delete item;
-    }
-}
-
-void ArrayInitVal::print(std::ostream &out) { PRINT_ARRAY; }
-
 InitVal::~InitVal() {
     if (tag == EXP) {
         auto d = data.EXP;
@@ -297,14 +271,6 @@ void CompUnit::print(std::ostream &out) {
     out << "}";
 }
 
-Dims::~Dims() {
-    for (auto item : items) {
-        delete item;
-    }
-}
-
-void Dims::print(std::ostream &out) { PRINT_ARRAY; }
-
 void VarDef::print(std::ostream &out) {
     out << "{";
     PRINT_VAL(ident, ident);
@@ -314,14 +280,6 @@ void VarDef::print(std::ostream &out) {
     PRINT_ATTR(init_val, init_val);
     out << "}";
 }
-
-VarDefs::~VarDefs() {
-    for (auto item : items) {
-        delete item;
-    }
-}
-
-void VarDefs::print(std::ostream &out) { PRINT_ARRAY; }
 
 void Decl::print(std::ostream &out) {
     out << "{";
@@ -333,14 +291,6 @@ void Decl::print(std::ostream &out) {
     out << "}";
 }
 
-BlockItems::~BlockItems() {
-    for (auto item : items) {
-        delete item;
-    }
-}
-
-void BlockItems::print(std::ostream &out) { PRINT_ARRAY; }
-
 void FuncFParam::print(std::ostream &out) {
     out << "{";
     PRINT_VAL(btype, btype);
@@ -350,13 +300,6 @@ void FuncFParam::print(std::ostream &out) {
     PRINT_ATTR(dims, dims);
     out << "}";
 }
-
-FuncFParams::~FuncFParams() {
-    for (auto item : items) {
-        delete item;
-    }
-}
-void FuncFParams::print(std::ostream &out) { PRINT_ARRAY; }
 
 void FuncDef::print(std::ostream &out) {
     out << "{";
@@ -369,11 +312,3 @@ void FuncDef::print(std::ostream &out) {
     PRINT_ATTR(block, block);
     out << "}";
 }
-
-CompUnits::~CompUnits() {
-    for (auto item : items) {
-        delete item;
-    }
-}
-
-void CompUnits::print(std::ostream &out) { PRINT_ARRAY; }

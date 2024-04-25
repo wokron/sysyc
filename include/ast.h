@@ -10,14 +10,30 @@ enum ASTType {
     VOID,
 };
 
+template <typename T> struct Items {
+    std::vector<T *> items;
+
+    ~Items() {
+        for (auto item : items) {
+            delete item;
+        }
+    }
+
+    void print(std::ostream &out) {
+        out << "[";
+        for (auto item : items) {
+            if (item != items[0]) {
+                out << ",";
+            }
+            item->print(out);
+        }
+        out << "]";
+    }
+};
+
 struct Exp;
 
-struct FuncRParams {
-    std::vector<Exp *> items;
-
-    ~FuncRParams();
-    void print(std::ostream &out);
-};
+using FuncRParams = Items<Exp>;
 
 struct LVal {
     enum {
@@ -113,7 +129,9 @@ struct Exp {
     void print(std::ostream &out);
 };
 
-struct BlockItems;
+struct BlockItem;
+
+using BlockItems = Items<BlockItem>;
 
 struct Stmt {
     enum {
@@ -156,12 +174,7 @@ struct Stmt {
 
 struct InitVal;
 
-struct ArrayInitVal {
-    std::vector<InitVal *> items;
-
-    ~ArrayInitVal();
-    void print(std::ostream &out);
-};
+using ArrayInitVal = Items<InitVal>;
 
 struct InitVal {
     enum {
@@ -179,12 +192,7 @@ struct InitVal {
     void print(std::ostream &out);
 };
 
-struct Dims {
-    std::vector<Exp *> items;
-
-    ~Dims();
-    void print(std::ostream &out);
-};
+using Dims = Items<Exp>;
 
 struct VarDef {
     char *ident;
@@ -199,12 +207,7 @@ struct VarDef {
     void print(std::ostream &out);
 };
 
-struct VarDefs {
-    std::vector<VarDef *> items;
-
-    ~VarDefs();
-    void print(std::ostream &out);
-};
+using VarDefs = Items<VarDef>;
 
 struct Decl {
     enum {
@@ -233,13 +236,6 @@ struct BlockItem {
     void print(std::ostream &out);
 };
 
-struct BlockItems {
-    std::vector<BlockItem *> items;
-
-    ~BlockItems();
-    void print(std::ostream &out);
-};
-
 struct FuncFParam {
     ASTType btype;
     char *ident;
@@ -252,12 +248,7 @@ struct FuncFParam {
     void print(std::ostream &out);
 };
 
-struct FuncFParams {
-    std::vector<FuncFParam *> items;
-
-    ~FuncFParams();
-    void print(std::ostream &out);
-};
+using FuncFParams = Items<FuncFParam>;
 
 struct FuncDef {
     ASTType func_type;
@@ -289,12 +280,7 @@ struct CompUnit {
     void print(std::ostream &out);
 };
 
-struct CompUnits {
-    std::vector<CompUnit *> items;
-
-    ~CompUnits();
-    void print(std::ostream &out);
-};
+using CompUnits = Items<CompUnit>;
 
 /**
  * some macro magic... this macro is used to construct AST node in an uniform
