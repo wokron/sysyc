@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 
 enum ASTType {
     INT,
@@ -12,8 +13,7 @@ enum ASTType {
 struct Exp;
 
 struct FuncRParams {
-    FuncRParams *func_rparams;
-    Exp *exp;
+    std::vector<Exp *> items;
 
     ~FuncRParams();
     void print(std::ostream &out);
@@ -157,8 +157,7 @@ struct Stmt {
 struct InitVal;
 
 struct ArrayInitVal {
-    ArrayInitVal *init_vals;
-    InitVal *init_val;
+    std::vector<InitVal *> items;
 
     ~ArrayInitVal();
     void print(std::ostream &out);
@@ -181,13 +180,9 @@ struct InitVal {
 };
 
 struct Dims {
-    Dims *dims;
-    Exp *const_exp;
+    std::vector<Exp *> items;
 
-    ~Dims() {
-        delete dims;
-        delete const_exp;
-    }
+    ~Dims();
     void print(std::ostream &out);
 };
 
@@ -205,13 +200,9 @@ struct VarDef {
 };
 
 struct VarDefs {
-    VarDefs *var_defs;
-    VarDef *var_def;
+    std::vector<VarDef *> items;
 
-    ~VarDefs() {
-        delete var_defs;
-        delete var_def;
-    }
+    ~VarDefs();
     void print(std::ostream &out);
 };
 
@@ -243,13 +234,9 @@ struct BlockItem {
 };
 
 struct BlockItems {
-    BlockItems *block_items;
-    BlockItem *block_item;
+    std::vector<BlockItem *> items;
 
-    ~BlockItems() {
-        delete block_items;
-        delete block_item;
-    }
+    ~BlockItems();
     void print(std::ostream &out);
 };
 
@@ -266,13 +253,9 @@ struct FuncFParam {
 };
 
 struct FuncFParams {
-    FuncFParams *func_fparams;
-    FuncFParam *func_fparam;
+    std::vector<FuncFParam *> items;
 
-    ~FuncFParams() {
-        delete func_fparams;
-        delete func_fparam;
-    }
+    ~FuncFParams();
     void print(std::ostream &out);
 };
 
@@ -297,18 +280,19 @@ struct CompUnit {
     } tag;
 
     union Data {
-        struct {
-            CompUnit *comp_unit;
-            Decl *decl;
-        } DECL;
+        Decl *DECL;
 
-        struct {
-            CompUnit *comp_unit;
-            FuncDef *func_def;
-        } FUNC;
+        FuncDef *FUNC;
     } data;
 
     ~CompUnit();
+    void print(std::ostream &out);
+};
+
+struct CompUnits {
+    std::vector<CompUnit *> items;
+
+    ~CompUnits();
     void print(std::ostream &out);
 };
 

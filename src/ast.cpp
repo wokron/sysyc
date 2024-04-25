@@ -12,18 +12,23 @@
 
 #define PRINT_VAL(name, val) out << "\"" #name "\": " << val;
 
+#define PRINT_ARRAY                                                            \
+    out << "[";                                                                \
+    for (auto item : items) {                                                  \
+        if (item != items[0]) {                                                \
+            out << ",";                                                        \
+        }                                                                      \
+        item->print(out);                                                      \
+    }                                                                          \
+    out << "]";
+
 FuncRParams::~FuncRParams() {
-    delete func_rparams;
-    delete exp;
+    for (auto item : items) {
+        delete item;
+    }
 }
 
-void FuncRParams::print(std::ostream &out) {
-    out << "{";
-    PRINT_ATTR(func_rparams, func_rparams);
-    out << ",";
-    PRINT_ATTR(exp, exp);
-    out << "}";
-}
+void FuncRParams::print(std::ostream &out) { PRINT_ARRAY; }
 
 LVal::~LVal() {
     if (tag == IDENT) {
@@ -219,17 +224,12 @@ void Stmt::print(std::ostream &out) {
 }
 
 ArrayInitVal::~ArrayInitVal() {
-    delete init_vals;
-    delete init_val;
+    for (auto item : items) {
+        delete item;
+    }
 }
 
-void ArrayInitVal::print(std::ostream &out) {
-    out << "{";
-    PRINT_ATTR(init_vals, init_vals);
-    out << ",";
-    PRINT_ATTR(init_val, init_val);
-    out << "}";
-}
+void ArrayInitVal::print(std::ostream &out) { PRINT_ARRAY; }
 
 InitVal::~InitVal() {
     if (tag == EXP) {
@@ -278,12 +278,10 @@ void BlockItem::print(std::ostream &out) {
 CompUnit::~CompUnit() {
     if (tag == DECL) {
         auto d = data.DECL;
-        delete d.comp_unit;
-        delete d.decl;
+        delete d;
     } else {
         auto d = data.FUNC;
-        delete d.comp_unit;
-        delete d.func_def;
+        delete d;
     }
 }
 
@@ -291,25 +289,21 @@ void CompUnit::print(std::ostream &out) {
     out << "{";
     if (tag == DECL) {
         auto d = data.DECL;
-        PRINT_ATTR(comp_unit, d.comp_unit);
-        out << ",";
-        PRINT_ATTR(decl, d.decl);
+        PRINT_ATTR(decl, d);
     } else {
         auto d = data.FUNC;
-        PRINT_ATTR(comp_unit, d.comp_unit);
-        out << ",";
-        PRINT_ATTR(func_def, d.func_def);
+        PRINT_ATTR(func_def, d);
     }
     out << "}";
 }
 
-void Dims::print(std::ostream &out) {
-    out << "{";
-    PRINT_ATTR(dims, dims);
-    out << ",";
-    PRINT_ATTR(const_exp, const_exp);
-    out << "}";
+Dims::~Dims() {
+    for (auto item : items) {
+        delete item;
+    }
 }
+
+void Dims::print(std::ostream &out) { PRINT_ARRAY; }
 
 void VarDef::print(std::ostream &out) {
     out << "{";
@@ -321,13 +315,13 @@ void VarDef::print(std::ostream &out) {
     out << "}";
 }
 
-void VarDefs::print(std::ostream &out) {
-    out << "{";
-    PRINT_ATTR(var_defs, var_defs);
-    out << ",";
-    PRINT_ATTR(var_def, var_def);
-    out << "}";
+VarDefs::~VarDefs() {
+    for (auto item : items) {
+        delete item;
+    }
 }
+
+void VarDefs::print(std::ostream &out) { PRINT_ARRAY; }
 
 void Decl::print(std::ostream &out) {
     out << "{";
@@ -339,13 +333,13 @@ void Decl::print(std::ostream &out) {
     out << "}";
 }
 
-void BlockItems::print(std::ostream &out) {
-    out << "{";
-    PRINT_ATTR(block_items, block_items);
-    out << ",";
-    PRINT_ATTR(block_item, block_item);
-    out << "}";
+BlockItems::~BlockItems() {
+    for (auto item : items) {
+        delete item;
+    }
 }
+
+void BlockItems::print(std::ostream &out) { PRINT_ARRAY; }
 
 void FuncFParam::print(std::ostream &out) {
     out << "{";
@@ -357,13 +351,12 @@ void FuncFParam::print(std::ostream &out) {
     out << "}";
 }
 
-void FuncFParams::print(std::ostream &out) {
-    out << "{";
-    PRINT_ATTR(func_fparams, func_fparams);
-    out << ",";
-    PRINT_ATTR(func_fparam, func_fparam);
-    out << "}";
+FuncFParams::~FuncFParams() {
+    for (auto item : items) {
+        delete item;
+    }
 }
+void FuncFParams::print(std::ostream &out) { PRINT_ARRAY; }
 
 void FuncDef::print(std::ostream &out) {
     out << "{";
@@ -376,3 +369,11 @@ void FuncDef::print(std::ostream &out) {
     PRINT_ATTR(block, block);
     out << "}";
 }
+
+CompUnits::~CompUnits() {
+    for (auto item : items) {
+        delete item;
+    }
+}
+
+void CompUnits::print(std::ostream &out) { PRINT_ARRAY; }
