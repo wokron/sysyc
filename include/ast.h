@@ -1,8 +1,10 @@
 #pragma once
 
-#include <cstdlib>
-#include <iostream>
+#include <memory>
+#include <string>
+#include <variant>
 #include <vector>
+#include <ostream>
 
 enum ASTType {
     INT,
@@ -10,283 +12,173 @@ enum ASTType {
     VOID,
 };
 
-template <typename T> struct Items {
-    std::vector<T *> items;
+template <typename T> using Items = std::vector<std::shared_ptr<T>>;
 
-    ~Items() {
-        for (auto item : items) {
-            delete item;
-        }
-    }
+using Ident = std::string;
+using Number = std::variant<int, float>;
 
-    void print(std::ostream &out) {
-        out << "[";
-        for (auto item : items) {
-            if (item != items[0]) {
-                out << ",";
-            }
-            item->print(out);
-        }
-        out << "]";
-    }
-};
+struct Index;
+using LVal = std::variant<Ident, Index>;
 
-struct Exp;
+struct BinaryExp;
+struct BoolExp;
+struct CallExp;
+struct UnaryExp;
+struct CompareExp;
+using Exp = std::variant<BinaryExp, BoolExp, LVal, CallExp, UnaryExp,
+                         CompareExp, Number>;
 
 using FuncRParams = Items<Exp>;
 
-struct LVal {
-    enum {
-        IDENT,
-        INDEX,
-    } tag;
+struct AssignStmt;
+struct ExpStmt;
+struct BlockStmt;
+struct IfStmt;
+struct WhileStmt;
+struct ControlStmt;
+struct ReturnStmt;
+using Stmt = std::variant<AssignStmt, ExpStmt, BlockStmt, IfStmt, WhileStmt,
+                          ControlStmt, ReturnStmt>;
 
-    union Data {
-        char *IDENT;
-
-        struct {
-            LVal *lval;
-            Exp *exp;
-        } INDEX;
-    } data;
-
-    ~LVal();
-    void print(std::ostream &out);
-};
-
-struct Exp {
-    enum {
-        BINARY,
-        BOOL,
-        LVAL,
-        CALL,
-        UNARY,
-        COMPARE,
-        NUMBER,
-    } tag;
-
-    union Data {
-        struct BinaryExp {
-            Exp *left;
-            enum {
-                ADD,
-                SUB,
-                MULT,
-                DIV,
-                MOD,
-            } op;
-            Exp *right;
-        } BINARY;
-
-        struct BoolExp {
-            Exp *left;
-            enum {
-                AND,
-                OR,
-            } op;
-            Exp *right;
-        } BOOL;
-
-        LVal *LVAL;
-
-        struct {
-            char *ident;
-            FuncRParams *func_rparams;
-        } CALL;
-
-        struct UnaryExp {
-            enum {
-                NOT,
-                ADD,
-                SUB,
-            } op;
-            Exp *exp;
-        } UNARY;
-
-        struct Compare {
-            Exp *left;
-            enum {
-                EQ,
-                NE,
-                LT,
-                LE,
-                GT,
-                GE,
-            } op;
-            Exp *right;
-        } COMPARE;
-
-        struct {
-            ASTType type;
-            union {
-                int int_val;
-                float float_val;
-            } val;
-        } NUMBER;
-    } data;
-
-    ~Exp();
-    void print(std::ostream &out);
-};
-
-struct BlockItem;
-
-using BlockItems = Items<BlockItem>;
-
-struct Stmt {
-    enum {
-        ASSIGN,
-        EXP,
-        BLOCK,
-        IF,
-        WHILE,
-        CONTINUE,
-        BREAK,
-        RETURN,
-    } tag;
-
-    union Data {
-        struct {
-            LVal *lval;
-            Exp *exp;
-        } ASSIGN;
-        Exp *EXP;
-
-        BlockItems *BLOCK;
-
-        struct {
-            Exp *cond;
-            Stmt *if_stmt;
-            Stmt *else_stmt;
-        } IF;
-
-        struct {
-            Exp *cond;
-            Stmt *stmt;
-        } WHILE;
-
-        Exp *RETURN;
-    } data;
-
-    ~Stmt();
-    void print(std::ostream &out);
-};
-
-struct InitVal;
-
-using ArrayInitVal = Items<InitVal>;
-
-struct InitVal {
-    enum {
-        EXP,
-        ARRAY,
-    } tag;
-
-    union Data {
-        Exp *EXP;
-
-        ArrayInitVal *ARRAY;
-    } data;
-
-    ~InitVal();
-    void print(std::ostream &out);
-};
+struct ArrayInitVal;
+using InitVal = std::variant<Exp, ArrayInitVal>;
 
 using Dims = Items<Exp>;
 
-struct VarDef {
-    char *ident;
-    Dims *dims;
-    InitVal *init_val;
+struct VarDef;
+using VarDefs = Items<VarDef>;
 
-    ~VarDef() {
-        free(ident);
-        delete dims;
-        delete init_val;
-    }
-    void print(std::ostream &out);
+struct FuncFParam;
+using FuncFParams = Items<FuncFParam>;
+
+struct Decl;
+using BlockItem = std::variant<Decl, Stmt>;
+using BlockItems = Items<BlockItem>;
+
+struct FuncDef;
+using CompUnit = std::variant<Decl, FuncDef>;
+
+using CompUnits = Items<CompUnit>;
+
+struct Index {
+    std::shared_ptr<LVal> lval;
+    std::shared_ptr<Exp> exp;
 };
 
-using VarDefs = Items<VarDef>;
+struct BinaryExp {
+    std::shared_ptr<Exp> left;
+    enum {
+        ADD,
+        SUB,
+        MULT,
+        DIV,
+        MOD,
+    } op;
+    std::shared_ptr<Exp> right;
+};
+
+struct BoolExp {
+    std::shared_ptr<Exp> left;
+    enum {
+        AND,
+        OR,
+    } op;
+    std::shared_ptr<Exp> right;
+};
+
+struct CallExp {
+    Ident ident;
+    std::shared_ptr<FuncRParams> func_rparams;
+};
+
+struct UnaryExp {
+    enum {
+        NOT,
+        ADD,
+        SUB,
+    } op;
+    std::shared_ptr<Exp> exp;
+};
+
+struct CompareExp {
+    std::shared_ptr<Exp> left;
+    enum {
+        EQ,
+        NE,
+        LT,
+        LE,
+        GT,
+        GE,
+    } op;
+    std::shared_ptr<Exp> right;
+};
+
+struct AssignStmt {
+    std::shared_ptr<LVal> lval;
+    std::shared_ptr<Exp> exp;
+};
+
+struct ExpStmt {
+    std::shared_ptr<Exp> exp; // nullable
+};
+
+struct BlockStmt {
+    std::shared_ptr<BlockItems> block;
+};
+
+struct IfStmt {
+    std::shared_ptr<Exp> cond;
+    std::shared_ptr<Stmt> if_stmt;
+    std::shared_ptr<Stmt> else_stmt; // nullable
+};
+
+struct WhileStmt {
+    std::shared_ptr<Exp> cond;
+    std::shared_ptr<Stmt> stmt;
+};
+
+struct ControlStmt {
+    enum {
+        BREAK,
+        CONTINUE,
+    } type;
+};
+
+struct ReturnStmt {
+    std::shared_ptr<Exp> exp; // nullable
+};
+
+struct ArrayInitVal {
+    std::vector<std::shared_ptr<InitVal>> items;
+};
+
+struct VarDef {
+    Ident ident;
+    std::shared_ptr<Dims> dims;
+    std::shared_ptr<InitVal> init_val; // nullable
+};
 
 struct Decl {
     enum {
         CONST,
         VAR,
-    } var_type;
+    } type;
 
     ASTType btype;
-    VarDefs *var_defs;
-
-    ~Decl() { delete var_defs; }
-    void print(std::ostream &out);
-};
-
-struct BlockItem {
-    enum {
-        DECL,
-        STMT,
-    } tag;
-    union Data {
-        Decl *DECL;
-        Stmt *STMT;
-    } data;
-
-    ~BlockItem();
-    void print(std::ostream &out);
+    std::shared_ptr<VarDefs> var_defs;
 };
 
 struct FuncFParam {
     ASTType btype;
-    char *ident;
-    Dims *dims;
-
-    ~FuncFParam() {
-        free(ident);
-        delete dims;
-    }
-    void print(std::ostream &out);
+    Ident ident;
+    std::shared_ptr<Dims> dims;
 };
-
-using FuncFParams = Items<FuncFParam>;
 
 struct FuncDef {
     ASTType func_type;
-    char *ident;
-    FuncFParams *func_fparams;
-    BlockItems *block;
-
-    ~FuncDef() {
-        free(ident);
-        delete func_fparams;
-        delete block;
-    }
-    void print(std::ostream &out);
+    Ident ident;
+    std::shared_ptr<FuncFParams> func_fparams;
+    std::shared_ptr<BlockItems> block;
 };
 
-struct CompUnit {
-    enum {
-        DECL,
-        FUNC,
-    } tag;
-
-    union Data {
-        Decl *DECL;
-
-        FuncDef *FUNC;
-    } data;
-
-    ~CompUnit();
-    void print(std::ostream &out);
-};
-
-using CompUnits = Items<CompUnit>;
-
-/**
- * some macro magic... this macro is used to construct AST node in an uniform
- * way
- */
-#define AST(cls, tag, ...)                                                     \
-    (cls) {                                                                    \
-        cls ::tag, { .tag = __VA_ARGS__ }                                      \
-    }
+void print_ast(std::ostream &out, const CompUnits &comp_units);

@@ -1,314 +1,320 @@
 #include "ast.h"
+#include "utils.h"
+#include <functional>
 
-#define PRINT_CHECK_NULL(attr)                                                 \
-    if (attr != nullptr)                                                       \
-        attr->print(out);                                                      \
-    else                                                                       \
-        out << nullptr;
+template <typename T>
+void _print_attr(std::ostream &out, std::string name, T value) {
+    out << "\"" << name << "\""
+        << ":";
 
-#define PRINT_ATTR(name, attr)                                                 \
-    out << "\"" #name "\": ";                                                  \
-    PRINT_CHECK_NULL(attr);
-
-#define PRINT_VAL(name, val) out << "\"" #name "\": " << val;
-
-LVal::~LVal() {
-    if (tag == IDENT) {
-        auto d = data.IDENT;
-        delete d;
+    if constexpr (std::is_same_v<T, std::string>) {
+        out << "\"" << value << "\"";
+    } else if constexpr (std::is_same_v<T, nullptr_t>) {
+        out << "null";
     } else {
-        auto d = data.INDEX;
-        delete d.exp;
-        delete d.lval;
+        out << value;
     }
 }
 
-void LVal::print(std::ostream &out) {
+template <typename T>
+using print_value_func_t = std::function<void(std::ostream &, const T &)>;
+
+template <typename T>
+void _print_attr(std::ostream &out, std::string name, T value,
+                 print_value_func_t<T> print_value_func) {
+    out << "\"" << name << "\""
+        << ":";
+    print_value_func(out, value);
+}
+
+template <typename T>
+void _print_items(std::ostream &out, const Items<T> &items,
+                  print_value_func_t<T> print_item_func) {
+    out << "[";
+    for (const auto &item : items) {
+        if (&item != &items[0]) {
+            out << ",";
+        }
+        print_item_func(out, *item);
+    }
+    out << "]";
+}
+
+template <typename T>
+void _print_items_attr(std::ostream &out, std::string name,
+                       const Items<T> &items,
+                       print_value_func_t<T> print_value_func) {
+    out << "\"" << name << "\""
+        << ":";
+    _print_items(out, items, print_value_func);
+}
+
+void _print_init_val(std::ostream &out, const InitVal &init_val);
+
+void _print_array_init_val(std::ostream &out,
+                           const ArrayInitVal &array_init_val) {
     out << "{";
-    if (tag == IDENT) {
-        auto d = data.IDENT;
-        PRINT_VAL(ident, d);
+
+    _print_items_attr<InitVal>(out, "items", array_init_val.items,
+                               _print_init_val);
+    out << "}";
+}
+
+void _print_exp(std::ostream &out, const Exp &exp);
+
+void _print_init_val(std::ostream &out, const InitVal &init_val) {
+    std::visit(overloaded{
+                   [&out](const Exp &exp) { _print_exp(out, exp); },
+                   [&out](const ArrayInitVal &array_init_val) {
+                       _print_array_init_val(out, array_init_val);
+                   },
+               },
+               init_val);
+}
+
+void _print_var_def(std::ostream &out, const VarDef &var_def) {
+    out << "{";
+
+    _print_attr(out, "ident", var_def.ident);
+    out << ",";
+
+    _print_items_attr<Exp>(out, "dims", *var_def.dims, _print_exp);
+    out << ",";
+
+    if (var_def.init_val == nullptr) {
+        _print_attr(out, "init_val", nullptr);
     } else {
-        auto d = data.INDEX;
-        PRINT_ATTR(exp, d.exp);
-        out << ",";
-        PRINT_ATTR(lval, d.lval);
+        _print_attr<InitVal>(out, "init_val", *var_def.init_val,
+                             _print_init_val);
     }
     out << "}";
 }
 
-Exp::~Exp() {
-    switch (tag) {
-    case BINARY: {
-        auto d = data.BINARY;
-        delete d.left;
-        delete d.right;
-    } break;
-    case BOOL: {
-        auto d = data.BOOL;
-        delete d.left;
-        delete d.right;
-    } break;
-    case LVAL: {
-        auto d = data.LVAL;
-        delete d;
-    } break;
-    case CALL: {
-        auto d = data.CALL;
-        free(d.ident);
-        delete d.func_rparams;
-    } break;
-    case UNARY: {
-        auto d = data.UNARY;
-        delete d.exp;
-    } break;
-    case COMPARE: {
-        auto d = data.COMPARE;
-        delete d.left;
-        delete d.right;
-    } break;
-    }
-}
-
-void Exp::print(std::ostream &out) {
+void _print_decl(std::ostream &out, const Decl &decl) {
     out << "{";
-    switch (tag) {
-    case BINARY: {
-        auto d = data.BINARY;
-        PRINT_ATTR(left, d.left);
-        out << ",";
-        PRINT_VAL(op, d.op);
-        out << ",";
-        PRINT_ATTR(right, d.right);
-    } break;
-    case BOOL: {
-        auto d = data.BOOL;
-        PRINT_ATTR(left, d.left);
-        out << ",";
-        PRINT_VAL(op, d.op);
-        out << ",";
-        PRINT_ATTR(right, d.right);
-    } break;
-    case LVAL: {
-        auto d = data.LVAL;
-        PRINT_ATTR(lval, d);
-    } break;
-    case CALL: {
-        auto d = data.CALL;
-        PRINT_VAL(ident, d.ident);
-        out << ",";
-        PRINT_ATTR(func_rparams, d.func_rparams);
-    } break;
-    case UNARY: {
-        auto d = data.UNARY;
-        PRINT_VAL(op, d.op);
-        out << ",";
-        PRINT_ATTR(exp, d.exp);
-    } break;
-    case COMPARE: {
-        auto d = data.COMPARE;
-        PRINT_ATTR(left, d.left);
-        out << ",";
-        PRINT_VAL(op, d.op);
-        out << ",";
-        PRINT_ATTR(right, d.right);
-    } break;
-    case NUMBER: {
-        auto d = data.NUMBER;
-        PRINT_VAL(type, d.type);
-        out << ",";
-        out << (d.type == ASTType::INT ? d.val.int_val : d.val.float_val);
-    }
-    }
+
+    _print_attr(out, "type", decl.type);
+    out << ",";
+
+    _print_attr(out, "btype", decl.btype);
+    out << ",";
+
+    _print_items_attr<VarDef>(out, "var_defs", *decl.var_defs, _print_var_def);
     out << "}";
 }
 
-Stmt::~Stmt() {
-    switch (tag) {
-    case ASSIGN: {
-        auto d = data.ASSIGN;
-        delete d.exp;
-        delete d.lval;
-    } break;
-    case EXP: {
-        auto d = data.EXP;
-        delete d;
-    } break;
-    case BLOCK: {
-        auto d = data.BLOCK;
-        delete d;
-    } break;
-    case IF: {
-        auto d = data.IF;
-        delete d.cond;
-        delete d.if_stmt;
-        delete d.else_stmt;
-    } break;
-    case WHILE: {
-        auto d = data.WHILE;
-        delete d.cond;
-        delete d.stmt;
-    } break;
-    case CONTINUE:
-        break;
-    case BREAK:
-        break;
-    case RETURN: {
-        auto d = data.RETURN;
-        delete d;
-    } break;
-    }
+void _print_lval(std::ostream &out, const LVal &lval) {
+    std::visit(
+        overloaded{[&out](const Ident &ident) { out << ident; },
+                   [&out](const Index &index) {
+                       out << "{";
+
+                       _print_attr<LVal>(out, "lval", *index.lval, _print_lval);
+                       out << ",";
+
+                       _print_attr<Exp>(out, "exp", *index.exp, _print_exp);
+                       out << "}";
+                   }},
+        lval);
 }
 
-void Stmt::print(std::ostream &out) {
+void _print_block_item(std::ostream &out, const BlockItem &block_item);
+
+void _print_stmt(std::ostream &out, const Stmt &stmt) {
+    std::visit(overloaded{
+                   [&out](const AssignStmt &stmt) {
+                       out << "{";
+
+                       _print_attr<LVal>(out, "lval", *stmt.lval, _print_lval);
+                       out << ",";
+
+                       _print_attr<Exp>(out, "exp", *stmt.exp, _print_exp);
+                       out << "}";
+                   },
+                   [&out](const ExpStmt &stmt) {
+                       out << "{";
+
+                       if (stmt.exp == nullptr) {
+                           _print_attr(out, "exp", nullptr);
+                       } else {
+                           _print_attr<Exp>(out, "exp", *stmt.exp, _print_exp);
+                       }
+                       out << "}";
+                   },
+                   [&out](const BlockStmt &stmt) {
+                       out << "{";
+
+                       _print_items_attr<BlockItem>(out, "block", *stmt.block,
+                                                    _print_block_item);
+                       out << "}";
+                   },
+                   [&out](const IfStmt &stmt) {
+                       out << "{";
+
+                       _print_attr<Exp>(out, "cond", *stmt.cond, _print_exp);
+                       out << ",";
+
+                       _print_attr<Stmt>(out, "if_stmt", *stmt.if_stmt,
+                                         _print_stmt);
+                       out << ",";
+
+                       if (stmt.else_stmt == nullptr) {
+                           _print_attr(out, "else_stmt", nullptr);
+                       } else {
+                           _print_attr<Stmt>(out, "else_stmt", *stmt.else_stmt,
+                                             _print_stmt);
+                       }
+                       out << "}";
+                   },
+                   [&out](const WhileStmt &stmt) {
+                       out << "{";
+
+                       _print_attr<Exp>(out, "cond", *stmt.cond, _print_exp);
+                       out << ",";
+
+                       _print_attr<Stmt>(out, "stmt", *stmt.stmt, _print_stmt);
+                       out << "}";
+                   },
+                   [&out](const ControlStmt &stmt) {
+                       out << "{";
+
+                       _print_attr(out, "type", stmt.type);
+                       out << "}";
+                   },
+                   [&out](const ReturnStmt &stmt) {
+                       out << "{";
+
+                       if (stmt.exp == nullptr) {
+                           _print_attr(out, "exp", nullptr);
+                       } else {
+                           _print_attr<Exp>(out, "exp", *stmt.exp, _print_exp);
+                       }
+                       out << "}";
+                   },
+               },
+               stmt);
+}
+
+void _print_exp(std::ostream &out, const Exp &exp) {
+    std::visit(
+        overloaded{
+            [&out](const BinaryExp &exp) {
+                out << "{";
+
+                _print_attr<Exp>(out, "left", *exp.left, _print_exp);
+                out << ",";
+
+                _print_attr<Exp>(out, "right", *exp.right, _print_exp);
+                out << ",";
+
+                _print_attr(out, "binary_op", exp.op);
+                out << "}";
+            },
+            [&out](const BoolExp &exp) {
+                out << "{";
+
+                _print_attr<Exp>(out, "left", *exp.left, _print_exp);
+                out << ",";
+
+                _print_attr<Exp>(out, "right", *exp.right, _print_exp);
+                out << ",";
+
+                _print_attr(out, "bool_op", exp.op);
+                out << "}";
+            },
+            [&out](const LVal &lval) { _print_lval(out, lval); },
+            [&out](const CallExp &exp) {
+                out << "{";
+
+                _print_attr(out, "ident", exp.ident);
+                out << ",";
+
+                _print_items_attr<Exp>(out, "func_rparams", *exp.func_rparams,
+                                       _print_exp);
+                out << "}";
+            },
+            [&out](const UnaryExp &exp) {
+                out << "{";
+
+                _print_attr<Exp>(out, "exp", *exp.exp, _print_exp);
+                out << ",";
+
+                _print_attr(out, "unary_op", exp.op);
+                out << "}";
+            },
+            [&out](const CompareExp &exp) {
+                out << "{";
+
+                _print_attr<Exp>(out, "left", *exp.left, _print_exp);
+                out << ",";
+
+                _print_attr<Exp>(out, "right", *exp.right, _print_exp);
+                out << ",";
+
+                _print_attr(out, "compare_op", exp.op);
+                out << "}";
+            },
+            [&out](const Number &number) {
+                std::visit(
+                    overloaded{[&out](const int number) { out << number; },
+                               [&out](const float number) { out << number; }},
+                    number);
+            },
+        },
+        exp);
+}
+
+void _print_func_fparam(std::ostream &out, const FuncFParam &func_fparam) {
     out << "{";
-    switch (tag) {
-    case ASSIGN: {
-        auto d = data.ASSIGN;
-        PRINT_ATTR(exp, d.exp);
-        out << ",";
-        PRINT_ATTR(lval, d.lval);
-    } break;
-    case EXP: {
-        auto d = data.EXP;
-        PRINT_ATTR(exp, d);
-    } break;
-    case BLOCK: {
-        auto d = data.BLOCK;
-        PRINT_ATTR(block, d);
-    } break;
-    case IF: {
-        auto d = data.IF;
-        PRINT_ATTR(if_cond, d.cond);
-        out << ",";
-        PRINT_ATTR(if_stmt, d.if_stmt);
-        out << ",";
-        PRINT_ATTR(else_stmt, d.else_stmt);
-    } break;
-    case WHILE: {
-        auto d = data.WHILE;
-        PRINT_ATTR(while_cond, d.cond);
-        out << ",";
-        PRINT_ATTR(stmt, d.stmt);
-    } break;
-    case CONTINUE:
-        PRINT_VAL(control, "continue");
-        break;
-    case BREAK:
-        PRINT_VAL(control, "break");
-        break;
-    case RETURN: {
-        auto d = data.RETURN;
-        PRINT_ATTR(return, d);
-    } break;
-    }
+
+    _print_attr(out, "btype", func_fparam.btype);
+    out << ",";
+
+    _print_attr(out, "ident", func_fparam.ident);
+    out << ",";
+
+    _print_items_attr<Exp>(out, "dims", *func_fparam.dims, _print_exp);
     out << "}";
 }
 
-InitVal::~InitVal() {
-    if (tag == EXP) {
-        auto d = data.EXP;
-        delete d;
-    } else {
-        auto d = data.ARRAY;
-        delete d;
-    }
+void _print_block_item(std::ostream &out, const BlockItem &block_item) {
+    std::visit(overloaded{
+                   [&out](const Decl &decl) { _print_decl(out, decl); },
+                   [&out](const Stmt &stmt) { _print_stmt(out, stmt); },
+               },
+               block_item);
 }
 
-void InitVal::print(std::ostream &out) {
+void _print_func_def(std::ostream &out, const FuncDef &func_def) {
     out << "{";
-    if (tag == EXP) {
-        auto d = data.EXP;
-        PRINT_ATTR(exp, d);
-    } else {
-        auto d = data.ARRAY;
-        PRINT_ATTR(init_vals, d);
-    }
+
+    _print_attr(out, "btype", func_def.func_type);
+    out << ",";
+
+    _print_attr(out, "ident", func_def.ident);
+    out << ",";
+
+    _print_items_attr<FuncFParam>(out, "func_fparams", *func_def.func_fparams,
+                                  _print_func_fparam);
+    out << ",";
+
+    _print_items_attr<BlockItem>(out, "block", *func_def.block,
+                                 _print_block_item);
     out << "}";
 }
 
-BlockItem::~BlockItem() {
-    if (tag == DECL) {
-        auto d = data.DECL;
-        delete d;
-    } else {
-        auto d = data.STMT;
-        delete d;
-    }
+void _print_comp_unit(std::ostream &out, const CompUnit &comp_unit) {
+    std::visit(overloaded{[&out](const Decl &decl) { _print_decl(out, decl); },
+                          [&out](const FuncDef &func_def) {
+                              _print_func_def(out, func_def);
+                          }},
+               comp_unit);
 }
 
-void BlockItem::print(std::ostream &out) {
+void print_ast(std::ostream &out, const CompUnits &comp_units) {
     out << "{";
-    if (tag == DECL) {
-        auto d = data.DECL;
-        PRINT_ATTR(decl, d);
-    } else {
-        auto d = data.STMT;
-        PRINT_ATTR(stmt, d);
-    }
-    out << "}";
-}
 
-CompUnit::~CompUnit() {
-    if (tag == DECL) {
-        auto d = data.DECL;
-        delete d;
-    } else {
-        auto d = data.FUNC;
-        delete d;
-    }
-}
-
-void CompUnit::print(std::ostream &out) {
-    out << "{";
-    if (tag == DECL) {
-        auto d = data.DECL;
-        PRINT_ATTR(decl, d);
-    } else {
-        auto d = data.FUNC;
-        PRINT_ATTR(func_def, d);
-    }
-    out << "}";
-}
-
-void VarDef::print(std::ostream &out) {
-    out << "{";
-    PRINT_VAL(ident, ident);
-    out << ",";
-    PRINT_ATTR(dims, dims);
-    out << ",";
-    PRINT_ATTR(init_val, init_val);
-    out << "}";
-}
-
-void Decl::print(std::ostream &out) {
-    out << "{";
-    PRINT_VAL(var_type, var_type);
-    out << ",";
-    PRINT_VAL(btype, btype);
-    out << ",";
-    PRINT_ATTR(var_defs, var_defs);
-    out << "}";
-}
-
-void FuncFParam::print(std::ostream &out) {
-    out << "{";
-    PRINT_VAL(btype, btype);
-    out << ",";
-    PRINT_VAL(ident, ident);
-    out << ",";
-    PRINT_ATTR(dims, dims);
-    out << "}";
-}
-
-void FuncDef::print(std::ostream &out) {
-    out << "{";
-    PRINT_VAL(func_type, func_type);
-    out << ",";
-    PRINT_VAL(ident, ident);
-    out << ",";
-    PRINT_ATTR(func_fparams, func_fparams);
-    out << ",";
-    PRINT_ATTR(block, block);
+    _print_items_attr<CompUnit>(out, "comp_units", comp_units,
+                                _print_comp_unit);
     out << "}";
 }
