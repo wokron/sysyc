@@ -3,30 +3,25 @@
 #include <doctest.h>
 #include <sstream>
 
-TEST_CASE("testing ast alloc, print and free") {
-    // CompUnits *root = new CompUnits{{
-    //     new AST(CompUnit, DECL,
-    //             new Decl{Decl::CONST, ASTType::INT,
-    //                      new VarDefs{{new VarDef{
-    //                          strdup("a"),
-    //                          nullptr,
-    //                          nullptr,
-    //                      }}}}),
-    //     new AST(CompUnit, FUNC,
-    //             new FuncDef{ASTType::VOID, strdup("a"), new FuncFParams{{}},
-    //                         new BlockItems{{}}}),
-    // }};
+template <typename T> using sp = std::shared_ptr<T>;
 
-    // std::ostringstream ss;
-    // root->print(ss);
+TEST_CASE("testing ast build and print") {
+    auto root = sp<CompUnits>(new CompUnits{
+        sp<CompUnit>(new CompUnit(
+            Decl{Decl::CONST, ASTType::FLOAT,
+                 sp<VarDefs>(new VarDefs{sp<VarDef>(new VarDef{
+                     Ident("x"), sp<Dims>(new Dims{}), sp<InitVal>()})})})),
+        sp<CompUnit>(new CompUnit(FuncDef{ASTType::INT, Ident("func1"),
+                                          sp<FuncFParams>(new FuncFParams{}),
+                                          sp<BlockItems>(new BlockItems{})}))});
 
-    // auto result = ss.str();
+    std::ostringstream ss;
+    print_ast(ss, *root);
 
-    // CHECK(
-    //     result ==
-    //     "[{\"decl\": {\"var_type\": 0,\"btype\": 0,\"var_defs\": [{\"ident\": "
-    //     "a,\"dims\": nullptr,\"init_val\": nullptr}]}},{\"func_def\": "
-    //     "{\"func_type\": 2,\"ident\": a,\"func_fparams\": [],\"block\": []}}]");
+    auto ast_str = ss.str();
 
-    // delete root;
+    CHECK(ast_str ==
+          "{\"comp_units\":[{\"type\":0,\"btype\":1,\"var_defs\":[{\"ident\":"
+          "\"x\",\"dims\":[],\"init_val\":null}]},{\"btype\":0,\"ident\":"
+          "\"func1\",\"func_fparams\":[],\"block\":[]}]}");
 }
