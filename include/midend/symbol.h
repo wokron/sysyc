@@ -3,7 +3,6 @@
 #include "type.h"
 #include <memory>
 #include <unordered_map>
-#include <vector>
 
 class Symbol {
   public:
@@ -15,52 +14,36 @@ class Symbol {
         : name(std::move(name)), type(type), constant(constant){};
 };
 
-class SymbolTable {
+class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
   public:
-    std::vector<std::unordered_map<std::string, std::shared_ptr<Symbol>>>
-        symbol_table;
-    static SymbolTable table;
-    bool wait = false;
+    std::unordered_map<std::string, std::shared_ptr<Symbol>> symbols;
+    std::shared_ptr<SymbolTable> parent;
 
   public:
-    SymbolTable() {
-        symbol_table.emplace_back(); // 在vector中加入一个新的unordered_map
-    }
-
-    static SymbolTable &getInstance() { return table; }
-
-    void addBlockLayer() {
-        if (wait) {
-            wait = false;
-        } else {
-            symbol_table.emplace_back();
-        }
-    }
-
-    void removeBlockLayer() {
-        if (symbol_table.size() > 2) {
-            symbol_table.pop_back();
-        }
-    }
-
-    void addFuncLayer() {
-        symbol_table.emplace_back();
-        wait = true;
-    }
-
-    void removeFuncLayer() { symbol_table.pop_back(); }
+    SymbolTable(std::shared_ptr<SymbolTable> parent = nullptr)
+        : parent(parent) {}
 
     void addSymbol(const std::string &name, std::shared_ptr<Symbol> symbol) {
-        symbol_table.back()[name] = symbol;
+        symbols[name] = symbol;
     }
 
     std::shared_ptr<Symbol> getSymbol(const std::string &name) {
-        for (int i = symbol_table.size() - 1; i >= 0; --i) {
-            auto it = symbol_table[i].find(name);
-            if (it != symbol_table[i].end()) {
-                return it->second;
-            }
+        auto it = symbols.find(name);
+        if (it != symbols.end()) {
+            return it->second;
+        } else if (parent != nullptr) {
+            return parent->getSymbol(name);
         }
         return nullptr;
     }
+
+    // create a new scope
+    std::shared_ptr<SymbolTable> pushScope() {
+        return std::make_shared<SymbolTable>(shared_from_this());
+    }
+
+    // return parent scope
+    std::shared_ptr<SymbolTable> popScope() { return parent; }
+
+    bool hasParent() const { return parent != nullptr; }
 };
