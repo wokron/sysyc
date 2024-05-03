@@ -1,16 +1,11 @@
-#include "Type.h"
+#include "type.h"
 
-Type::Type(TypeId tid)
-: tid(tid){
-
-}
+Type::Type(TypeId tid) : tid(tid) {}
 
 bool VoidType::operator==(const Type &other) const {
-    return tid == other.tid;  // Check if type tags are the same
+    return tid == other.tid; // Check if type tags are the same
 }
-bool VoidType::operator!=(const Type &other) const {
-    return !(*this == other);
-}
+bool VoidType::operator!=(const Type &other) const { return !(*this == other); }
 
 std::ostream &operator<<(std::ostream &os, const VoidType &type) {
     os << "Void Type";
@@ -18,11 +13,9 @@ std::ostream &operator<<(std::ostream &os, const VoidType &type) {
 }
 
 bool Int1Type::operator==(const Type &other) const {
-    return tid == other.tid;  // Check if type tags are the same
+    return tid == other.tid; // Check if type tags are the same
 }
-bool Int1Type::operator!=(const Type &other) const {
-    return !(*this == other);
-}
+bool Int1Type::operator!=(const Type &other) const { return !(*this == other); }
 
 std::ostream &operator<<(std::ostream &os, const Int1Type &type) {
     os << "Int1 Type";
@@ -30,7 +23,7 @@ std::ostream &operator<<(std::ostream &os, const Int1Type &type) {
 }
 
 bool Int32Type::operator==(const Type &other) const {
-    return tid == other.tid;  // Check if type tags are the same
+    return tid == other.tid; // Check if type tags are the same
 }
 bool Int32Type::operator!=(const Type &other) const {
     return !(*this == other);
@@ -42,7 +35,7 @@ std::ostream &operator<<(std::ostream &os, const Int32Type &type) {
 }
 
 bool FloatType::operator==(const Type &other) const {
-    return tid == other.tid;  // Check if type tags are the same
+    return tid == other.tid; // Check if type tags are the same
 }
 bool FloatType::operator!=(const Type &other) const {
     return !(*this == other);
@@ -53,12 +46,8 @@ std::ostream &operator<<(std::ostream &os, const FloatType &type) {
     return os;
 }
 
-
 ArrayType::ArrayType(int size, std::shared_ptr<Type> ele_type)
-    : Type(TypeId::array_type), size(size), ele_type(ele_type)
-{
-    
-}
+    : Type(TypeId::array_type), size(size), ele_type(ele_type) {}
 
 bool ArrayType::operator==(const ArrayType &other) const {
     if (this->size != other.size)
@@ -87,18 +76,12 @@ std::ostream &operator<<(std::ostream &os, const ArrayType &type) {
     return os;
 }
 
-int ArrayType::get_array_size() const {
-    return size;
-}
+int ArrayType::get_array_size() const { return size; }
 
-Type* ArrayType::get_element_type() const {
-    return ele_type.get();
-}
+Type *ArrayType::get_element_type() const { return ele_type.get(); }
 
 PointerType::PointerType(std::shared_ptr<Type> ptr_type)
-    : Type(TypeId::pointer_type), ptr_type(ptr_type) {
-
-}
+    : Type(TypeId::pointer_type), ptr_type(ptr_type) {}
 
 bool PointerType::operator==(const PointerType &other) const {
     return *ptr_type == *other.ptr_type;
@@ -110,7 +93,7 @@ bool PointerType::operator!=(const PointerType &other) const {
 
 bool PointerType::operator==(const Type &other) const {
     if (other.isPointer()) {
-        const auto& other_pointer = dynamic_cast<const PointerType&>(other);
+        const auto &other_pointer = dynamic_cast<const PointerType &>(other);
         return *this == other_pointer;
     }
     return false;
@@ -120,13 +103,12 @@ bool PointerType::operator!=(const Type &other) const {
     return !(*this == other);
 }
 
-Type* PointerType::get_ptr_type() const {
-    return ptr_type.get();
-}
+Type *PointerType::get_ptr_type() const { return ptr_type.get(); }
 
 std::ostream &operator<<(std::ostream &os, const PointerType &type) {
     os << "PointerType(ptr_type=";
-    // os << *(type.get_ptr_type()); // Assuming Type has an overloaded << operator
+    // os << *(type.get_ptr_type()); // Assuming Type has an overloaded <<
+    // operator
     os << ")";
     return os;
 }
