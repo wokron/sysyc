@@ -2,9 +2,9 @@
 
 Sysyc is a compiler for the SysY language. It utilizes QBE IR as its intermediate representation.
 
-## Contribution
+## Contributing
 
-Contribute code by checking out a new branch, formatted as `<username>--<description>`. For example, `wokron--something-to-do`.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Todo List
 - [ ] Phase One: Compiler Frontend
