@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 project(sysyc)
 
 # sysyc library
-aux_source_directory(src SOURCES)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(libsysyc ${SOURCES})
 target_include_directories(libsysyc PUBLIC include)
 

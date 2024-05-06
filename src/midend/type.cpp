@@ -1,4 +1,4 @@
-#include "type.h"
+#include "midend/type.h"
 
 Type::Type(TypeId tid) : tid(tid) {}
 
