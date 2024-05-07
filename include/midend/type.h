@@ -31,9 +31,9 @@ class Type {
 
     bool isArray() const { return this->tid == array_type; }
 
-    virtual bool operator==(const Type &other) const;
+    virtual bool operator==(const Type &other) const = 0;
 
-    virtual bool operator!=(const Type &other) const;
+    virtual bool operator!=(const Type &other) const = 0;
 
     TypeId getTypeID() { return this->tid; }
 
@@ -134,9 +134,9 @@ class ArrayType : public Type {
 
     bool operator!=(const ArrayType &other) const;
 
-    bool operator==(const Type &other) const;
+    bool operator==(const Type &other) const override;
 
-    bool operator!=(const Type &other) const;
+    bool operator!=(const Type &other) const override;
 
     friend std::ostream &operator<<(std::ostream &os, const ArrayType &type);
 

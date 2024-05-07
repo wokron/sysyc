@@ -9,7 +9,7 @@ void _print_attr(std::ostream &out, std::string name, T value) {
 
     if constexpr (std::is_same_v<T, std::string>) {
         out << "\"" << value << "\"";
-    } else if constexpr (std::is_same_v<T, nullptr_t>) {
+    } else if constexpr (std::is_same_v<T, std::nullptr_t>) {
         out << "null";
     } else {
         out << value;
