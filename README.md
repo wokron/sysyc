@@ -8,12 +8,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Todo List
 - [ ] Phase One: Compiler Frontend
-  - [ ] Syntax tree data structure
+  - [x] Syntax tree data structure
   - [ ] Intermediate code data structure
   - [ ] Intermediate code construction interface
-  - [ ] Lexical analysis + Syntax analysis
+  - [x] Lexical analysis + Syntax analysis
   - [ ] Intermediate code print
-  - [ ] Symbol table + Type system
+  - [x] Symbol table + Type system
   - [ ] Semantic analysis
 
 - [ ] Phase Two: Compiler Backend
