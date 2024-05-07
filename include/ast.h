@@ -43,7 +43,7 @@ using Stmt = std::variant<AssignStmt, ExpStmt, BlockStmt, IfStmt, WhileStmt,
 struct ArrayInitVal;
 using InitVal = std::variant<Exp, ArrayInitVal>;
 
-using Dims = Items<Exp>;
+using Dims = Items<Exp>; // nullable
 
 struct VarDef;
 using VarDefs = Items<VarDef>;

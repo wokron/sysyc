@@ -1,7 +1,6 @@
+aux_source_directory(. TEST_SOURCES)
 add_executable(tests
-    main.cpp
-    test_test.cpp
-    test_ast.cpp
+    ${TEST_SOURCES}
 )
 target_include_directories(tests PRIVATE .)
 target_link_libraries(tests libsysyc)

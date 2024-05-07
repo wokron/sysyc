@@ -35,7 +35,11 @@ void _print_items(std::ostream &out, const Items<T> &items,
         if (&item != &items[0]) {
             out << ",";
         }
-        print_item_func(out, *item);
+        if (item == nullptr) {
+            out << "null";
+        } else {
+            print_item_func(out, *item);
+        }
     }
     out << "]";
 }
@@ -105,7 +109,7 @@ void _print_decl(std::ostream &out, const Decl &decl) {
 
 void _print_lval(std::ostream &out, const LVal &lval) {
     std::visit(
-        overloaded{[&out](const Ident &ident) { out << ident; },
+        overloaded{[&out](const Ident &ident) { out << "\"" << ident << "\""; },
                    [&out](const Index &index) {
                        out << "{";
 
