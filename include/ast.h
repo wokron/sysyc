@@ -21,12 +21,14 @@ struct Index;
 using LVal = std::variant<Ident, Index>;
 
 struct BinaryExp;
-struct BoolExp;
 struct CallExp;
 struct UnaryExp;
 struct CompareExp;
-using Exp = std::variant<BinaryExp, BoolExp, LVal, CallExp, UnaryExp,
+using Exp = std::variant<BinaryExp, LVal, CallExp, UnaryExp,
                          CompareExp, Number>;
+
+struct LogicalExp;
+using Cond = std::variant<Exp, LogicalExp>;
 
 using FuncRParams = Items<Exp>;
 
@@ -77,13 +79,13 @@ struct BinaryExp {
     std::shared_ptr<Exp> right;
 };
 
-struct BoolExp {
-    std::shared_ptr<Exp> left;
+struct LogicalExp {
+    std::shared_ptr<Cond> left;
     enum {
         AND,
         OR,
     } op;
-    std::shared_ptr<Exp> right;
+    std::shared_ptr<Cond> right;
 };
 
 struct CallExp {
@@ -127,13 +129,13 @@ struct BlockStmt {
 };
 
 struct IfStmt {
-    std::shared_ptr<Exp> cond;
+    std::shared_ptr<Cond> cond;
     std::shared_ptr<Stmt> if_stmt;
     std::shared_ptr<Stmt> else_stmt; // nullable
 };
 
 struct WhileStmt {
-    std::shared_ptr<Exp> cond;
+    std::shared_ptr<Cond> cond;
     std::shared_ptr<Stmt> stmt;
 };
 

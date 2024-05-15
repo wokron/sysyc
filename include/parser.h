@@ -104,11 +104,12 @@ union YYSTYPE
     BlockItem *block_item;
     Stmt *stmt;
     Exp *exp;
+    Cond *cond;
     LVal *lval;
     Number *number;
     FuncRParams *rparams;
 
-#line 112 "include/parser.h"
+#line 113 "include/parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

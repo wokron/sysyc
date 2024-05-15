@@ -4,8 +4,7 @@
 
 template <typename T>
 void _print_attr(std::ostream &out, std::string name, T value) {
-    out << "\"" << name << "\""
-        << ":";
+    out << "\"" << name << "\"" << ":";
 
     if constexpr (std::is_same_v<T, std::string>) {
         out << "\"" << value << "\"";
@@ -22,8 +21,7 @@ using print_value_func_t = std::function<void(std::ostream &, const T &)>;
 template <typename T>
 void _print_attr(std::ostream &out, std::string name, T value,
                  print_value_func_t<T> print_value_func) {
-    out << "\"" << name << "\""
-        << ":";
+    out << "\"" << name << "\"" << ":";
     print_value_func(out, value);
 }
 
@@ -48,8 +46,7 @@ template <typename T>
 void _print_items_attr(std::ostream &out, std::string name,
                        const Items<T> &items,
                        print_value_func_t<T> print_value_func) {
-    out << "\"" << name << "\""
-        << ":";
+    out << "\"" << name << "\"" << ":";
     _print_items(out, items, print_value_func);
 }
 
@@ -123,6 +120,7 @@ void _print_lval(std::ostream &out, const LVal &lval) {
 }
 
 void _print_block_item(std::ostream &out, const BlockItem &block_item);
+void _print_cond(std::ostream &out, const Cond &cond);
 
 void _print_stmt(std::ostream &out, const Stmt &stmt) {
     std::visit(overloaded{
@@ -155,7 +153,7 @@ void _print_stmt(std::ostream &out, const Stmt &stmt) {
                    [&out](const IfStmt &stmt) {
                        out << "{";
 
-                       _print_attr<Exp>(out, "cond", *stmt.cond, _print_exp);
+                       _print_attr<Cond>(out, "cond", *stmt.cond, _print_cond);
                        out << ",";
 
                        _print_attr<Stmt>(out, "if_stmt", *stmt.if_stmt,
@@ -173,7 +171,7 @@ void _print_stmt(std::ostream &out, const Stmt &stmt) {
                    [&out](const WhileStmt &stmt) {
                        out << "{";
 
-                       _print_attr<Exp>(out, "cond", *stmt.cond, _print_exp);
+                       _print_attr<Cond>(out, "cond", *stmt.cond, _print_cond);
                        out << ",";
 
                        _print_attr<Stmt>(out, "stmt", *stmt.stmt, _print_stmt);
@@ -212,18 +210,6 @@ void _print_exp(std::ostream &out, const Exp &exp) {
                 out << ",";
 
                 _print_attr(out, "binary_op", exp.op);
-                out << "}";
-            },
-            [&out](const BoolExp &exp) {
-                out << "{";
-
-                _print_attr<Exp>(out, "left", *exp.left, _print_exp);
-                out << ",";
-
-                _print_attr<Exp>(out, "right", *exp.right, _print_exp);
-                out << ",";
-
-                _print_attr(out, "bool_op", exp.op);
                 out << "}";
             },
             [&out](const LVal &lval) { _print_lval(out, lval); },
@@ -266,6 +252,25 @@ void _print_exp(std::ostream &out, const Exp &exp) {
             },
         },
         exp);
+}
+
+void _print_cond(std::ostream &out, const Cond &cond) {
+    std::visit(overloaded{
+                   [&out](const Exp &exp) { _print_exp(out, exp); },
+                   [&out](const LogicalExp &exp) {
+                       out << "{";
+
+                       _print_attr<Cond>(out, "left", *exp.left, _print_cond);
+                       out << ",";
+
+                       _print_attr<Cond>(out, "right", *exp.right, _print_cond);
+                       out << ",";
+
+                       _print_attr(out, "logical_op", exp.op);
+                       out << "}";
+                   },
+               },
+               cond);
 }
 
 void _print_func_fparam(std::ostream &out, const FuncFParam &func_fparam) {

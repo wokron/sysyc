@@ -506,16 +506,16 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   111,   111,   112,   115,   116,   119,   120,   123,   126,
-     129,   130,   133,   134,   137,   140,   141,   144,   145,   146,
-     149,   150,   153,   154,   155,   158,   159,   162,   163,   166,
-     167,   168,   171,   172,   175,   176,   179,   180,   183,   184,
-     187,   188,   191,   194,   195,   198,   199,   202,   203,   204,
-     205,   206,   207,   208,   209,   210,   211,   212,   215,   218,
-     221,   222,   225,   226,   227,   230,   231,   234,   235,   236,
-     237,   238,   239,   242,   243,   246,   247,   248,   249,   252,
-     253,   254,   257,   258,   259,   260,   261,   264,   265,   266,
-     269,   270,   273,   274,   277
+       0,   113,   113,   114,   117,   118,   121,   122,   125,   128,
+     131,   132,   135,   136,   139,   142,   143,   146,   147,   148,
+     151,   152,   155,   156,   157,   160,   161,   164,   165,   168,
+     169,   170,   173,   174,   177,   178,   181,   182,   185,   186,
+     189,   190,   193,   196,   197,   200,   201,   204,   205,   206,
+     207,   208,   209,   210,   211,   212,   213,   214,   217,   220,
+     223,   224,   227,   228,   229,   232,   233,   236,   237,   238,
+     239,   240,   241,   244,   245,   248,   249,   250,   251,   254,
+     255,   256,   259,   260,   261,   262,   263,   266,   267,   268,
+     271,   272,   275,   276,   279
 };
 #endif
 
@@ -1206,559 +1206,559 @@ yyuserAction (yyRuleNum yyrule, int yyrhslen, yyGLRStackItem* yyvsp,
   switch (yyrule)
     {
   case 2: /* CompUnits: CompUnit  */
-#line 111 "parser.y"
+#line 113 "parser.y"
              { comp_units->push_back(sp<CompUnit>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.comp_unit))); }
 #line 1212 "src/parser.cpp"
     break;
 
   case 3: /* CompUnits: CompUnits CompUnit  */
-#line 112 "parser.y"
+#line 114 "parser.y"
                          { comp_units->push_back(sp<CompUnit>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.comp_unit))); }
 #line 1218 "src/parser.cpp"
     break;
 
   case 4: /* CompUnit: Decl  */
-#line 115 "parser.y"
+#line 117 "parser.y"
          { ((*yyvalp).comp_unit) = ptr2variant<CompUnit>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.decl)); }
 #line 1224 "src/parser.cpp"
     break;
 
   case 5: /* CompUnit: FuncDef  */
-#line 116 "parser.y"
+#line 118 "parser.y"
               {  ((*yyvalp).comp_unit) = ptr2variant<CompUnit>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.func_def)); }
 #line 1230 "src/parser.cpp"
     break;
 
   case 6: /* Decl: ConstDecl  */
-#line 119 "parser.y"
+#line 121 "parser.y"
               { ((*yyvalp).decl) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.decl); }
 #line 1236 "src/parser.cpp"
     break;
 
   case 7: /* Decl: VarDecl  */
-#line 120 "parser.y"
+#line 122 "parser.y"
               { ((*yyvalp).decl) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.decl); }
 #line 1242 "src/parser.cpp"
     break;
 
   case 8: /* ConstDecl: "const" BType ConstDefs ';'  */
-#line 123 "parser.y"
+#line 125 "parser.y"
                                 { ((*yyvalp).decl) = new Decl{Decl::CONST, (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.type), sp<VarDefs>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.var_defs))}; }
 #line 1248 "src/parser.cpp"
     break;
 
   case 9: /* VarDecl: BType VarDefs ';'  */
-#line 126 "parser.y"
+#line 128 "parser.y"
                       { ((*yyvalp).decl) = new Decl{Decl::VAR, (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.type), sp<VarDefs>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.var_defs))}; }
 #line 1254 "src/parser.cpp"
     break;
 
   case 10: /* ConstDefs: ConstDef  */
-#line 129 "parser.y"
+#line 131 "parser.y"
              { ((*yyvalp).var_defs) = new VarDefs{sp<VarDef>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.var_def))}; }
 #line 1260 "src/parser.cpp"
     break;
 
   case 11: /* ConstDefs: ConstDefs ',' ConstDef  */
-#line 130 "parser.y"
+#line 132 "parser.y"
                              { ((*yyvalp).var_defs) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.var_defs); ((*yyvalp).var_defs)->push_back(sp<VarDef>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.var_def))); }
 #line 1266 "src/parser.cpp"
     break;
 
   case 12: /* VarDefs: VarDef  */
-#line 133 "parser.y"
+#line 135 "parser.y"
            { ((*yyvalp).var_defs) = new VarDefs{sp<VarDef>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.var_def))}; }
 #line 1272 "src/parser.cpp"
     break;
 
   case 13: /* VarDefs: VarDefs ',' VarDef  */
-#line 134 "parser.y"
+#line 136 "parser.y"
                          { ((*yyvalp).var_defs) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.var_defs); ((*yyvalp).var_defs)->push_back(sp<VarDef>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.var_def))); }
 #line 1278 "src/parser.cpp"
     break;
 
   case 14: /* ConstDef: IDENT Dims '=' ConstInitVal  */
-#line 137 "parser.y"
+#line 139 "parser.y"
                                 { ((*yyvalp).var_def) = new VarDef{Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.str_val)), sp<Dims>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.dims)), sp<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.init_val))}; }
 #line 1284 "src/parser.cpp"
     break;
 
   case 15: /* VarDef: IDENT Dims  */
-#line 140 "parser.y"
+#line 142 "parser.y"
                { ((*yyvalp).var_def) = new VarDef{Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.str_val)), sp<Dims>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.dims)), nullptr}; }
 #line 1290 "src/parser.cpp"
     break;
 
   case 16: /* VarDef: IDENT Dims '=' InitVal  */
-#line 141 "parser.y"
+#line 143 "parser.y"
                              { ((*yyvalp).var_def) = new VarDef{Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.str_val)), sp<Dims>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.dims)), sp<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.init_val))}; }
 #line 1296 "src/parser.cpp"
     break;
 
   case 17: /* ConstInitVal: ConstExp  */
-#line 144 "parser.y"
+#line 146 "parser.y"
              { ((*yyvalp).init_val) = ptr2variant<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp)); }
 #line 1302 "src/parser.cpp"
     break;
 
   case 18: /* ConstInitVal: '{' '}'  */
-#line 145 "parser.y"
+#line 147 "parser.y"
               { ((*yyvalp).init_val) = new InitVal(ArrayInitVal{{}}); }
 #line 1308 "src/parser.cpp"
     break;
 
   case 19: /* ConstInitVal: '{' ConstInitVals '}'  */
-#line 146 "parser.y"
+#line 148 "parser.y"
                             { ((*yyvalp).init_val) = ptr2variant<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.init_vals)); }
 #line 1314 "src/parser.cpp"
     break;
 
   case 20: /* ConstInitVals: ConstInitVal  */
-#line 149 "parser.y"
+#line 151 "parser.y"
                  { ((*yyvalp).init_vals) = new ArrayInitVal{{sp<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.init_val))}};  }
 #line 1320 "src/parser.cpp"
     break;
 
   case 21: /* ConstInitVals: ConstInitVals ',' ConstInitVal  */
-#line 150 "parser.y"
+#line 152 "parser.y"
                                      { ((*yyvalp).init_vals) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.init_vals); ((*yyvalp).init_vals)->items.push_back(sp<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.init_val))); }
 #line 1326 "src/parser.cpp"
     break;
 
   case 22: /* InitVal: Exp  */
-#line 153 "parser.y"
+#line 155 "parser.y"
         { ((*yyvalp).init_val) = ptr2variant<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp)); }
 #line 1332 "src/parser.cpp"
     break;
 
   case 23: /* InitVal: '{' '}'  */
-#line 154 "parser.y"
+#line 156 "parser.y"
               { ((*yyvalp).init_val) = new InitVal(ArrayInitVal{{}}); }
 #line 1338 "src/parser.cpp"
     break;
 
   case 24: /* InitVal: '{' InitVals '}'  */
-#line 155 "parser.y"
+#line 157 "parser.y"
                        { ((*yyvalp).init_val) = ptr2variant<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.init_vals)); }
 #line 1344 "src/parser.cpp"
     break;
 
   case 25: /* InitVals: InitVal  */
-#line 158 "parser.y"
+#line 160 "parser.y"
             { ((*yyvalp).init_vals) = new ArrayInitVal{{sp<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.init_val))}}; }
 #line 1350 "src/parser.cpp"
     break;
 
   case 26: /* InitVals: InitVals ',' InitVal  */
-#line 159 "parser.y"
+#line 161 "parser.y"
                            { ((*yyvalp).init_vals) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.init_vals); ((*yyvalp).init_vals)->items.push_back(sp<InitVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.init_val))); }
 #line 1356 "src/parser.cpp"
     break;
 
   case 27: /* BType: "int"  */
-#line 162 "parser.y"
+#line 164 "parser.y"
           { ((*yyvalp).type) = ASTType::INT; }
 #line 1362 "src/parser.cpp"
     break;
 
   case 28: /* BType: "float"  */
-#line 163 "parser.y"
+#line 165 "parser.y"
               { ((*yyvalp).type) = ASTType::FLOAT; }
 #line 1368 "src/parser.cpp"
     break;
 
   case 29: /* FuncType: "void"  */
-#line 166 "parser.y"
+#line 168 "parser.y"
            { ((*yyvalp).type) = ASTType::VOID; }
 #line 1374 "src/parser.cpp"
     break;
 
   case 30: /* FuncType: "int"  */
-#line 167 "parser.y"
+#line 169 "parser.y"
             { ((*yyvalp).type) = ASTType::INT; }
 #line 1380 "src/parser.cpp"
     break;
 
   case 31: /* FuncType: "float"  */
-#line 168 "parser.y"
+#line 170 "parser.y"
               { ((*yyvalp).type) = ASTType::FLOAT; }
 #line 1386 "src/parser.cpp"
     break;
 
   case 32: /* Dims: %empty  */
-#line 171 "parser.y"
+#line 173 "parser.y"
            { ((*yyvalp).dims) = new Dims{}; }
 #line 1392 "src/parser.cpp"
     break;
 
   case 33: /* Dims: Dims '[' ConstExp ']'  */
-#line 172 "parser.y"
+#line 174 "parser.y"
                             { ((*yyvalp).dims) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.dims); ((*yyvalp).dims)->push_back(sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.exp))); }
 #line 1398 "src/parser.cpp"
     break;
 
   case 34: /* FuncDims: '[' ']'  */
-#line 175 "parser.y"
+#line 177 "parser.y"
             { ((*yyvalp).dims) = new Dims{nullptr}; }
 #line 1404 "src/parser.cpp"
     break;
 
   case 35: /* FuncDims: FuncDims '[' Exp ']'  */
-#line 176 "parser.y"
+#line 178 "parser.y"
                            { ((*yyvalp).dims) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.dims); ((*yyvalp).dims)->push_back(sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.exp))); }
 #line 1410 "src/parser.cpp"
     break;
 
   case 36: /* FuncDef: FuncType IDENT '(' ')' Block  */
-#line 179 "parser.y"
+#line 181 "parser.y"
                                  { ((*yyvalp).func_def) = new FuncDef{(YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-4)].yystate.yysemantics.yyval.type), Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.str_val)), std::make_shared<FuncFParams>(), sp<BlockItems>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.block_items))}; }
 #line 1416 "src/parser.cpp"
     break;
 
   case 37: /* FuncDef: FuncType IDENT '(' FuncFParams ')' Block  */
-#line 180 "parser.y"
+#line 182 "parser.y"
                                                { ((*yyvalp).func_def) = new FuncDef{(YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-5)].yystate.yysemantics.yyval.type), Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-4)].yystate.yysemantics.yyval.str_val)), sp<FuncFParams>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.fparams)), sp<BlockItems>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.block_items))}; }
 #line 1422 "src/parser.cpp"
     break;
 
   case 38: /* FuncFParams: FuncFParam  */
-#line 183 "parser.y"
+#line 185 "parser.y"
                { ((*yyvalp).fparams) = new FuncFParams{sp<FuncFParam>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.fparam))}; }
 #line 1428 "src/parser.cpp"
     break;
 
   case 39: /* FuncFParams: FuncFParams ',' FuncFParam  */
-#line 184 "parser.y"
+#line 186 "parser.y"
                                  { ((*yyvalp).fparams) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.fparams); ((*yyvalp).fparams)->push_back(sp<FuncFParam>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.fparam))); }
 #line 1434 "src/parser.cpp"
     break;
 
   case 40: /* FuncFParam: BType IDENT  */
-#line 187 "parser.y"
+#line 189 "parser.y"
                 { ((*yyvalp).fparam) = new FuncFParam{(YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.type), Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.str_val)), std::make_shared<Dims>()}; }
 #line 1440 "src/parser.cpp"
     break;
 
   case 41: /* FuncFParam: BType IDENT FuncDims  */
-#line 188 "parser.y"
+#line 190 "parser.y"
                            { ((*yyvalp).fparam) = new FuncFParam{(YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.type), Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.str_val)), sp<Dims>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.dims))}; }
 #line 1446 "src/parser.cpp"
     break;
 
   case 42: /* Block: '{' BlockItems '}'  */
-#line 191 "parser.y"
+#line 193 "parser.y"
                        { ((*yyvalp).block_items) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.block_items); }
 #line 1452 "src/parser.cpp"
     break;
 
   case 43: /* BlockItems: %empty  */
-#line 194 "parser.y"
+#line 196 "parser.y"
            { ((*yyvalp).block_items) = new BlockItems{}; }
 #line 1458 "src/parser.cpp"
     break;
 
   case 44: /* BlockItems: BlockItems BlockItem  */
-#line 195 "parser.y"
+#line 197 "parser.y"
                            { ((*yyvalp).block_items) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.block_items); ((*yyvalp).block_items)->push_back(sp<BlockItem>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.block_item))); }
 #line 1464 "src/parser.cpp"
     break;
 
   case 45: /* BlockItem: Decl  */
-#line 198 "parser.y"
+#line 200 "parser.y"
          { ((*yyvalp).block_item) = ptr2variant<BlockItem>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.decl)); }
 #line 1470 "src/parser.cpp"
     break;
 
   case 46: /* BlockItem: Stmt  */
-#line 199 "parser.y"
+#line 201 "parser.y"
            { ((*yyvalp).block_item) = ptr2variant<BlockItem>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.stmt)); }
 #line 1476 "src/parser.cpp"
     break;
 
   case 47: /* Stmt: LVal '=' Exp ';'  */
-#line 202 "parser.y"
+#line 204 "parser.y"
                      { ((*yyvalp).stmt) = new Stmt(AssignStmt{sp<LVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.lval)), sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.exp))}); }
 #line 1482 "src/parser.cpp"
     break;
 
   case 48: /* Stmt: Exp ';'  */
-#line 203 "parser.y"
+#line 205 "parser.y"
               { ((*yyvalp).stmt) = new Stmt(ExpStmt{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.exp))}); }
 #line 1488 "src/parser.cpp"
     break;
 
   case 49: /* Stmt: ';'  */
-#line 204 "parser.y"
+#line 206 "parser.y"
           { ((*yyvalp).stmt) = new Stmt(ExpStmt{nullptr}); }
 #line 1494 "src/parser.cpp"
     break;
 
   case 50: /* Stmt: Block  */
-#line 205 "parser.y"
+#line 207 "parser.y"
             { ((*yyvalp).stmt) = new Stmt(BlockStmt{sp<BlockItems>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.block_items))}); }
 #line 1500 "src/parser.cpp"
     break;
 
   case 51: /* Stmt: "if" '(' Cond ')' Stmt  */
-#line 206 "parser.y"
-                             { ((*yyvalp).stmt) = new Stmt(IfStmt{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.stmt)), nullptr}); }
+#line 208 "parser.y"
+                             { ((*yyvalp).stmt) = new Stmt(IfStmt{sp<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.cond)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.stmt)), nullptr}); }
 #line 1506 "src/parser.cpp"
     break;
 
   case 52: /* Stmt: "if" '(' Cond ')' Stmt "else" Stmt  */
-#line 207 "parser.y"
-                                         { ((*yyvalp).stmt) = new Stmt(IfStmt{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-4)].yystate.yysemantics.yyval.exp)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.stmt)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.stmt))}); }
+#line 209 "parser.y"
+                                         { ((*yyvalp).stmt) = new Stmt(IfStmt{sp<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-4)].yystate.yysemantics.yyval.cond)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.stmt)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.stmt))}); }
 #line 1512 "src/parser.cpp"
     break;
 
   case 53: /* Stmt: "while" '(' Cond ')' Stmt  */
-#line 208 "parser.y"
-                                { ((*yyvalp).stmt) = new Stmt(WhileStmt{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.stmt))}); }
+#line 210 "parser.y"
+                                { ((*yyvalp).stmt) = new Stmt(WhileStmt{sp<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.cond)), sp<Stmt>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.stmt))}); }
 #line 1518 "src/parser.cpp"
     break;
 
   case 54: /* Stmt: "break" ';'  */
-#line 209 "parser.y"
+#line 211 "parser.y"
                   { ((*yyvalp).stmt) = new Stmt(ControlStmt{ControlStmt::BREAK}); }
 #line 1524 "src/parser.cpp"
     break;
 
   case 55: /* Stmt: "continue" ';'  */
-#line 210 "parser.y"
+#line 212 "parser.y"
                      { ((*yyvalp).stmt) = new Stmt(ControlStmt{ControlStmt::CONTINUE}); }
 #line 1530 "src/parser.cpp"
     break;
 
   case 56: /* Stmt: "return" ';'  */
-#line 211 "parser.y"
+#line 213 "parser.y"
                    { ((*yyvalp).stmt) = new Stmt(ReturnStmt{nullptr}); }
 #line 1536 "src/parser.cpp"
     break;
 
   case 57: /* Stmt: "return" Exp ';'  */
-#line 212 "parser.y"
+#line 214 "parser.y"
                        { ((*yyvalp).stmt) = new Stmt(ReturnStmt{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.exp))}); }
 #line 1542 "src/parser.cpp"
     break;
 
   case 58: /* Exp: AddExp  */
-#line 215 "parser.y"
+#line 217 "parser.y"
            { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
 #line 1548 "src/parser.cpp"
     break;
 
   case 59: /* Cond: LOrExp  */
-#line 218 "parser.y"
-           { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
+#line 220 "parser.y"
+           { ((*yyvalp).cond) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.cond); }
 #line 1554 "src/parser.cpp"
     break;
 
   case 60: /* LVal: IDENT  */
-#line 221 "parser.y"
+#line 223 "parser.y"
           { ((*yyvalp).lval) = new LVal(Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.str_val))); }
 #line 1560 "src/parser.cpp"
     break;
 
   case 61: /* LVal: LVal '[' Exp ']'  */
-#line 222 "parser.y"
+#line 224 "parser.y"
                        { ((*yyvalp).lval) = new LVal(Index{sp<LVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.lval)), sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.exp))}); }
 #line 1566 "src/parser.cpp"
     break;
 
   case 62: /* PrimaryExp: '(' Exp ')'  */
-#line 225 "parser.y"
+#line 227 "parser.y"
                 { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.exp); }
 #line 1572 "src/parser.cpp"
     break;
 
   case 63: /* PrimaryExp: LVal  */
-#line 226 "parser.y"
+#line 228 "parser.y"
            { ((*yyvalp).exp) = ptr2variant<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.lval)); }
 #line 1578 "src/parser.cpp"
     break;
 
   case 64: /* PrimaryExp: Number  */
-#line 227 "parser.y"
+#line 229 "parser.y"
              { ((*yyvalp).exp) = ptr2variant<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.number)); }
 #line 1584 "src/parser.cpp"
     break;
 
   case 65: /* Number: INT_CONST  */
-#line 230 "parser.y"
+#line 232 "parser.y"
               { ((*yyvalp).number) = new Number((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.int_val)); }
 #line 1590 "src/parser.cpp"
     break;
 
   case 66: /* Number: FLOAT_CONST  */
-#line 231 "parser.y"
+#line 233 "parser.y"
                   { ((*yyvalp).number) = new Number((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.float_val)); }
 #line 1596 "src/parser.cpp"
     break;
 
   case 67: /* UnaryExp: PrimaryExp  */
-#line 234 "parser.y"
+#line 236 "parser.y"
                { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
 #line 1602 "src/parser.cpp"
     break;
 
   case 68: /* UnaryExp: IDENT '(' ')'  */
-#line 235 "parser.y"
+#line 237 "parser.y"
                     { ((*yyvalp).exp) = new Exp(CallExp{Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.str_val)), std::make_shared<FuncRParams>()}); }
 #line 1608 "src/parser.cpp"
     break;
 
   case 69: /* UnaryExp: IDENT '(' FuncRParams ')'  */
-#line 236 "parser.y"
+#line 238 "parser.y"
                                 { ((*yyvalp).exp) = new Exp(CallExp{Ident((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-3)].yystate.yysemantics.yyval.str_val)), sp<FuncRParams>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-1)].yystate.yysemantics.yyval.rparams))}); }
 #line 1614 "src/parser.cpp"
     break;
 
   case 70: /* UnaryExp: '+' UnaryExp  */
-#line 237 "parser.y"
+#line 239 "parser.y"
                    { ((*yyvalp).exp) = new Exp(UnaryExp{UnaryExp::ADD, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1620 "src/parser.cpp"
     break;
 
   case 71: /* UnaryExp: '-' UnaryExp  */
-#line 238 "parser.y"
+#line 240 "parser.y"
                    { ((*yyvalp).exp) = new Exp(UnaryExp{UnaryExp::SUB, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1626 "src/parser.cpp"
     break;
 
   case 72: /* UnaryExp: '!' UnaryExp  */
-#line 239 "parser.y"
+#line 241 "parser.y"
                    { ((*yyvalp).exp) = new Exp(UnaryExp{UnaryExp::NOT, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1632 "src/parser.cpp"
     break;
 
   case 73: /* FuncRParams: Exp  */
-#line 242 "parser.y"
+#line 244 "parser.y"
         { ((*yyvalp).rparams) = new FuncRParams{}; }
 #line 1638 "src/parser.cpp"
     break;
 
   case 74: /* FuncRParams: FuncRParams ',' Exp  */
-#line 243 "parser.y"
+#line 245 "parser.y"
                           { ((*yyvalp).rparams) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.rparams); ((*yyvalp).rparams)->push_back(sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))); }
 #line 1644 "src/parser.cpp"
     break;
 
   case 75: /* MulExp: UnaryExp  */
-#line 246 "parser.y"
+#line 248 "parser.y"
              { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
 #line 1650 "src/parser.cpp"
     break;
 
   case 76: /* MulExp: MulExp '*' UnaryExp  */
-#line 247 "parser.y"
+#line 249 "parser.y"
                           { ((*yyvalp).exp) = new Exp(BinaryExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), BinaryExp::MULT, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1656 "src/parser.cpp"
     break;
 
   case 77: /* MulExp: MulExp '/' UnaryExp  */
-#line 248 "parser.y"
+#line 250 "parser.y"
                           { ((*yyvalp).exp) = new Exp(BinaryExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), BinaryExp::DIV, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1662 "src/parser.cpp"
     break;
 
   case 78: /* MulExp: MulExp '%' UnaryExp  */
-#line 249 "parser.y"
+#line 251 "parser.y"
                           { ((*yyvalp).exp) = new Exp(BinaryExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), BinaryExp::MOD, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1668 "src/parser.cpp"
     break;
 
   case 79: /* AddExp: MulExp  */
-#line 252 "parser.y"
+#line 254 "parser.y"
            { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
 #line 1674 "src/parser.cpp"
     break;
 
   case 80: /* AddExp: AddExp '+' MulExp  */
-#line 253 "parser.y"
+#line 255 "parser.y"
                         { ((*yyvalp).exp) = new Exp(BinaryExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), BinaryExp::ADD, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1680 "src/parser.cpp"
     break;
 
   case 81: /* AddExp: AddExp '-' MulExp  */
-#line 254 "parser.y"
+#line 256 "parser.y"
                         { ((*yyvalp).exp) = new Exp(BinaryExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), BinaryExp::SUB, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1686 "src/parser.cpp"
     break;
 
   case 82: /* RelExp: AddExp  */
-#line 257 "parser.y"
+#line 259 "parser.y"
            { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
 #line 1692 "src/parser.cpp"
     break;
 
   case 83: /* RelExp: RelExp '<' AddExp  */
-#line 258 "parser.y"
+#line 260 "parser.y"
                         { ((*yyvalp).exp) = new Exp(CompareExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), CompareExp::LT, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1698 "src/parser.cpp"
     break;
 
   case 84: /* RelExp: RelExp '>' AddExp  */
-#line 259 "parser.y"
+#line 261 "parser.y"
                         { ((*yyvalp).exp) = new Exp(CompareExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), CompareExp::GT, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1704 "src/parser.cpp"
     break;
 
   case 85: /* RelExp: RelExp "<=" AddExp  */
-#line 260 "parser.y"
+#line 262 "parser.y"
                          { ((*yyvalp).exp) = new Exp(CompareExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), CompareExp::LE, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1710 "src/parser.cpp"
     break;
 
   case 86: /* RelExp: RelExp ">=" AddExp  */
-#line 261 "parser.y"
+#line 263 "parser.y"
                          { ((*yyvalp).exp) = new Exp(CompareExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), CompareExp::GE, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1716 "src/parser.cpp"
     break;
 
   case 87: /* EqExp: RelExp  */
-#line 264 "parser.y"
+#line 266 "parser.y"
            { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
 #line 1722 "src/parser.cpp"
     break;
 
   case 88: /* EqExp: EqExp "==" RelExp  */
-#line 265 "parser.y"
+#line 267 "parser.y"
                         { ((*yyvalp).exp) = new Exp(CompareExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), CompareExp::EQ, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1728 "src/parser.cpp"
     break;
 
   case 89: /* EqExp: EqExp "!=" RelExp  */
-#line 266 "parser.y"
+#line 268 "parser.y"
                         { ((*yyvalp).exp) = new Exp(CompareExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), CompareExp::NE, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
 #line 1734 "src/parser.cpp"
     break;
 
   case 90: /* LAndExp: EqExp  */
-#line 269 "parser.y"
-          { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
+#line 271 "parser.y"
+          { ((*yyvalp).cond) = ptr2variant<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp)); }
 #line 1740 "src/parser.cpp"
     break;
 
   case 91: /* LAndExp: LAndExp "&&" EqExp  */
-#line 270 "parser.y"
-                         { ((*yyvalp).exp) = new Exp(BoolExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), BoolExp::AND, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
+#line 272 "parser.y"
+                         { ((*yyvalp).cond) = new Cond(LogicalExp{sp<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.cond)), LogicalExp::AND, sp<Cond>(ptr2variant<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp)))}); }
 #line 1746 "src/parser.cpp"
     break;
 
   case 92: /* LOrExp: LAndExp  */
-#line 273 "parser.y"
-            { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
+#line 275 "parser.y"
+            { ((*yyvalp).cond) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.cond); }
 #line 1752 "src/parser.cpp"
     break;
 
   case 93: /* LOrExp: LOrExp "||" LAndExp  */
-#line 274 "parser.y"
-                          { ((*yyvalp).exp) = new Exp(BoolExp{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.exp)), BoolExp::OR, sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}); }
+#line 276 "parser.y"
+                          { ((*yyvalp).cond) = new Cond(LogicalExp{sp<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (-2)].yystate.yysemantics.yyval.cond)), LogicalExp::OR, sp<Cond>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.cond))}); }
 #line 1758 "src/parser.cpp"
     break;
 
   case 94: /* ConstExp: AddExp  */
-#line 277 "parser.y"
+#line 279 "parser.y"
            { ((*yyvalp).exp) = (YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp); }
 #line 1764 "src/parser.cpp"
     break;
@@ -3288,7 +3288,7 @@ yypdumpstack (yyGLRStack* yystackp)
 
 
 
-#line 278 "parser.y"
+#line 280 "parser.y"
 
 
 void yyerror(std::shared_ptr<CompUnits> comp_units, const char *s) {

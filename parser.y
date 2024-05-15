@@ -47,6 +47,7 @@
     BlockItem *block_item;
     Stmt *stmt;
     Exp *exp;
+    Cond *cond;
     LVal *lval;
     Number *number;
     FuncRParams *rparams;
@@ -67,7 +68,8 @@
     <block_items> Block BlockItems
     <block_item> BlockItem
     <stmt> Stmt
-    <exp> Exp Cond PrimaryExp UnaryExp MulExp AddExp RelExp EqExp LAndExp LOrExp ConstExp
+    <exp> Exp PrimaryExp UnaryExp MulExp AddExp RelExp EqExp  ConstExp
+    <cond> Cond LAndExp LOrExp
     <lval> LVal
     <number> Number
     <rparams> FuncRParams
@@ -203,9 +205,9 @@ Stmt:
     | Exp ';' { $$ = new Stmt(ExpStmt{sp<Exp>($1)}); }
     | ';' { $$ = new Stmt(ExpStmt{nullptr}); }
     | Block { $$ = new Stmt(BlockStmt{sp<BlockItems>($1)}); }
-    | "if" '(' Cond ')' Stmt { $$ = new Stmt(IfStmt{sp<Exp>($3), sp<Stmt>($5), nullptr}); }
-    | "if" '(' Cond ')' Stmt "else" Stmt { $$ = new Stmt(IfStmt{sp<Exp>($3), sp<Stmt>($5), sp<Stmt>($7)}); }
-    | "while" '(' Cond ')' Stmt { $$ = new Stmt(WhileStmt{sp<Exp>($3), sp<Stmt>($5)}); }
+    | "if" '(' Cond ')' Stmt { $$ = new Stmt(IfStmt{sp<Cond>($3), sp<Stmt>($5), nullptr}); }
+    | "if" '(' Cond ')' Stmt "else" Stmt { $$ = new Stmt(IfStmt{sp<Cond>($3), sp<Stmt>($5), sp<Stmt>($7)}); }
+    | "while" '(' Cond ')' Stmt { $$ = new Stmt(WhileStmt{sp<Cond>($3), sp<Stmt>($5)}); }
     | "break" ';' { $$ = new Stmt(ControlStmt{ControlStmt::BREAK}); }
     | "continue" ';' { $$ = new Stmt(ControlStmt{ControlStmt::CONTINUE}); }
     | "return" ';' { $$ = new Stmt(ReturnStmt{nullptr}); }
@@ -266,12 +268,12 @@ EqExp:
     | EqExp "!=" RelExp { $$ = new Exp(CompareExp{sp<Exp>($1), CompareExp::NE, sp<Exp>($3)}); }
 
 LAndExp:
-    EqExp { $$ = $1; }
-    | LAndExp "&&" EqExp { $$ = new Exp(BoolExp{sp<Exp>($1), BoolExp::AND, sp<Exp>($3)}); }
+    EqExp { $$ = ptr2variant<Cond>($1); }
+    | LAndExp "&&" EqExp { $$ = new Cond(LogicalExp{sp<Cond>($1), LogicalExp::AND, sp<Cond>(ptr2variant<Cond>($3))}); }
 
 LOrExp:
     LAndExp { $$ = $1; }
-    | LOrExp "||" LAndExp { $$ = new Exp(BoolExp{sp<Exp>($1), BoolExp::OR, sp<Exp>($3)}); }
+    | LOrExp "||" LAndExp { $$ = new Cond(LogicalExp{sp<Cond>($1), LogicalExp::OR, sp<Cond>($3)}); }
 
 ConstExp:
     AddExp { $$ = $1; }
