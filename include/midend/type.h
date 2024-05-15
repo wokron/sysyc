@@ -3,128 +3,147 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 class Type {
   public:
     enum TypeId {
-        void_type,
-        int32_type,
-        float_type,
-        pointer_type,
-        array_type
+        VOID,
+        INT32,
+        FLOAT,
+        POINTER,
+        ARRAY,
+        FUNCTION,
     };
 
-    virtual ~Type() = default;
+    Type(TypeId tid) : _tid(tid) {}
 
-    explicit Type(TypeId tid);
+    bool is_void() const { return this->_tid == VOID; }
 
-    bool isVoid() const { return this->tid == void_type; }
+    bool is_int32() const { return this->_tid == INT32; }
 
-    bool isInt32() const { return this->tid == int32_type; }
+    bool is_float() const { return this->_tid == FLOAT; }
 
-    bool isFloat() const { return this->tid == float_type; }
+    bool is_pointer() const { return this->_tid == POINTER; }
 
-    bool isPointer() const { return this->tid == pointer_type; }
+    bool is_array() const { return this->_tid == ARRAY; }
 
-    bool isArray() const { return this->tid == array_type; }
+    bool is_function() const { return this->_tid == FUNCTION; }
+
+    virtual int get_size() const = 0;
 
     virtual bool operator==(const Type &other) const = 0;
 
-    virtual bool operator!=(const Type &other) const = 0;
+    virtual std::string tostring() const = 0;
 
-    TypeId getTypeID() { return this->tid; }
+    bool operator!=(const Type &other) const { return !(*this == other); }
 
-  public:
-    TypeId tid = void_type;
+    TypeId get_type_id() { return this->_tid; }
+
+  private:
+    TypeId _tid = VOID;
 };
 
 class VoidType : public Type {
   public:
-    VoidType() : Type(TypeId::void_type) {}
+    VoidType() : Type(TypeId::VOID) {}
 
-    ~VoidType() override = default;
+    int get_size() const override { return 1; }
 
-    bool operator==(const VoidType &other) const;
+    bool operator==(const Type &other) const override {
+        return other.is_void();
+    }
 
-    bool operator!=(const VoidType &other) const;
-
-    bool operator==(const Type &other) const override;
-
-    bool operator!=(const Type &other) const override;
-
-    friend std::ostream &operator<<(std::ostream &os, const VoidType &type);
+    std::string tostring() const override { return "void"; }
 };
 
 class Int32Type : public Type {
   public:
-    Int32Type() : Type(TypeId::int32_type) {}
+    Int32Type() : Type(TypeId::INT32) {}
 
-    ~Int32Type() override = default;
+    int get_size() const override { return 4; }
 
-    bool operator==(const Type &other) const override;
+    bool operator==(const Type &other) const override {
+        return other.is_int32();
+    }
 
-    bool operator!=(const Type &other) const override;
-
-    friend std::ostream &operator<<(std::ostream &os, const Int32Type &type);
+    std::string tostring() const override { return "int"; }
 };
 
 class FloatType : public Type {
   public:
-    FloatType() : Type(TypeId::float_type) {}
+    FloatType() : Type(TypeId::FLOAT) {}
 
-    ~FloatType() override = default;
+    int get_size() const override { return 4; }
 
-    bool operator==(const Type &other) const override;
+    bool operator==(const Type &other) const override {
+        return other.is_float();
+    }
 
-    bool operator!=(const Type &other) const override;
-
-    friend std::ostream &operator<<(std::ostream &os, const FloatType &type);
+    std::string tostring() const override { return "float"; }
 };
 
-class PointerType : public Type {
+class ReferenceType : public Type {
   public:
-    std::shared_ptr<Type> ptr_type;
+    ReferenceType(TypeId tid) : Type(tid) {}
 
-    PointerType(std::shared_ptr<Type> ptr_type);
-
-    ~PointerType() override = default;
-
-    bool operator==(const PointerType &other) const;
-
-    bool operator!=(const PointerType &other) const;
+    virtual std::shared_ptr<Type> get_ref_type() const = 0;
 
     bool operator==(const Type &other) const override;
-
-    bool operator!=(const Type &other) const override;
-
-    friend std::ostream &operator<<(std::ostream &os, const PointerType &type);
-
-    Type *get_ptr_type() const;
 };
 
-class ArrayType : public Type {
-
+class PointerType : public ReferenceType {
   public:
-    int size = 0;
+    PointerType(std::shared_ptr<Type> ref_type)
+        : ReferenceType(TypeId::POINTER), _ref_type(ref_type) {}
 
-    std::shared_ptr<Type> ele_type;
+    int get_size() const override { return 8; }
 
+    std::shared_ptr<Type> get_ref_type() const override { return _ref_type; }
+
+    std::string tostring() const override {
+        return "*" + _ref_type->tostring();
+    }
+
+  private:
+    std::shared_ptr<Type> _ref_type;
+};
+
+class ArrayType : public ReferenceType {
   public:
-    ArrayType(int size, std::shared_ptr<Type> ele_type);
+    ArrayType(int size, std::shared_ptr<Type> elm_type)
+        : ReferenceType(TypeId::ARRAY), _size(size), _elm_type(elm_type) {}
 
-    ~ArrayType() override = default;
+    int get_size() const override { return _size * _elm_type->get_size(); }
 
-    bool operator==(const ArrayType &other) const;
+    std::shared_ptr<Type> get_ref_type() const override { return _elm_type; }
 
-    bool operator!=(const ArrayType &other) const;
+    std::string tostring() const override {
+        return "[" + std::to_string(_size) + "]" + _elm_type->tostring();
+    }
 
-    bool operator==(const Type &other) const override;
+  private:
+    int _size = 0;
 
-    bool operator!=(const Type &other) const override;
+    std::shared_ptr<Type> _elm_type;
+};
 
-    friend std::ostream &operator<<(std::ostream &os, const ArrayType &type);
+class TypeBuilder {
+  public:
+    TypeBuilder(std::shared_ptr<Type> base_type) : _type(base_type) {}
 
-    int get_array_size() const;
+    TypeBuilder &in_array(int size) {
+        _type = std::make_shared<ArrayType>(size, _type);
+        return *this;
+    }
 
-    Type *get_element_type() const;
+    TypeBuilder &in_ptr() {
+        _type = std::make_shared<PointerType>(_type);
+        return *this;
+    }
+
+    std::shared_ptr<Type> get_type() const { return _type; }
+
+  private:
+    std::shared_ptr<Type> _type;
 };
