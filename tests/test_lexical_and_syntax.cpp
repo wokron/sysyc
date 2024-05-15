@@ -38,6 +38,7 @@ TEST_CASE("testing lexical and syntax analysis") {
 
     fclose(yyin);
     yyin = NULL;
+    remove("test_frontend.sy");
 
     std::ostringstream ss;
     print_ast(ss, *root);
