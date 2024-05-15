@@ -24,6 +24,7 @@ struct BinaryExp;
 struct CallExp;
 struct UnaryExp;
 struct CompareExp;
+// TODO: LvalExp is needed, instead of LVal
 using Exp = std::variant<BinaryExp, LVal, CallExp, UnaryExp,
                          CompareExp, Number>;
 

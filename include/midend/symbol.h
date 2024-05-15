@@ -104,11 +104,12 @@ class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
         return symbols.find(name) != symbols.end();
     }
 
-    void add_symbol(std::shared_ptr<Symbol> symbol) {
-        if (!exist_in_scope(symbol->name)) {
-            symbols[symbol->name] = symbol;
+    bool add_symbol(std::shared_ptr<Symbol> symbol) {
+        if (exist_in_scope(symbol->name)) {
+            return false;
         }
-        // if the name already exists, we will not override it
+        symbols[symbol->name] = symbol;
+        return true;
     }
 
     std::shared_ptr<Symbol> get_symbol(const std::string name) {
@@ -131,4 +132,17 @@ class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
     std::shared_ptr<SymbolTable> pop_scope() { return parent; }
 
     bool has_parent() const { return parent != nullptr; }
+
+    std::string tostring() const {
+        std::string rt;
+        if (parent != nullptr) {
+            rt.append(parent->tostring());
+        }
+
+        rt.append("==========");
+        for (auto &symbol : symbols) {
+            rt.append(symbol.second->tostring()).append("\n");
+        }
+        return rt;
+    }
 };
