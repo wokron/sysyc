@@ -40,7 +40,7 @@ public:
 
     // Utility methods to determine the context of the current block of code
     bool isGlobalContext() const {
-        return !currentScope->hasParent();
+        return !currentScope->has_parent();
     }
 
     // Other utility methods can be defined here as needed

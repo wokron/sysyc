@@ -13,7 +13,6 @@ class Type {
         FLOAT,
         POINTER,
         ARRAY,
-        FUNCTION,
     };
 
     Type(TypeId tid) : _tid(tid) {}
@@ -27,8 +26,6 @@ class Type {
     bool is_pointer() const { return this->_tid == POINTER; }
 
     bool is_array() const { return this->_tid == ARRAY; }
-
-    bool is_function() const { return this->_tid == FUNCTION; }
 
     virtual int get_size() const = 0;
 
