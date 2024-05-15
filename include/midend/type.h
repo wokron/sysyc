@@ -8,7 +8,6 @@ class Type {
   public:
     enum TypeId {
         void_type,
-        int1_type,
         int32_type,
         float_type,
         pointer_type,
@@ -20,8 +19,6 @@ class Type {
     explicit Type(TypeId tid);
 
     bool isVoid() const { return this->tid == void_type; }
-
-    bool isInt1() const { return this->tid == int1_type; }
 
     bool isInt32() const { return this->tid == int32_type; }
 
@@ -56,19 +53,6 @@ class VoidType : public Type {
     bool operator!=(const Type &other) const override;
 
     friend std::ostream &operator<<(std::ostream &os, const VoidType &type);
-};
-
-class Int1Type : public Type {
-  public:
-    Int1Type() : Type(TypeId::int1_type) {}
-
-    ~Int1Type() override = default;
-
-    bool operator==(const Type &other) const override;
-
-    bool operator!=(const Type &other) const override;
-
-    friend std::ostream &operator<<(std::ostream &os, const Int1Type &type);
 };
 
 class Int32Type : public Type {

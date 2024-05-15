@@ -12,16 +12,6 @@ std::ostream &operator<<(std::ostream &os, const VoidType &type) {
     return os;
 }
 
-bool Int1Type::operator==(const Type &other) const {
-    return tid == other.tid; // Check if type tags are the same
-}
-bool Int1Type::operator!=(const Type &other) const { return !(*this == other); }
-
-std::ostream &operator<<(std::ostream &os, const Int1Type &type) {
-    os << "Int1 Type";
-    return os;
-}
-
 bool Int32Type::operator==(const Type &other) const {
     return tid == other.tid; // Check if type tags are the same
 }

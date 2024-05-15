@@ -7,7 +7,7 @@
 
 class ASTVisitor {
 public:
-    std::shared_ptr<SymbolTable> current_scope;
+    std::shared_ptr<SymbolTable> currentScope;
     int loop_count = 0;
 
     ASTVisitor(std::shared_ptr<SymbolTable> startScope = nullptr)
