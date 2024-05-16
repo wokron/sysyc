@@ -19,7 +19,7 @@ TEST_CASE("testing type system") {
     CHECK(t1->tostring() == "*[10][5][3]int");
     CHECK(t1->get_size() == 8);
 
-    auto ref = std::dynamic_pointer_cast<ReferenceType>(t1)->get_ref_type();
+    auto ref = std::dynamic_pointer_cast<IndirectType>(t1)->get_base_type();
     CHECK(ref->tostring() == "[10][5][3]int");
     CHECK(ref->get_size() == 10 * 5 * 3 * 4);
 

@@ -80,23 +80,23 @@ class FloatType : public Type {
     std::string tostring() const override { return "float"; }
 };
 
-class ReferenceType : public Type {
+class IndirectType : public Type {
   public:
-    ReferenceType(TypeId tid) : Type(tid) {}
+    IndirectType(TypeId tid) : Type(tid) {}
 
-    virtual std::shared_ptr<Type> get_ref_type() const = 0;
+    virtual std::shared_ptr<Type> get_base_type() const = 0;
 
     bool operator==(const Type &other) const override;
 };
 
-class PointerType : public ReferenceType {
+class PointerType : public IndirectType {
   public:
     PointerType(std::shared_ptr<Type> ref_type)
-        : ReferenceType(TypeId::POINTER), _ref_type(ref_type) {}
+        : IndirectType(TypeId::POINTER), _ref_type(ref_type) {}
 
     int get_size() const override { return 8; }
 
-    std::shared_ptr<Type> get_ref_type() const override { return _ref_type; }
+    std::shared_ptr<Type> get_base_type() const override { return _ref_type; }
 
     std::string tostring() const override {
         return "*" + _ref_type->tostring();
@@ -106,14 +106,23 @@ class PointerType : public ReferenceType {
     std::shared_ptr<Type> _ref_type;
 };
 
-class ArrayType : public ReferenceType {
+class ArrayType : public IndirectType {
   public:
     ArrayType(int size, std::shared_ptr<Type> elm_type)
-        : ReferenceType(TypeId::ARRAY), _size(size), _elm_type(elm_type) {}
+        : IndirectType(TypeId::ARRAY), _size(size), _elm_type(elm_type) {}
 
     int get_size() const override { return _size * _elm_type->get_size(); }
 
-    std::shared_ptr<Type> get_ref_type() const override { return _elm_type; }
+    std::shared_ptr<Type> get_base_type() const override { return _elm_type; }
+
+    int get_total_elm_count() const {
+        if (_elm_type->is_array()) {
+            return _size * std::dynamic_pointer_cast<ArrayType>(_elm_type)
+                               ->get_total_elm_count();
+        } else {
+            return _size;
+        }
+    }
 
     std::string tostring() const override {
         return "[" + std::to_string(_size) + "]" + _elm_type->tostring();
