@@ -4,6 +4,9 @@
 #include <memory>
 #include <unordered_map>
 
+// mock for ir value
+using Value = std::nullptr_t;
+
 struct Symbol {
     std::string name;
     std::shared_ptr<Type> type;
@@ -14,12 +17,51 @@ struct Symbol {
     virtual std::string tostring() const = 0;
 };
 
+class Initializer {
+  public:
+    Initializer(int space = 1) : _space(space) {}
+
+    bool insert(std::shared_ptr<Value> value) {
+        if (_pos >= _space) {
+            return false;
+        }
+        _init_values[_pos++] = value;
+        return true;
+    }
+
+    bool insert(Initializer &init) {
+        bool rt = true;
+        for (auto &kv : init._init_values) {
+            int pos = _pos + kv.first;
+            if (pos >= _space) {
+                rt = false;
+                continue;
+            }
+            _init_values[pos] = kv.second;
+        }
+        _pos += init._space;
+
+        return rt;
+    }
+
+    std::unordered_map<int, std::shared_ptr<Value>> get_values() {
+        return _init_values;
+    }
+
+  private:
+    std::unordered_map<int, std::shared_ptr<Value>> _init_values;
+    int _space;
+    int _pos = 0;
+};
+
 struct VariableSymbol : public Symbol {
     bool is_constant;
+    std::shared_ptr<Initializer> initializer; // nullable
 
     VariableSymbol(std::string name, std::shared_ptr<Type> type,
-                   bool is_constant)
-        : Symbol(name, type), is_constant(is_constant){};
+                   bool is_constant, std::shared_ptr<Initializer> initializer)
+        : Symbol(name, type), is_constant(is_constant),
+          initializer(initializer){};
 
     std::string tostring() const override {
         return (is_constant ? "const " : "var ") + name + " " +
