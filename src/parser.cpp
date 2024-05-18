@@ -1573,7 +1573,7 @@ yyuserAction (yyRuleNum yyrule, int yyrhslen, yyGLRStackItem* yyvsp,
 
   case 63: /* PrimaryExp: LVal  */
 #line 228 "parser.y"
-           { ((*yyvalp).exp) = ptr2variant<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.lval)); }
+           { ((*yyvalp).exp) = new Exp(LValExp{sp<LVal>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.lval))}); }
 #line 1578 "src/parser.cpp"
     break;
 

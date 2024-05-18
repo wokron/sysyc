@@ -225,7 +225,7 @@ LVal:
 
 PrimaryExp:
     '(' Exp ')' { $$ = $2; }
-    | LVal { $$ = ptr2variant<Exp>($1); }
+    | LVal { $$ = new Exp(LValExp{sp<LVal>($1)}); }
     | Number { $$ = ptr2variant<Exp>($1); }
 
 Number:

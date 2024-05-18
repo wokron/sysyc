@@ -1,10 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
-#include <ostream>
 
 enum ASTType {
     INT,
@@ -24,9 +24,9 @@ struct BinaryExp;
 struct CallExp;
 struct UnaryExp;
 struct CompareExp;
-// TODO: LvalExp is needed, instead of LVal
-using Exp = std::variant<BinaryExp, LVal, CallExp, UnaryExp,
-                         CompareExp, Number>;
+struct LValExp;
+using Exp =
+    std::variant<BinaryExp, LValExp, CallExp, UnaryExp, CompareExp, Number>;
 
 struct LogicalExp;
 using Cond = std::variant<Exp, LogicalExp>;
@@ -114,6 +114,10 @@ struct CompareExp {
         GE,
     } op;
     std::shared_ptr<Exp> right;
+};
+
+struct LValExp {
+    std::shared_ptr<LVal> lval;
 };
 
 struct AssignStmt {

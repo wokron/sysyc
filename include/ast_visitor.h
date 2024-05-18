@@ -40,12 +40,13 @@ class ASTVisitor {
     exp_return_t visitConstExp(const Exp &node);
     exp_return_t visitExp(const Exp &node);
     exp_return_t visitBinaryExp(const BinaryExp &node);
-    exp_return_t visitLVal(const LVal &node);
+    exp_return_t visitLValExp(const LValExp &node);
     exp_return_t visitCallExp(const CallExp &node);
     exp_return_t visitUnaryExp(const UnaryExp &node);
     exp_return_t visitCompareExp(const CompareExp &node);
     exp_return_t visitNumber(const Number &node);
 
+    exp_return_t visitLVal(const LVal &node);
     void visitCond(const Cond &node);
     void visitLogicalExp(const LogicalExp &node);
 

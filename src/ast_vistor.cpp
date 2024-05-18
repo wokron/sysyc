@@ -86,8 +86,8 @@ ASTVisitor::visitInitVal(const InitVal &node, std::shared_ptr<Type> type) {
 
                 // get element number of array, for example, a[2][3] has 6
                 // elements, so its initializer should have 6 elements
-                auto initializer =
-                    std::make_shared<Initializer>(array_type->get_total_elm_count());
+                auto initializer = std::make_shared<Initializer>(
+                    array_type->get_total_elm_count());
                 for (auto &elm : node.items) {
                     // get initializer of each element
                     auto elm_initializer =
@@ -257,7 +257,7 @@ exp_return_t ASTVisitor::visitExp(const Exp &node) {
     return std::visit(
         overloaded{
             [this](const BinaryExp &node) { return visitBinaryExp(node); },
-            [this](const LVal &node) { return visitLVal(node); },
+            [this](const LValExp &node) { return visitLValExp(node); },
             [this](const CallExp &node) { return visitCallExp(node); },
             [this](const UnaryExp &node) { return visitUnaryExp(node); },
             [this](const CompareExp &node) { return visitCompareExp(node); },
@@ -290,6 +290,15 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     return std::make_tuple(_calc_type(left_type, right_type), nullptr);
 }
 
+exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
+    auto [type, val] = visitLVal(*node.lval);
+
+    // TODO: since lval is in an expression, we need to get the value from the
+    // lval address
+
+    return std::make_tuple(type, val);
+}
+
 exp_return_t ASTVisitor::visitLVal(const LVal &node) {
     // TODO: return type and ir value
     return std::visit(
@@ -307,6 +316,10 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                        if (!lval_type->is_array() && !lval_type->is_pointer()) {
                            // TODO: handle exception
                        }
+
+                       // TODO: calc the address through index. if the curr lval
+                       // is a pointer, don't forget to get the value from
+                       // pointer first
 
                        auto lval_indirect_type =
                            std::dynamic_pointer_cast<IndirectType>(lval_type);

@@ -212,7 +212,7 @@ void _print_exp(std::ostream &out, const Exp &exp) {
                 _print_attr(out, "binary_op", exp.op);
                 out << "}";
             },
-            [&out](const LVal &lval) { _print_lval(out, lval); },
+            [&out](const LValExp &lval) { _print_lval(out, *lval.lval); },
             [&out](const CallExp &exp) {
                 out << "{";
 
