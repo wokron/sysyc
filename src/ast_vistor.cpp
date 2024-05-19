@@ -1,5 +1,6 @@
 #include "ast.h"
 #include "ast_visitor.h"
+#include "error.h"
 #include "utils.h"
 #include <variant>
 
@@ -48,7 +49,7 @@ void ASTVisitor::visitConstDef(const VarDef &node, ASTType btype) {
         std::make_shared<VariableSymbol>(node.ident, type, true, initializer);
 
     if (!currentScope->add_symbol(symbol)) {
-        // TODO: handle exception
+        error(-1, "redefine const variable " + node.ident);
     }
 }
 
@@ -64,7 +65,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype) {
         std::make_shared<VariableSymbol>(node.ident, type, false, initializer);
 
     if (!currentScope->add_symbol(symbol)) {
-        // TODO: handle exception
+        error(-1, "redefine variable " + node.ident);
     }
 }
 
@@ -80,7 +81,8 @@ ASTVisitor::visitInitVal(const InitVal &node, std::shared_ptr<Type> type) {
             },
             [this, &type](const ArrayInitVal &node) {
                 if (!type->is_array()) {
-                    // TODO: handle exception
+                    error(-1, "initializer is not an array");
+                    return std::shared_ptr<Initializer>(nullptr);
                 }
                 auto array_type = std::dynamic_pointer_cast<ArrayType>(type);
 
@@ -135,7 +137,8 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     auto symbol =
         std::make_shared<FunctionSymbol>(node.ident, params_type, return_type);
     if (!currentScope->add_symbol(symbol)) {
-        // TODO: handle exception
+        error(-1, "redefine function " + node.ident);
+        return;
     }
 
     // going into funciton scope
@@ -144,7 +147,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     // add symbols of params to symbol table
     for (auto &param_symbol : param_symbols) {
         if (!currentScope->add_symbol(param_symbol)) {
-            // TODO: handle exception
+            error(-1, "redefine parameter " + param_symbol->name);
         }
     }
 
@@ -250,6 +253,9 @@ void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
 
 exp_return_t ASTVisitor::visitConstExp(const Exp &node) {
     // TODO: check if the expression is constant
+    if (0) {
+        error(-1, "not a const expression");
+    }
     return visitExp(node);
 }
 
@@ -286,7 +292,7 @@ static std::shared_ptr<Type> _calc_type(std::shared_ptr<Type> ltype,
 exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     auto [left_type, left_val] = visitExp(*node.left);
     auto [right_type, right_val] = visitExp(*node.right);
-    // TODO: return type and ir value
+    // TODO: generate ir code
     return std::make_tuple(_calc_type(left_type, right_type), nullptr);
 }
 
@@ -300,13 +306,15 @@ exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
 }
 
 exp_return_t ASTVisitor::visitLVal(const LVal &node) {
-    // TODO: return type and ir value
     return std::visit(
         overloaded{[this](const Ident &node) {
                        auto symbol = currentScope->get_symbol(node);
                        if (!symbol) {
-                           // TODO: handle exception
+                           error(-1, "undefined symbol " + node);
+                           return std::make_tuple<std::shared_ptr<Type>, Value>(
+                               std::make_shared<VoidType>(), nullptr);
                        }
+
                        return std::make_tuple(symbol->type, nullptr);
                    },
                    [this](const Index &node) {
@@ -314,7 +322,10 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                        visitExp(*node.exp);
 
                        if (!lval_type->is_array() && !lval_type->is_pointer()) {
-                           // TODO: handle exception
+                           error(-1, "index operator [] can only be used on "
+                                     "array or pointer");
+                           return std::make_tuple<std::shared_ptr<Type>, Value>(
+                               std::make_shared<VoidType>(), nullptr);
                        }
 
                        // TODO: calc the address through index. if the curr lval
@@ -324,7 +335,7 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                        auto lval_indirect_type =
                            std::dynamic_pointer_cast<IndirectType>(lval_type);
 
-                       return std::make_tuple(
+                       return std::make_tuple<std::shared_ptr<Type>, Value>(
                            lval_indirect_type->get_base_type(), nullptr);
                    }},
         node);
@@ -333,21 +344,33 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
 exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
     auto symbol = currentScope->get_symbol(node.ident);
     if (!symbol) {
-        // TODO: handle exception
+        error(-1, "undefined function " + node.ident);
+        return std::make_tuple(std::make_shared<VoidType>(), nullptr);
     }
 
     auto func_symbol = std::dynamic_pointer_cast<FunctionSymbol>(symbol);
     if (!func_symbol) {
-        // TODO: handle exception
+        error(-1, node.ident + " is not a function");
+        return std::make_tuple(std::make_shared<VoidType>(), nullptr);
     }
 
     auto params_type = func_symbol->param_types;
-    // TODO: if params type is not matched, handle exception
 
-    for (auto &elm : *node.func_rparams) {
-        visitExp(*elm);
+    if (params_type.size() != node.func_rparams->size()) {
+        error(-1, "params number not matched in function call " + node.ident);
+        return std::make_tuple(std::make_shared<VoidType>(), nullptr);
     }
-    // TODO: return type and ir value
+
+    for (int i = 0; i < params_type.size(); i++) {
+        auto [exp_type, exp_val] = visitExp(*node.func_rparams->at(i));
+        // TODO: if params type is not matched, handle exception
+        if (0 && exp_type != params_type[i]) {
+            error(-1, "params type not matched in function call " + node.ident +
+                          ", expected " + params_type[i]->tostring() +
+                          ", got " + exp_type->tostring());
+            return std::make_tuple(std::make_shared<VoidType>(), nullptr);
+        }
+    }
 
     return std::make_tuple(symbol->type, nullptr);
 }

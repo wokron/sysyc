@@ -6,6 +6,8 @@
 #include <variant>
 #include <vector>
 
+// TODO: add line number to each node
+
 enum ASTType {
     INT,
     FLOAT,
