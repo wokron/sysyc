@@ -1,8 +1,8 @@
 %option noyywrap yylineno
 
 %{
-    #include <cstdlib>
     #include "parser.h"
+    #include "error.h"
 %}
 
 /* ident */
@@ -144,6 +144,6 @@ comments {single_line_comment}|{multi_line_comment}
 [[:space:]]+ { }
 
 . {
-    yyerror(nullptr, "invalid input");
+    error(yylineno, "invalid input");
 }
 %%

@@ -13,6 +13,7 @@
     #include <vector>
     #include <string>
     #include <iostream>
+    #include "error.h"
 
     int yylex(void);
     extern int yylineno;
@@ -280,5 +281,5 @@ ConstExp:
 %%
 
 void yyerror(std::shared_ptr<CompUnits> comp_units, const char *s) {
-    std::cerr << yylineno << ": " << s << std::endl;
+    error(yylineno, s);
 }

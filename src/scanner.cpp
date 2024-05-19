@@ -553,8 +553,8 @@ int yy_flex_debug = 0;
 char *yytext;
 #line 1 "scanner.l"
 #line 4 "scanner.l"
-    #include <cstdlib>
     #include "parser.h"
+    #include "error.h"
 #line 559 "src/scanner.cpp"
 /* ident */
 /* decimal integer const */
@@ -1032,7 +1032,7 @@ case 26:
 YY_RULE_SETUP
 #line 146 "scanner.l"
 {
-    yyerror(nullptr, "invalid input");
+    error(yylineno, "invalid input");
 }
 	YY_BREAK
 case 27:
