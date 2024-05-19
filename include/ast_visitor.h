@@ -5,7 +5,13 @@
 #include <memory>
 #include <variant>
 
+// mock for conditional jump instruction
+using JumpInst = std::nullptr_t;
+
 using exp_return_t = std::tuple<std::shared_ptr<Type>, std::shared_ptr<Value>>;
+
+// return type for conditional expression, first vector is the true path, second vector is the false path
+using cond_return_t = std::tuple<std::vector<JumpInst>, std::vector<JumpInst>>;
 
 class ASTVisitor {
   public:
@@ -45,10 +51,10 @@ class ASTVisitor {
     exp_return_t visitUnaryExp(const UnaryExp &node);
     exp_return_t visitCompareExp(const CompareExp &node);
     exp_return_t visitNumber(const Number &node);
-
     exp_return_t visitLVal(const LVal &node);
-    void visitCond(const Cond &node);
-    void visitLogicalExp(const LogicalExp &node);
+
+    cond_return_t visitCond(const Cond &node);
+    cond_return_t visitLogicalExp(const LogicalExp &node);
 
     // Utility methods to determine the context of the current block of code
     bool isGlobalContext() const { return !currentScope->has_parent(); }

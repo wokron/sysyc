@@ -405,15 +405,54 @@ exp_return_t ASTVisitor::visitNumber(const Number &node) {
                       node);
 }
 
-void ASTVisitor::visitCond(const Cond &node) {
-    std::visit(overloaded{
-                   [this](const Exp &node) { visitExp(node); },
-                   [this](const LogicalExp &node) { visitLogicalExp(node); },
-               },
-               node);
+cond_return_t ASTVisitor::visitCond(const Cond &node) {
+    return std::visit(
+        overloaded{
+            [this](const Exp &node) {
+                auto [type, val] = visitExp(node);
+                // TODO: generate conditional jump instruction
+                JumpInst inst = nullptr;
+                return std::make_tuple(std::vector<JumpInst>{inst},
+                                       std::vector<JumpInst>{inst});
+            },
+            [this](const LogicalExp &node) { return visitLogicalExp(node); },
+        },
+        node);
 }
 
-void ASTVisitor::visitLogicalExp(const LogicalExp &node) {
-    visitCond(*node.left);
-    visitCond(*node.right);
+cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
+    auto [ltruelist, lfalselist] = visitCond(*node.left);
+
+    // TODO: create a new block for the right expression
+
+    auto [rtruelist, rfalselist] = visitCond(*node.right);
+
+    std::vector<JumpInst> truelist, falselist;
+    if (node.op == LogicalExp::AND) {
+        // if the logical expression is `&&`, we need to merge the false list
+        // from left and right expression
+        falselist.assign(lfalselist.begin(), lfalselist.end());
+        falselist.insert(falselist.end(), rfalselist.begin(), rfalselist.end());
+
+        // as for the true list from left expression, just jump to the right
+        // expression. TODO
+
+        // and the true list from right expression is the true list of the whole
+        // expression
+        truelist.assign(rtruelist.begin(), rtruelist.end());
+    } else { // OR
+        // vice versa, if the logical expression is `||`, we need to merge the
+        // true list from left and right expression
+        truelist.assign(ltruelist.begin(), ltruelist.end());
+        truelist.insert(truelist.end(), rtruelist.begin(), rtruelist.end());
+
+        // as for the false list from left expression, just jump to the right
+        // expression
+
+        // and the false list from right expression is the false list of the
+        // whole expression
+        falselist.assign(rfalselist.begin(), rfalselist.end());
+    }
+
+    return std::make_tuple(truelist, falselist);
 }
