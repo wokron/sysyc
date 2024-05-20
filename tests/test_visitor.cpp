@@ -29,6 +29,4 @@ TEST_CASE("testing ast visitor") {
     ASTVisitor visitor;
 
     visitor.visit(*root);
-
-    auto s = visitor.currentScope->tostring();
 }

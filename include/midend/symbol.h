@@ -92,32 +92,32 @@ struct FunctionSymbol : public Symbol {
 };
 
 class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
-  public:
-    std::unordered_map<std::string, std::shared_ptr<Symbol>> symbols;
-    std::shared_ptr<SymbolTable> parent;
+  private:
+    std::unordered_map<std::string, std::shared_ptr<Symbol>> _symbols;
+    std::shared_ptr<SymbolTable> _parent;
 
   public:
-    SymbolTable(std::shared_ptr<SymbolTable> parent = nullptr)
-        : parent(parent) {}
+    SymbolTable() : _parent(nullptr) {}
+    SymbolTable(std::shared_ptr<SymbolTable> parent) : _parent(parent) {}
 
     bool exist_in_scope(const std::string name) {
-        return symbols.find(name) != symbols.end();
+        return _symbols.find(name) != _symbols.end();
     }
 
     bool add_symbol(std::shared_ptr<Symbol> symbol) {
         if (exist_in_scope(symbol->name)) {
             return false;
         }
-        symbols[symbol->name] = symbol;
+        _symbols[symbol->name] = symbol;
         return true;
     }
 
     std::shared_ptr<Symbol> get_symbol(const std::string name) {
-        auto it = symbols.find(name);
-        if (it != symbols.end()) {
+        auto it = _symbols.find(name);
+        if (it != _symbols.end()) {
             return it->second;
-        } else if (parent != nullptr) {
-            return parent->get_symbol(name);
+        } else if (_parent != nullptr) {
+            return _parent->get_symbol(name);
         } else {
             return nullptr;
         }
@@ -129,18 +129,18 @@ class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
     }
 
     // return parent scope
-    std::shared_ptr<SymbolTable> pop_scope() { return parent; }
+    std::shared_ptr<SymbolTable> pop_scope() { return _parent; }
 
-    bool has_parent() const { return parent != nullptr; }
+    bool has_parent() const { return _parent != nullptr; }
 
     std::string tostring() const {
         std::string rt;
-        if (parent != nullptr) {
-            rt.append(parent->tostring());
+        if (_parent != nullptr) {
+            rt.append(_parent->tostring());
         }
 
         rt.append("==========");
-        for (auto &symbol : symbols) {
+        for (auto &symbol : _symbols) {
             rt.append(symbol.second->tostring()).append("\n");
         }
         return rt;

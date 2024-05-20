@@ -4,7 +4,7 @@
 #include "utils.h"
 #include <variant>
 
-std::shared_ptr<Type> asttype2type(ASTType type) {
+static std::shared_ptr<Type> _asttype2type(ASTType type) {
     switch (type) {
     case ASTType::INT:
         return std::make_shared<Int32Type>();
@@ -29,15 +29,12 @@ void ASTVisitor::visit(const CompUnits &node) {
 
 void ASTVisitor::visitDecl(const Decl &node) {
     for (auto &elm : *node.var_defs) {
-        if (node.type == Decl::CONST) {
-            visitConstDef(*elm, node.btype);
-        } else {
-            visitVarDef(*elm, node.btype);
-        }
+        bool is_const = (node.type == Decl::CONST);
+        visitVarDef(*elm, node.btype, is_const);
     }
 }
 
-void ASTVisitor::visitConstDef(const VarDef &node, ASTType btype) {
+void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     auto type = visitDims(*node.dims, btype);
 
     std::shared_ptr<Initializer> initializer = nullptr;
@@ -45,33 +42,10 @@ void ASTVisitor::visitConstDef(const VarDef &node, ASTType btype) {
         initializer = visitInitVal(*node.init_val, type);
     }
 
-    auto symbol =
-        std::make_shared<VariableSymbol>(node.ident, type, true, initializer);
+    auto symbol = std::make_shared<VariableSymbol>(node.ident, type, is_const,
+                                                   initializer);
 
-    if (!currentScope->add_symbol(symbol)) {
-        error(-1, "redefine const variable " + node.ident);
-    }
-
-    if (is_global_context()) {
-        // IR: export data = { <init> }
-    } else {
-        // IR: %<reg> =<type> alloc (in @start)
-        // IR: store<type> %<val> %<addr>
-    }
-}
-
-void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype) {
-    auto type = visitDims(*node.dims, btype);
-
-    std::shared_ptr<Initializer> initializer = nullptr;
-    if (node.init_val != nullptr) {
-        initializer = visitInitVal(*node.init_val, type);
-    }
-
-    auto symbol =
-        std::make_shared<VariableSymbol>(node.ident, type, false, initializer);
-
-    if (!currentScope->add_symbol(symbol)) {
+    if (!_current_scope->add_symbol(symbol)) {
         error(-1, "redefine variable " + node.ident);
     }
 
@@ -95,10 +69,10 @@ ASTVisitor::visitInitVal(const InitVal &node, std::shared_ptr<Type> type) {
             },
             [this, &type](const ArrayInitVal &node) {
                 if (!type->is_array()) {
-                    error(-1, "initializer is not an array");
+                    error(-1, "cannot use array initializer on non-array type");
                     return std::shared_ptr<Initializer>(nullptr);
                 }
-                auto array_type = std::dynamic_pointer_cast<ArrayType>(type);
+                auto array_type = std::static_pointer_cast<ArrayType>(type);
 
                 // get element number of array, for example, a[2][3] has 6
                 // elements, so its initializer should have 6 elements
@@ -119,7 +93,7 @@ ASTVisitor::visitInitVal(const InitVal &node, std::shared_ptr<Type> type) {
 }
 
 std::shared_ptr<Type> ASTVisitor::visitDims(const Dims &node, ASTType btype) {
-    auto base_type = asttype2type(btype);
+    auto base_type = _asttype2type(btype);
     TypeBuilder tb(base_type);
 
     // reverse is needed
@@ -141,7 +115,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     auto param_symbols = visitFuncFParams(*node.func_fparams);
 
     // get function type
-    auto return_type = asttype2type(node.func_type);
+    auto return_type = _asttype2type(node.func_type);
     std::vector<std::shared_ptr<Type>> params_type;
     for (auto &param_symbol : param_symbols) {
         params_type.push_back(param_symbol->type);
@@ -150,7 +124,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     // add function symbol
     auto symbol =
         std::make_shared<FunctionSymbol>(node.ident, params_type, return_type);
-    if (!currentScope->add_symbol(symbol)) {
+    if (!_current_scope->add_symbol(symbol)) {
         error(-1, "redefine function " + node.ident);
         return;
     }
@@ -158,13 +132,13 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     // IR: export function <type> $<name>(<params>)
 
     // going into funciton scope
-    currentScope = currentScope->push_scope();
+    _current_scope = _current_scope->push_scope();
 
     // IR: @start
 
     // add symbols of params to symbol table
     for (auto &param_symbol : param_symbols) {
-        if (!currentScope->add_symbol(param_symbol)) {
+        if (!_current_scope->add_symbol(param_symbol)) {
             error(-1, "redefine parameter " + param_symbol->name);
         }
         // IR: %<reg> =<type> alloc
@@ -175,7 +149,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
 
     visitBlockItems(*node.block);
 
-    currentScope = currentScope->pop_scope();
+    _current_scope = _current_scope->pop_scope();
 }
 
 std::vector<std::shared_ptr<Symbol>>
@@ -228,9 +202,9 @@ void ASTVisitor::visitExpStmt(const ExpStmt &node) {
 }
 
 void ASTVisitor::visitBlockStmt(const BlockStmt &node) {
-    currentScope = currentScope->push_scope();
+    _current_scope = _current_scope->push_scope();
     visitBlockItems(*node.block);
-    currentScope = currentScope->pop_scope();
+    _current_scope = _current_scope->pop_scope();
 }
 
 void ASTVisitor::visitIfStmt(const IfStmt &node) {
@@ -238,9 +212,9 @@ void ASTVisitor::visitIfStmt(const IfStmt &node) {
 
     // IR: jmp @if_true
 
-    currentScope = currentScope->push_scope();
+    _current_scope = _current_scope->push_scope();
     visitStmt(*node.if_stmt);
-    currentScope = currentScope->pop_scope();
+    _current_scope = _current_scope->pop_scope();
 
     if (node.else_stmt) {
         // IR: jmp @if_join
@@ -248,9 +222,9 @@ void ASTVisitor::visitIfStmt(const IfStmt &node) {
     // IR: @if_false
 
     if (node.else_stmt) {
-        currentScope = currentScope->push_scope();
+        _current_scope = _current_scope->push_scope();
         visitStmt(*node.else_stmt);
-        currentScope = currentScope->pop_scope();
+        _current_scope = _current_scope->pop_scope();
         // IR: @if_join
     }
 }
@@ -261,9 +235,9 @@ void ASTVisitor::visitWhileStmt(const WhileStmt &node) {
 
     // IR: @while_body
 
-    currentScope = currentScope->push_scope();
+    _current_scope = _current_scope->push_scope();
     visitStmt(*node.stmt);
-    currentScope = currentScope->pop_scope();
+    _current_scope = _current_scope->pop_scope();
 
     // IR: jmp @while_cond
     // IR: @while_join
@@ -346,7 +320,7 @@ exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
 exp_return_t ASTVisitor::visitLVal(const LVal &node) {
     return std::visit(
         overloaded{[this](const Ident &node) {
-                       auto symbol = currentScope->get_symbol(node);
+                       auto symbol = _current_scope->get_symbol(node);
                        if (!symbol) {
                            error(-1, "undefined symbol " + node);
                            return std::make_tuple<std::shared_ptr<Type>, Value>(
@@ -370,14 +344,14 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                        // is a pointer, don't forget to get the value from
                        // pointer first
 
-                        if (lval_type->is_pointer()) {
-                            // IR: %<reg> =<type> load<type> %<lval_val>
-                        }
-                        // IR: %<offset> =<type> mul %<exp_val> %<elm_size>
-                        // IR: %<reg> =<type> add %<lval_val> %<offset>
+                       if (lval_type->is_pointer()) {
+                           // IR: %<reg> =<type> load<type> %<lval_val>
+                       }
+                       // IR: %<offset> =<type> mul %<exp_val> %<elm_size>
+                       // IR: %<reg> =<type> add %<lval_val> %<offset>
 
                        auto lval_indirect_type =
-                           std::dynamic_pointer_cast<IndirectType>(lval_type);
+                           std::static_pointer_cast<IndirectType>(lval_type);
 
                        return std::make_tuple<std::shared_ptr<Type>, Value>(
                            lval_indirect_type->get_base_type(), nullptr);
@@ -386,7 +360,7 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
 }
 
 exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
-    auto symbol = currentScope->get_symbol(node.ident);
+    auto symbol = _current_scope->get_symbol(node.ident);
     if (!symbol) {
         error(-1, "undefined function " + node.ident);
         return std::make_tuple(std::make_shared<VoidType>(), nullptr);

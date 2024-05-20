@@ -10,24 +10,25 @@ using JumpInst = std::nullptr_t;
 
 using exp_return_t = std::tuple<std::shared_ptr<Type>, std::shared_ptr<Value>>;
 
-// return type for conditional expression, first vector is the true path, second vector is the false path
+// return type for conditional expression, first vector is the true path, second
+// vector is the false path
 using cond_return_t = std::tuple<std::vector<JumpInst>, std::vector<JumpInst>>;
 
 class ASTVisitor {
+  private:
+    std::shared_ptr<SymbolTable> _current_scope;
+
   public:
-    std::shared_ptr<SymbolTable> currentScope;
-    int loop_count = 0;
+    ASTVisitor() : _current_scope(std::make_shared<SymbolTable>(nullptr)) {}
 
-    ASTVisitor(std::shared_ptr<SymbolTable> startScope = nullptr)
-        : currentScope(startScope ? startScope
-                                  : std::make_shared<SymbolTable>(nullptr)) {}
+    ASTVisitor(std::shared_ptr<SymbolTable> scope) : _current_scope(scope) {}
 
-    // Define methods for each AST node type
+    // define methods for each AST node type
     void visit(const CompUnits &node);
     void visitDecl(const Decl &node);
-    void visitConstDef(const VarDef &node, ASTType btype);
-    void visitVarDef(const VarDef &node, ASTType btype);
-    std::shared_ptr<Initializer> visitInitVal(const InitVal &node, std::shared_ptr<Type> type);
+    void visitVarDef(const VarDef &node, ASTType btype, bool is_const);
+    std::shared_ptr<Initializer> visitInitVal(const InitVal &node,
+                                              std::shared_ptr<Type> type);
     std::shared_ptr<Type> visitDims(const Dims &node, ASTType btype);
     void visitFuncDef(const FuncDef &node);
     std::vector<std::shared_ptr<Symbol>>
@@ -56,8 +57,6 @@ class ASTVisitor {
     cond_return_t visitCond(const Cond &node);
     cond_return_t visitLogicalExp(const LogicalExp &node);
 
-    // Utility methods to determine the context of the current block of code
-    bool is_global_context() const { return !currentScope->has_parent(); }
-
-    // Other utility methods can be defined here as needed
+    // some utility methods
+    bool is_global_context() const { return !_current_scope->has_parent(); }
 };
