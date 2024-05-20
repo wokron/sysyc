@@ -57,7 +57,7 @@ class ASTVisitor {
     cond_return_t visitLogicalExp(const LogicalExp &node);
 
     // Utility methods to determine the context of the current block of code
-    bool isGlobalContext() const { return !currentScope->has_parent(); }
+    bool is_global_context() const { return !currentScope->has_parent(); }
 
     // Other utility methods can be defined here as needed
 };
