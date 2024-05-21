@@ -9,6 +9,6 @@ Contribute code by checking out a new branch, formatted as `<username>--<descrip
 - Use `#pragma once` in header files instead of `#ifndef`.
 - Variables should be in `snake_case`.
 - Class names should be in `PascalCase`.
-- Functions should be in `snake_case`, while class methods should be in `PascalCase`.
-- Private methods and attributes should be prefixed with an underscore, such as `_PrivateMethod` and `_private_attr`.
-- Other unspecified standards are determined by the `.clang-format` in the project. You can use the script `scripts/format.sh` to format your code.
+- Functions and class methods should be in `snake_case`.
+- Private methods and attributes should be prefixed with an underscore, such as `_private_method` and `_private_attr`.
+- Other unspecified standards are determined by the `.clang-format` and `.clang-tidy` in the project. You can use `scripts/format.sh` and `scripts/tidy.sh` to format your code.
