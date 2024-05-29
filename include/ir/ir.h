@@ -1,9 +1,7 @@
 #pragma once
 
 #include "utils.h"
-#include <iomanip>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -156,11 +154,11 @@ struct Function {
     // use a counter to generate unique temp name in function scope
     uint temp_counter = 1;
 
-    using Params = std::vector<std::pair<Type, std::string>>;
-    using ParamsTemps = std::vector<std::shared_ptr<Temp>>;
+    using TempPtrList = std::vector<std::shared_ptr<Temp>>;
+    using FunctionPtr = std::shared_ptr<Function>;
 
-    static std::tuple<std::shared_ptr<Function>, ParamsTemps>
-    create(bool is_export, std::string name, Type ty, Params params,
+    static std::tuple<FunctionPtr, TempPtrList>
+    create(bool is_export, std::string name, Type ty, std::vector<Type> params,
            Module &module);
 
     void add_block(std::shared_ptr<Block> blk) {

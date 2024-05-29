@@ -1,10 +1,11 @@
+#include "ir/builder.h"
+#include "ir/ir.h"
 #include <doctest.h>
-#include <ir/ir.h>
-#include <ir/builder.h>
+#include <sstream>
 
-static constexpr char EXPECTED[] = R"(function w $add(w %a.1, w %b.2, ) {
+static constexpr char EXPECTED[] = R"(function w $add(w %.1, w %.2, ) {
 @start.1
-    %.3 =w add %a.1, %b.2
+    %.3 =w add %.1, %.2
     ret %.3
 }
 export
@@ -25,7 +26,8 @@ TEST_CASE("testing type to string") {
 TEST_CASE("testing ir building") {
     auto module = ir::Module();
 
-    auto [add, params] = ir::Function::create(false, "add", ir::Type::W, {{ir::Type::W, "a"}, {ir::Type::W, "b"}}, module);
+    auto [add, params] = ir::Function::create(
+        false, "add", ir::Type::W, {{ir::Type::W}, {ir::Type::W}}, module);
     auto builder = ir::IRBuilder(add);
 
     auto start = add->start;
@@ -34,11 +36,14 @@ TEST_CASE("testing ir building") {
     auto c = builder.create_add(ir::Type::W, params[0], params[1]);
     builder.create_ret(c);
 
-    auto [main, _] = ir::Function::create(true, "main", ir::Type::W, {}, module);
+    auto [main, _] =
+        ir::Function::create(true, "main", ir::Type::W, {}, module);
     builder = ir::IRBuilder(main);
     start = main->start;
     builder.set_insert_point(start);
-    auto r = builder.create_call(ir::Type::W, ir::Address::get(add->name), {ir::ConstBits::get(1), ir::ConstBits::get(1)});
+    auto r =
+        builder.create_call(ir::Type::W, ir::Address::get(add->name),
+                            {ir::ConstBits::get(1), ir::ConstBits::get(1)});
     builder.create_ret(r);
 
     std::ostringstream out;

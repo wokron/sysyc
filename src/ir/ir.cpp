@@ -1,4 +1,6 @@
 #include "ir/ir.h"
+#include <iomanip>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -162,19 +164,18 @@ void Block::emit(std::ostream &out) const {
     }
 }
 
-std::tuple<std::shared_ptr<Function>, Function::ParamsTemps>
+std::tuple<Function::FunctionPtr, Function::TempPtrList>
 Function::create(bool is_export, std::string name, Type ty,
-                 Function::Params params, Module &module) {
+                 std::vector<Type> params, Module &module) {
 
     auto func = std::shared_ptr<Function>(new Function{is_export, name, ty});
 
     auto start = Block::create("start", *func);
 
     std::vector<std::shared_ptr<Temp>> params_temps;
-    for (auto &[ty, name] : params) {
+    for (auto &ty : params) {
         auto inst = Inst::create(InstType::IPAR, ty, nullptr, nullptr);
         start->insts.push_back(inst);
-        inst->to->name = name;
         inst->to->id = func->temp_counter++;
         params_temps.push_back(inst->to);
     }
