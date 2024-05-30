@@ -26,7 +26,7 @@ TEST_CASE("testing ast visitor") {
     yyin = nullptr;
     remove("test_frontend.sy");
 
-    ASTVisitor visitor;
+    ASTVisitor visitor(nullptr);
 
     visitor.visit(*root);
 }

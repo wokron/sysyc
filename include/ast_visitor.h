@@ -1,5 +1,6 @@
 #pragma once
 #include "ast.h"
+#include "ir/builder.h"
 #include "ir/ir.h"
 #include "midend/symbol.h"
 #include <iostream>
@@ -17,11 +18,13 @@ using cond_return_t = std::tuple<BlockPtrList, BlockPtrList>;
 class ASTVisitor {
   private:
     std::shared_ptr<SymbolTable> _current_scope;
+    std::shared_ptr<ir::Module> _module;
+    ir::IRBuilder _builder;
 
   public:
-    ASTVisitor() : _current_scope(std::make_shared<SymbolTable>(nullptr)) {}
-
-    ASTVisitor(std::shared_ptr<SymbolTable> scope) : _current_scope(scope) {}
+    ASTVisitor(std::shared_ptr<ir::Module> module)
+        : _module(module),
+          _current_scope(std::make_shared<SymbolTable>(nullptr)) {}
 
     // define methods for each AST node type
     void visit(const CompUnits &node);
