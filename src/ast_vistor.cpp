@@ -17,6 +17,18 @@ static std::shared_ptr<Type> _asttype2type(ASTType type) {
     }
 }
 
+static ir::Type _type2irtype(std::shared_ptr<Type> type) {
+    if (type->is_int32()) {
+        return ir::Type::W;
+    } else if (type->is_float()) {
+        return ir::Type::S;
+    } else if (type->is_array() || type->is_pointer()) {
+        return ir::Type::L;
+    } else {
+        return ir::Type::X;
+    }
+}
+
 void ASTVisitor::visit(const CompUnits &node) {
     for (auto &elm : node) {
         std::visit(overloaded{
@@ -50,10 +62,36 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     }
 
     if (is_global_context()) {
-        // IR: export data = { <init> }
+        auto elm_type = _asttype2type(btype);
+        auto data = ir::Data::create(false, symbol->name, elm_type->get_size(),
+                                     *_module);
+        // TODO: append data items, need ordered map
     } else {
-        // IR: %<reg> =<type> alloc (in @start)
-        // IR: store<type> %<val> %<addr>
+        if (type->is_array()) {
+            auto elm_type = _asttype2type(btype);
+            auto elm_ir_type = _type2irtype(elm_type);
+
+            symbol->value =
+                _builder.create_alloc(elm_ir_type, type->get_size());
+
+            if (symbol->initializer) {
+                for (auto &[index, val] : symbol->initializer->get_values()) {
+                    auto offset =
+                        ir::ConstBits::get(elm_type->get_size() * index);
+                    auto elm_addr =
+                        _builder.create_add(ir::Type::L, symbol->value, offset);
+                    _builder.create_store(elm_ir_type, val, elm_addr);
+                }
+            }
+        } else {
+            symbol->value =
+                _builder.create_alloc(_type2irtype(type), type->get_size());
+            if (symbol->initializer) {
+                _builder.create_store(_type2irtype(type),
+                                      symbol->initializer->get_values()[0],
+                                      symbol->value);
+            }
+        }
     }
 }
 
@@ -117,8 +155,10 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     // get function type
     auto return_type = _asttype2type(node.func_type);
     std::vector<std::shared_ptr<Type>> params_type;
+    std::vector<ir::Type> params_ir_type;
     for (auto &param_symbol : param_symbols) {
         params_type.push_back(param_symbol->type);
+        params_ir_type.push_back(_type2irtype(param_symbol->type));
     }
 
     // add function symbol
@@ -129,23 +169,36 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
         return;
     }
 
-    // IR: export function <type> $<name>(<params>)
+    // create function in IR
+    auto [ir_func, ir_params] = ir::Function::create(
+        symbol->name == "main", symbol->name, _type2irtype(return_type),
+        params_ir_type, *_module);
+    symbol->value = ir_func->get_address();
+    _builder.set_function(ir_func);
 
     // going into funciton scope
     _current_scope = _current_scope->push_scope();
 
-    // IR: @start
-
     // add symbols of params to symbol table
+    int no = 0;
     for (auto &param_symbol : param_symbols) {
         if (!_current_scope->add_symbol(param_symbol)) {
             error(-1, "redefine parameter " + param_symbol->name);
+            no++;
+            continue;
         }
-        // IR: %<reg> =<type> alloc
-        // IR: store<type> %<val> %<addr>
+
+        // alloc and store for param values
+        auto param_ir_type = _type2irtype(param_symbol->type);
+        param_symbol->value = _builder.create_alloc(
+            param_ir_type, param_symbol->type->get_size());
+        _builder.create_store(param_ir_type, ir_params[no],
+                              param_symbol->value);
+
+        no++;
     }
 
-    // IR: @body
+    _builder.create_label("body");
 
     visitBlockItems(*node.block);
 
@@ -192,7 +245,9 @@ void ASTVisitor::visitStmt(const Stmt &node) {
 void ASTVisitor::visitAssignStmt(const AssignStmt &node) {
     auto [exp_type, exp_val] = visitExp(*node.exp);
     auto [lval_type, lval_val] = visitLVal(*node.lval);
-    // IR: store<type> %<exp_val> %<lval_val>
+
+    // TODO: check if type of exp and lval are same. if not, need type convert
+    _builder.create_store(_type2irtype(lval_type), exp_val, lval_val);
 }
 
 void ASTVisitor::visitExpStmt(const ExpStmt &node) {
@@ -208,39 +263,47 @@ void ASTVisitor::visitBlockStmt(const BlockStmt &node) {
 }
 
 void ASTVisitor::visitIfStmt(const IfStmt &node) {
-    visitCond(*node.cond);
+    // TODO: fill jump targets
+    auto [jmp_to_true, jmp_to_false] = visitCond(*node.cond);
 
-    // IR: jmp @if_true
+    _builder.create_label("if_true");
 
     _current_scope = _current_scope->push_scope();
     visitStmt(*node.if_stmt);
     _current_scope = _current_scope->pop_scope();
 
+    std::shared_ptr<ir::Block> jmp_to_join;
     if (node.else_stmt) {
-        // IR: jmp @if_join
+        jmp_to_join = _builder.create_jmp(nullptr);
     }
-    // IR: @if_false
+
+    _builder.create_label("if_false");
 
     if (node.else_stmt) {
         _current_scope = _current_scope->push_scope();
         visitStmt(*node.else_stmt);
         _current_scope = _current_scope->pop_scope();
-        // IR: @if_join
+
+        auto join_block = _builder.create_label("if_join");
+        jmp_to_join->jump.blk[0] = join_block;
     }
 }
 
 void ASTVisitor::visitWhileStmt(const WhileStmt &node) {
-    // IR: @while_cond
-    visitCond(*node.cond);
+    auto cond_block = _builder.create_label("while_cond");
 
-    // IR: @while_body
+    // TODO: fill jump targets
+    auto [jmp_to_true, jmp_to_false] = visitCond(*node.cond);
+
+    _builder.create_label("while_body");
 
     _current_scope = _current_scope->push_scope();
     visitStmt(*node.stmt);
     _current_scope = _current_scope->pop_scope();
 
-    // IR: jmp @while_cond
-    // IR: @while_join
+    _builder.create_jmp(cond_block);
+
+    _builder.create_label("while_join");
 }
 
 void ASTVisitor::visitControlStmt(const ControlStmt &node) {
@@ -254,9 +317,9 @@ void ASTVisitor::visitControlStmt(const ControlStmt &node) {
 void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
     if (node.exp) {
         auto [exp_type, exp_val] = visitExp(*node.exp);
-        // IR: ret %<exp_val>
+        _builder.create_ret(exp_val);
     }
-    // IR: ret
+    _builder.create_ret(nullptr);
 }
 
 exp_return_t ASTVisitor::visitConstExp(const Exp &node) {
@@ -301,7 +364,10 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     auto [left_type, left_val] = visitExp(*node.left);
     auto [right_type, right_val] = visitExp(*node.right);
 
-    // IR: %<reg> =<type> <op> %<left_val> %<right_val>
+    // TODO: type convert and support different ops
+    auto type = _calc_type(left_type, right_type);
+    auto ir_type = _type2irtype(type);
+    auto val = _builder.create_add(ir_type, left_val, right_val);
 
     return exp_return_t(_calc_type(left_type, right_type), nullptr);
 }
@@ -309,12 +375,16 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
 exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
     auto [type, val] = visitLVal(*node.lval);
 
+    // still an array, the value is the address itself
+    if (type->is_array()) {
+        return exp_return_t(type, val);
+    }
+
     // since lval is in an expression, we need to get the value from the
     // lval address
+    auto exp_val = _builder.create_load(_type2irtype(type), val);
 
-    // IR: %<reg> =<type> load<type> %<val>
-
-    return exp_return_t(type, val);
+    return exp_return_t(type, exp_val);
 }
 
 exp_return_t ASTVisitor::visitLVal(const LVal &node) {
@@ -327,7 +397,7 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                     return exp_return_t(std::make_shared<VoidType>(), nullptr);
                 }
 
-                return exp_return_t(symbol->type, nullptr);
+                return exp_return_t(symbol->type, symbol->value);
             },
             [this](const Index &node) {
                 auto [lval_type, lval_val] = visitLVal(*node.lval);
@@ -342,18 +412,20 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                 // calc the address through index. if the curr lval
                 // is a pointer, don't forget to get the value from
                 // pointer first
-
                 if (lval_type->is_pointer()) {
-                    // IR: %<reg> =<type> load<type> %<lval_val>
+                    lval_val = _builder.create_load(ir::Type::L, lval_val);
                 }
-                // IR: %<offset> =<type> mul %<exp_val> %<elm_size>
-                // IR: %<reg> =<type> add %<lval_val> %<offset>
 
                 auto lval_indirect_type =
                     std::static_pointer_cast<IndirectType>(lval_type);
 
-                return exp_return_t(lval_indirect_type->get_base_type(),
-                                    nullptr);
+                auto elm_size = ir::ConstBits::get(
+                    lval_indirect_type->get_base_type()->get_size());
+                auto offset =
+                    _builder.create_mul(ir::Type::W, exp_val, elm_size);
+                auto val = _builder.create_add(ir::Type::L, lval_val, offset);
+
+                return exp_return_t(lval_indirect_type->get_base_type(), val);
             }},
         node);
 }
@@ -378,6 +450,7 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
         return exp_return_t(std::make_shared<VoidType>(), nullptr);
     }
 
+    std::vector<ir::ValuePtr> ir_args;
     for (int i = 0; i < params_type.size(); i++) {
         auto [exp_type, exp_val] = visitExp(*node.func_rparams->at(i));
         // TODO: if params type is not matched, handle exception
@@ -387,19 +460,22 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
                           ", got " + exp_type->tostring());
             return exp_return_t(std::make_shared<VoidType>(), nullptr);
         }
+        ir_args.push_back(exp_val);
     }
 
-    // IR: %<reg> =<type> call $<name>(<params>)
+    auto ir_func_ret = _builder.create_call(_type2irtype(func_symbol->type),
+                                            func_symbol->value, ir_args);
 
-    return exp_return_t(symbol->type, nullptr);
+    return exp_return_t(symbol->type, ir_func_ret);
 }
 
 exp_return_t ASTVisitor::visitUnaryExp(const UnaryExp &node) {
     auto [exp_type, exp_val] = visitExp(*node.exp);
 
-    // IR: %<reg> =<type> <op> %<exp_val>, 0
+    // TUDO: need to check op
+    auto val = _builder.create_neg(_type2irtype(exp_type), exp_val);
 
-    return exp_return_t(exp_type, nullptr);
+    return exp_return_t(exp_type, val);
 }
 
 exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
@@ -408,9 +484,10 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
 
     auto type = _calc_type(left_type, right_type);
 
-    // IR: %<reg> =<type> <op> %<left_val> %<right_val>
+    // TODO: type convert and support different ops
+    auto val = _builder.create_ceqw(left_val, right_val);
 
-    return exp_return_t(std::make_shared<Int32Type>(), nullptr);
+    return exp_return_t(std::make_shared<Int32Type>(), val);
 }
 
 exp_return_t ASTVisitor::visitNumber(const Number &node) {
@@ -433,10 +510,10 @@ cond_return_t ASTVisitor::visitCond(const Cond &node) {
                 auto [type, val] = visitExp(node);
 
                 // generate conditional jump instruction
-                // IR: jnz %<val> @true @false
+                auto jnz_block = _builder.create_jnz(val, nullptr, nullptr);
 
-                return cond_return_t(BlockPtrList{nullptr},
-                                     BlockPtrList{nullptr});
+                return cond_return_t(BlockPtrList{jnz_block},
+                                     BlockPtrList{jnz_block});
             },
             [this](const LogicalExp &node) { return visitLogicalExp(node); },
         },
@@ -447,7 +524,7 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
     auto [ltruelist, lfalselist] = visitCond(*node.left);
 
     // TODO: create a new block for the right expression
-    // IR: @logic_right
+    auto logic_right_block = _builder.create_label("logic_right");
 
     auto [rtruelist, rfalselist] = visitCond(*node.right);
 
@@ -482,7 +559,7 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
         falselist.assign(rfalselist.begin(), rfalselist.end());
     }
 
-    // IR: @logic_join
+    _builder.create_label("logic_join");
 
     return cond_return_t(truelist, falselist);
 }

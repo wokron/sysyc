@@ -26,7 +26,9 @@ TEST_CASE("testing ast visitor") {
     yyin = nullptr;
     remove("test_frontend.sy");
 
-    ASTVisitor visitor(nullptr);
+    auto module = std::make_shared<ir::Module>();
+
+    ASTVisitor visitor(module);
 
     visitor.visit(*root);
 }

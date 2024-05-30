@@ -8,6 +8,7 @@
 struct Symbol {
     std::string name;
     std::shared_ptr<Type> type;
+    std::shared_ptr<ir::Value> value;
 
     Symbol(std::string name, std::shared_ptr<Type> type)
         : name(name), type(type){};
