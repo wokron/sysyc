@@ -19,16 +19,20 @@ class IRBuilder {
     }
 
     ValuePtr insert_inst(std::shared_ptr<Inst> inst) {
-        auto insert_point = _insert_point;
-        if (!insert_point) {
-            insert_point = _function->end;
-        }
+        auto insert_point = get_insert_point();
 
         insert_point->insts.push_back(inst);
         if (inst->to) {
             inst->to->id = _function->temp_counter++;
         }
         return inst->to;
+    }
+
+    std::shared_ptr<Block> get_insert_point() {
+        if (_insert_point) {
+            return _insert_point;
+        }
+        return _function->end;
     }
 
     std::shared_ptr<Block> create_label(std::string name) {
@@ -66,10 +70,11 @@ class IRBuilder {
 
     ValuePtr create_call(Type ty, ValuePtr func, std::vector<ValuePtr> args);
 
-    void create_ret(ValuePtr value);
-    void create_jmp(std::shared_ptr<Block> target);
-    void create_jnz(ValuePtr cond, std::shared_ptr<Block> iftrue,
-                    std::shared_ptr<Block> iffalse);
+    std::shared_ptr<Block> create_ret(ValuePtr value);
+    std::shared_ptr<Block> create_jmp(std::shared_ptr<Block> target);
+    std::shared_ptr<Block> create_jnz(ValuePtr cond,
+                                      std::shared_ptr<Block> iftrue,
+                                      std::shared_ptr<Block> iffalse);
 };
 
 } // namespace ir

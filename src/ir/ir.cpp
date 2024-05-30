@@ -98,13 +98,15 @@ void Phi::emit(std::ostream &out) const {
 
 std::shared_ptr<Block> Block::create(std::string name, Function &func) {
     // use a counter to generate unique block id in file scope
-    static uint block_counter = 1;
+    static uint *block_counter_ptr = func.block_counter_ptr;
     if (func.start == nullptr) {
-        func.start = std::shared_ptr<Block>(new Block{block_counter++, name});
+        func.start =
+            std::shared_ptr<Block>(new Block{(*block_counter_ptr)++, name});
         func.end = func.start;
         return func.start;
     } else {
-        auto blk = std::shared_ptr<Block>(new Block{block_counter++, name});
+        auto blk =
+            std::shared_ptr<Block>(new Block{(*block_counter_ptr)++, name});
         func.end->next = blk;
         func.end = blk;
         return blk;
@@ -168,7 +170,12 @@ std::tuple<Function::FunctionPtr, Function::TempPtrList>
 Function::create(bool is_export, std::string name, Type ty,
                  std::vector<Type> params, Module &module) {
 
-    auto func = std::shared_ptr<Function>(new Function{is_export, name, ty});
+    auto func = std::shared_ptr<Function>(new Function{
+        .is_export = is_export,
+        .name = name,
+        .ty = ty,
+        .block_counter_ptr = &module.block_counter,
+    });
 
     auto start = Block::create("start", *func);
 
@@ -188,7 +195,7 @@ void Function::emit(std::ostream &out) const {
     if (is_export) {
         out << "export" << std::endl;
     }
-    out << "function " << (ty != Type::X ? type_to_string(ty) : "") << " $"
+    out << "function" << (ty != Type::X ? " " + type_to_string(ty) : "") << " $"
         << name << "(";
 
     std::string params;

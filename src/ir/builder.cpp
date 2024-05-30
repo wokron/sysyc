@@ -271,42 +271,49 @@ ValuePtr IRBuilder::create_call(Type ty, ValuePtr func,
  * @brief Create a return instruction,
  * format: ret <value>
  */
-void IRBuilder::create_ret(ValuePtr value) {
-    if (_insert_point->jump.type != Jump::NONE) {
+std::shared_ptr<Block> IRBuilder::create_ret(ValuePtr value) {
+    auto insert_point = get_insert_point();
+    if (insert_point->jump.type != Jump::NONE) {
         // dead code, just skip this instruction
-        return;
+        return insert_point;
     }
-    _insert_point->jump.type = Jump::RET;
-    _insert_point->jump.arg = value;
+    insert_point->jump.type = Jump::RET;
+    insert_point->jump.arg = value;
+    return insert_point;
 }
 
 /**
  * @brief Create a jump instruction,
  * format: jmp <target>
  */
-void IRBuilder::create_jmp(std::shared_ptr<Block> target) {
-    if (_insert_point->jump.type != Jump::NONE) {
+std::shared_ptr<Block> IRBuilder::create_jmp(std::shared_ptr<Block> target) {
+    auto insert_point = get_insert_point();
+    if (insert_point->jump.type != Jump::NONE) {
         // dead code, just skip this instruction
-        return;
+        return insert_point;
     }
-    _insert_point->jump.type = Jump::JMP;
-    _insert_point->jump.blk[0] = target;
+    insert_point->jump.type = Jump::JMP;
+    insert_point->jump.blk[0] = target;
+    return insert_point;
 }
 
 /**
  * @brief Create a jump if zero instruction,
- * format: jz <cond> <iftrue> <iffalse>
+ * format: jz <cond> <if_true> <if_false>
  */
-void IRBuilder::create_jnz(ValuePtr cond, std::shared_ptr<Block> iftrue,
-                           std::shared_ptr<Block> iffalse) {
-    if (_insert_point->jump.type != Jump::NONE) {
+std::shared_ptr<Block> IRBuilder::create_jnz(ValuePtr cond,
+                                             std::shared_ptr<Block> if_true,
+                                             std::shared_ptr<Block> if_false) {
+    auto insert_point = get_insert_point();
+    if (insert_point->jump.type != Jump::NONE) {
         // dead code, just skip this instruction
-        return;
+        return insert_point;
     }
-    _insert_point->jump.type = Jump::JNZ;
-    _insert_point->jump.arg = cond;
-    _insert_point->jump.blk[0] = iftrue;
-    _insert_point->jump.blk[1] = iffalse;
+    insert_point->jump.type = Jump::JNZ;
+    insert_point->jump.arg = cond;
+    insert_point->jump.blk[0] = if_true;
+    insert_point->jump.blk[1] = if_false;
+    return insert_point;
 }
 
 } // namespace ir

@@ -153,6 +153,7 @@ struct Function {
 
     // use a counter to generate unique temp name in function scope
     uint temp_counter = 1;
+    uint *block_counter_ptr;
 
     using TempPtrList = std::vector<std::shared_ptr<Temp>>;
     using FunctionPtr = std::shared_ptr<Function>;
@@ -250,6 +251,7 @@ struct Data {
 struct Module {
     std::vector<std::shared_ptr<Data>> datas;
     std::vector<std::shared_ptr<Function>> functions;
+    uint block_counter = 1;
 
     void add_function(std::shared_ptr<Function> func) {
         functions.push_back(func);
