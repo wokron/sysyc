@@ -435,9 +435,8 @@ cond_return_t ASTVisitor::visitCond(const Cond &node) {
                 // generate conditional jump instruction
                 // IR: jnz %<val> @true @false
 
-                JumpInst inst = nullptr;
-                return cond_return_t(std::vector<JumpInst>{inst},
-                                     std::vector<JumpInst>{inst});
+                return cond_return_t(BlockPtrList{nullptr},
+                                     BlockPtrList{nullptr});
             },
             [this](const LogicalExp &node) { return visitLogicalExp(node); },
         },
@@ -452,7 +451,7 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
 
     auto [rtruelist, rfalselist] = visitCond(*node.right);
 
-    std::vector<JumpInst> truelist, falselist;
+    BlockPtrList truelist, falselist;
     if (node.op == LogicalExp::AND) {
         // if the logical expression is `&&`, we need to merge the false list
         // from left and right expression

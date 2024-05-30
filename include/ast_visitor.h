@@ -6,15 +6,13 @@
 #include <memory>
 #include <variant>
 
-// mock for conditional jump instruction
-using JumpInst = std::nullptr_t;
-
 using exp_return_t =
     std::tuple<std::shared_ptr<Type>, std::shared_ptr<ir::Value>>;
 
 // return type for conditional expression, first vector is the true path, second
 // vector is the false path
-using cond_return_t = std::tuple<std::vector<JumpInst>, std::vector<JumpInst>>;
+using BlockPtrList = std::vector<std::shared_ptr<ir::Block>>;
+using cond_return_t = std::tuple<BlockPtrList, BlockPtrList>;
 
 class ASTVisitor {
   private:
