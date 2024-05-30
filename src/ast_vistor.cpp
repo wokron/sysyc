@@ -303,7 +303,7 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
 
     // IR: %<reg> =<type> <op> %<left_val> %<right_val>
 
-    return std::make_tuple(_calc_type(left_type, right_type), nullptr);
+    return exp_return_t(_calc_type(left_type, right_type), nullptr);
 }
 
 exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
@@ -314,48 +314,47 @@ exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
 
     // IR: %<reg> =<type> load<type> %<val>
 
-    return std::make_tuple(type, val);
+    return exp_return_t(type, val);
 }
 
 exp_return_t ASTVisitor::visitLVal(const LVal &node) {
     return std::visit(
-        overloaded{[this](const Ident &node) {
-                       auto symbol = _current_scope->get_symbol(node);
-                       if (!symbol) {
-                           error(-1, "undefined symbol " + node);
-                           return std::make_tuple<std::shared_ptr<Type>, Value>(
-                               std::make_shared<VoidType>(), nullptr);
-                       }
+        overloaded{
+            [this](const Ident &node) {
+                auto symbol = _current_scope->get_symbol(node);
+                if (!symbol) {
+                    error(-1, "undefined symbol " + node);
+                    return exp_return_t(std::make_shared<VoidType>(), nullptr);
+                }
 
-                       return std::make_tuple(symbol->type, nullptr);
-                   },
-                   [this](const Index &node) {
-                       auto [lval_type, lval_val] = visitLVal(*node.lval);
-                       auto [exp_type, exp_val] = visitExp(*node.exp);
+                return exp_return_t(symbol->type, nullptr);
+            },
+            [this](const Index &node) {
+                auto [lval_type, lval_val] = visitLVal(*node.lval);
+                auto [exp_type, exp_val] = visitExp(*node.exp);
 
-                       if (!lval_type->is_array() && !lval_type->is_pointer()) {
-                           error(-1, "index operator [] can only be used on "
-                                     "array or pointer");
-                           return std::make_tuple<std::shared_ptr<Type>, Value>(
-                               std::make_shared<VoidType>(), nullptr);
-                       }
+                if (!lval_type->is_array() && !lval_type->is_pointer()) {
+                    error(-1, "index operator [] can only be used on "
+                              "array or pointer");
+                    return exp_return_t(std::make_shared<VoidType>(), nullptr);
+                }
 
-                       // calc the address through index. if the curr lval
-                       // is a pointer, don't forget to get the value from
-                       // pointer first
+                // calc the address through index. if the curr lval
+                // is a pointer, don't forget to get the value from
+                // pointer first
 
-                       if (lval_type->is_pointer()) {
-                           // IR: %<reg> =<type> load<type> %<lval_val>
-                       }
-                       // IR: %<offset> =<type> mul %<exp_val> %<elm_size>
-                       // IR: %<reg> =<type> add %<lval_val> %<offset>
+                if (lval_type->is_pointer()) {
+                    // IR: %<reg> =<type> load<type> %<lval_val>
+                }
+                // IR: %<offset> =<type> mul %<exp_val> %<elm_size>
+                // IR: %<reg> =<type> add %<lval_val> %<offset>
 
-                       auto lval_indirect_type =
-                           std::static_pointer_cast<IndirectType>(lval_type);
+                auto lval_indirect_type =
+                    std::static_pointer_cast<IndirectType>(lval_type);
 
-                       return std::make_tuple<std::shared_ptr<Type>, Value>(
-                           lval_indirect_type->get_base_type(), nullptr);
-                   }},
+                return exp_return_t(lval_indirect_type->get_base_type(),
+                                    nullptr);
+            }},
         node);
 }
 
@@ -363,20 +362,20 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
     auto symbol = _current_scope->get_symbol(node.ident);
     if (!symbol) {
         error(-1, "undefined function " + node.ident);
-        return std::make_tuple(std::make_shared<VoidType>(), nullptr);
+        return exp_return_t(std::make_shared<VoidType>(), nullptr);
     }
 
     auto func_symbol = std::dynamic_pointer_cast<FunctionSymbol>(symbol);
     if (!func_symbol) {
         error(-1, node.ident + " is not a function");
-        return std::make_tuple(std::make_shared<VoidType>(), nullptr);
+        return exp_return_t(std::make_shared<VoidType>(), nullptr);
     }
 
     auto params_type = func_symbol->param_types;
 
     if (params_type.size() != node.func_rparams->size()) {
         error(-1, "params number not matched in function call " + node.ident);
-        return std::make_tuple(std::make_shared<VoidType>(), nullptr);
+        return exp_return_t(std::make_shared<VoidType>(), nullptr);
     }
 
     for (int i = 0; i < params_type.size(); i++) {
@@ -386,13 +385,13 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
             error(-1, "params type not matched in function call " + node.ident +
                           ", expected " + params_type[i]->tostring() +
                           ", got " + exp_type->tostring());
-            return std::make_tuple(std::make_shared<VoidType>(), nullptr);
+            return exp_return_t(std::make_shared<VoidType>(), nullptr);
         }
     }
 
     // IR: %<reg> =<type> call $<name>(<params>)
 
-    return std::make_tuple(symbol->type, nullptr);
+    return exp_return_t(symbol->type, nullptr);
 }
 
 exp_return_t ASTVisitor::visitUnaryExp(const UnaryExp &node) {
@@ -400,7 +399,7 @@ exp_return_t ASTVisitor::visitUnaryExp(const UnaryExp &node) {
 
     // IR: %<reg> =<type> <op> %<exp_val>, 0
 
-    return std::make_tuple(exp_type, nullptr);
+    return exp_return_t(exp_type, nullptr);
 }
 
 exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
@@ -411,23 +410,20 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
 
     // IR: %<reg> =<type> <op> %<left_val> %<right_val>
 
-    return std::make_tuple(std::make_shared<Int32Type>(), nullptr);
+    return exp_return_t(std::make_shared<Int32Type>(), nullptr);
 }
 
 exp_return_t ASTVisitor::visitNumber(const Number &node) {
-    return std::visit(overloaded{
-                          [this](int node) {
-                              return std::make_tuple<std::shared_ptr<Type>,
-                                                     std::shared_ptr<Value>>(
-                                  std::make_shared<Int32Type>(), nullptr);
-                          },
-                          [this](float node) {
-                              return std::make_tuple<std::shared_ptr<Type>,
-                                                     std::shared_ptr<Value>>(
-                                  std::make_shared<FloatType>(), nullptr);
-                          },
-                      },
-                      node);
+    return std::visit(
+        overloaded{
+            [this](int node) {
+                return exp_return_t(std::make_shared<Int32Type>(), nullptr);
+            },
+            [this](float node) {
+                return exp_return_t(std::make_shared<FloatType>(), nullptr);
+            },
+        },
+        node);
 }
 
 cond_return_t ASTVisitor::visitCond(const Cond &node) {
@@ -440,8 +436,8 @@ cond_return_t ASTVisitor::visitCond(const Cond &node) {
                 // IR: jnz %<val> @true @false
 
                 JumpInst inst = nullptr;
-                return std::make_tuple(std::vector<JumpInst>{inst},
-                                       std::vector<JumpInst>{inst});
+                return cond_return_t(std::vector<JumpInst>{inst},
+                                     std::vector<JumpInst>{inst});
             },
             [this](const LogicalExp &node) { return visitLogicalExp(node); },
         },
@@ -489,5 +485,5 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
 
     // IR: @logic_join
 
-    return std::make_tuple(truelist, falselist);
+    return cond_return_t(truelist, falselist);
 }

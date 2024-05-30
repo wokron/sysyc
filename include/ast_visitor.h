@@ -1,5 +1,6 @@
 #pragma once
 #include "ast.h"
+#include "ir/ir.h"
 #include "midend/symbol.h"
 #include <iostream>
 #include <memory>
@@ -8,7 +9,8 @@
 // mock for conditional jump instruction
 using JumpInst = std::nullptr_t;
 
-using exp_return_t = std::tuple<std::shared_ptr<Type>, std::shared_ptr<Value>>;
+using exp_return_t =
+    std::tuple<std::shared_ptr<Type>, std::shared_ptr<ir::Value>>;
 
 // return type for conditional expression, first vector is the true path, second
 // vector is the false path

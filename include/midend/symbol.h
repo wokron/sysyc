@@ -1,11 +1,9 @@
 #pragma once
 
+#include "ir/ir.h"
 #include "type.h"
 #include <memory>
 #include <unordered_map>
-
-// mock for ir value
-using Value = std::nullptr_t;
 
 struct Symbol {
     std::string name;
@@ -21,7 +19,7 @@ class Initializer {
   public:
     Initializer(int space = 1) : _space(space) {}
 
-    bool insert(std::shared_ptr<Value> value) {
+    bool insert(std::shared_ptr<ir::Value> value) {
         if (_pos >= _space) {
             return false;
         }
@@ -44,12 +42,12 @@ class Initializer {
         return rt;
     }
 
-    std::unordered_map<int, std::shared_ptr<Value>> get_values() {
+    std::unordered_map<int, std::shared_ptr<ir::Value>> get_values() {
         return _init_values;
     }
 
   private:
-    std::unordered_map<int, std::shared_ptr<Value>> _init_values;
+    std::unordered_map<int, std::shared_ptr<ir::Value>> _init_values;
     int _space;
     int _pos = 0;
 };
