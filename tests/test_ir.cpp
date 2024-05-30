@@ -27,7 +27,7 @@ TEST_CASE("testing ir building") {
     auto module = ir::Module();
 
     auto [add, params] = ir::Function::create(
-        false, "add", ir::Type::W, {{ir::Type::W}, {ir::Type::W}}, module);
+        false, "add", ir::Type::W, {ir::Type::W, ir::Type::W}, module);
     auto builder = ir::IRBuilder(add);
 
     auto start = add->start;

@@ -208,6 +208,7 @@ struct Temp : public Value {
 
 struct DataItem {
     virtual void emit(std::ostream &out) const = 0;
+    virtual ~DataItem() = default;
 };
 
 struct ConstData : public DataItem {
