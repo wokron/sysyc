@@ -70,7 +70,7 @@ static constexpr char EXPECTED3[] = R"(function $func() {
 TEST_CASE("testing basic blocks") {
     auto module = ir::Module();
 
-    auto [func, params] = ir::Function::create(
+    auto [func, _] = ir::Function::create(
         false, "func", ir::Type::X, {}, module);
 
     std::ostringstream out1;
@@ -97,4 +97,78 @@ TEST_CASE("testing basic blocks") {
     std::ostringstream out2;
     module.emit(out2);
     CHECK_EQ(out2.str(), EXPECTED3);
+}
+
+static constexpr char EXPECTED4[] = R"(function $func(w %.1, s %.2, l %.3, ) {
+@start.1
+    %.4 =l alloc4 4
+    storew %.1, %.4
+    %.5 =l alloc4 4
+    stores %.2, %.5
+    %.6 =l alloc8 8
+    storel %.3, %.6
+@body.2
+    %.7 =w loadw %.4
+    %.8 =w add %.7, %.7
+    ret %.8
+}
+)";
+
+TEST_CASE("testing load and store") {
+    auto module = ir::Module();
+
+    auto [func, params] = ir::Function::create(
+        false, "func", ir::Type::X, {ir::Type::W, ir::Type::S, ir::Type::L},
+        module);
+
+    auto builder = ir::IRBuilder(func);
+
+    auto par1 = builder.create_alloc(ir::Type::W, 1 * 4);
+    builder.create_store(ir::Type::W, params[0], par1);
+
+    auto par2 = builder.create_alloc(ir::Type::S, 1 * 4);
+    builder.create_store(ir::Type::S, params[1], par2);
+
+    auto par3 = builder.create_alloc(ir::Type::L, 1 * 8);
+    builder.create_store(ir::Type::L, params[2], par3);
+
+    auto body = builder.create_label("body");
+
+    auto loadpar1 = builder.create_load(ir::Type::W, par1);
+
+    auto add = builder.create_add(ir::Type::W, loadpar1, loadpar1);
+
+    auto ret = builder.create_ret(add);
+
+    std::ostringstream out;
+    module.emit(out);
+    CHECK_EQ(out.str(), EXPECTED4);
+}
+
+static constexpr char EXPECTED5[] = R"(function w $func(w %.1, w %.2, ) {
+@start.1
+@body.2
+    %.3 =w call $func(w %.2, w %.1, )
+    ret %.3
+}
+)";
+
+TEST_CASE("testing function call") {
+    auto module = ir::Module();
+
+    auto [func, params] = ir::Function::create(
+        false, "func", ir::Type::W, {ir::Type::W, ir::Type::W}, module);
+
+    auto builder = ir::IRBuilder(func);
+
+    auto body = builder.create_label("body");
+
+    auto call = builder.create_call(ir::Type::W, func->get_address(),
+                                    {params[1], params[0]});
+
+    auto ret = builder.create_ret(call);
+
+    std::ostringstream out;
+    module.emit(out);
+    CHECK_EQ(out.str(), EXPECTED5);
 }

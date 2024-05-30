@@ -47,7 +47,7 @@ class IRBuilder {
     ValuePtr create_mul(Type ty, ValuePtr lhs, ValuePtr rhs);
     ValuePtr create_rem(Type ty, ValuePtr lhs, ValuePtr rhs);
 
-    void create_store(Type ty, ValuePtr address, ValuePtr value);
+    void create_store(Type ty, ValuePtr value, ValuePtr address);
     ValuePtr create_load(Type ty, ValuePtr address);
     ValuePtr create_alloc(Type ty, int bytes);
 
