@@ -74,7 +74,7 @@ class IRBuilder {
     ValuePtr create_cgts(ValuePtr lhs, ValuePtr rhs);
 
     ValuePtr create_stosi(ValuePtr value);
-    ValuePtr create_swtof(Type ty, ValuePtr value);
+    ValuePtr create_swtof(ValuePtr value);
 
     ValuePtr create_call(Type ty, ValuePtr func, std::vector<ValuePtr> args);
 

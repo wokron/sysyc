@@ -39,6 +39,7 @@ class ASTVisitor {
     void visitBlockItems(const BlockItems &node);
 
     void visitStmt(const Stmt &node);
+
     void visitAssignStmt(const AssignStmt &node);
     void visitExpStmt(const ExpStmt &node);
     void visitBlockStmt(const BlockStmt &node);
@@ -62,4 +63,7 @@ class ASTVisitor {
 
     // some utility methods
     bool is_global_context() const { return !_current_scope->has_parent(); }
+    std::shared_ptr<ir::Value>
+    convert_if_needed(std::shared_ptr<Type> to, std::shared_ptr<Type> from,
+                      std::shared_ptr<ir::Value> val);
 };

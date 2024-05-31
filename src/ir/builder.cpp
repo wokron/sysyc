@@ -249,7 +249,7 @@ ValuePtr IRBuilder::create_stosi(ValuePtr value) {
  * @brief Create a signed integer to float instruction,
  * format: %to =s stof <value>
  */
-ValuePtr IRBuilder::create_swtof(Type ty, ValuePtr value) {
+ValuePtr IRBuilder::create_swtof(ValuePtr value) {
     auto inst = Inst::create(InstType::ISWTOF, Type::S, value, nullptr);
     return insert_inst(inst);
 }
