@@ -110,7 +110,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
         error(-1, "redefine variable " + node.ident);
     }
 
-    if (is_global_context()) {
+    if (_is_global_context()) {
         auto elm_type = _asttype2type(btype);
         auto data = ir::Data::create(false, symbol->name, elm_type->get_size(),
                                      _module);
@@ -333,7 +333,7 @@ void ASTVisitor::visitStmt(const Stmt &node) {
 }
 
 std::shared_ptr<ir::Value>
-ASTVisitor::convert_if_needed(std::shared_ptr<Type> to,
+ASTVisitor::_convert_if_needed(std::shared_ptr<Type> to,
                               std::shared_ptr<Type> from,
                               std::shared_ptr<ir::Value> val) {
     if (to == from) {
@@ -361,7 +361,7 @@ void ASTVisitor::visitAssignStmt(const AssignStmt &node) {
         return;
     }
 
-    exp_val = convert_if_needed(lval_type, exp_type, exp_val);
+    exp_val = _convert_if_needed(lval_type, exp_type, exp_val);
     if (!exp_val) {
         error(-1, "type not matched in assignment");
         return;
@@ -472,7 +472,7 @@ void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
             return;
         }
 
-        exp_val = convert_if_needed(_current_return_type, exp_type, exp_val);
+        exp_val = _convert_if_needed(_current_return_type, exp_type, exp_val);
         if (!exp_val) {
             error(-1, "type not matched in return statement");
             return;
@@ -522,12 +522,12 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     }
 
     auto type = left_type->implicit_cast(*right_type);
-    left_val = convert_if_needed(type, left_type, left_val);
+    left_val = _convert_if_needed(type, left_type, left_val);
     if (!left_val) {
         error(-1, "type not matched in binary expression");
         return exp_return_t(ErrorType::get(), nullptr);
     }
-    right_val = convert_if_needed(type, right_type, right_val);
+    right_val = _convert_if_needed(type, right_type, right_val);
     if (!right_val) {
         error(-1, "type not matched in binary expression");
         return exp_return_t(ErrorType::get(), nullptr);
@@ -708,12 +708,12 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
     }
 
     auto type = left_type->implicit_cast(*right_type);
-    left_val = convert_if_needed(type, left_type, left_val);
+    left_val = _convert_if_needed(type, left_type, left_val);
     if (!left_val) {
         error(-1, "type not matched in compare expression");
         return exp_return_t(ErrorType::get(), nullptr);
     }
-    right_val = convert_if_needed(type, right_type, right_val);
+    right_val = _convert_if_needed(type, right_type, right_val);
     if (!right_val) {
         error(-1, "type not matched in compare expression");
         return exp_return_t(ErrorType::get(), nullptr);

@@ -37,8 +37,7 @@ class ASTVisitor {
     void visit(const CompUnits &node);
     void visitDecl(const Decl &node);
     void visitVarDef(const VarDef &node, ASTType btype, bool is_const);
-    std::shared_ptr<Initializer> visitInitVal(const InitVal &node,
-                                              Type &type);
+    std::shared_ptr<Initializer> visitInitVal(const InitVal &node, Type &type);
     std::shared_ptr<Type> visitDims(const Dims &node, ASTType btype);
     void visitFuncDef(const FuncDef &node);
     std::vector<std::shared_ptr<Symbol>>
@@ -68,9 +67,10 @@ class ASTVisitor {
     cond_return_t visitCond(const Cond &node);
     cond_return_t visitLogicalExp(const LogicalExp &node);
 
+  private:
     // some utility methods
-    bool is_global_context() const { return !_current_scope->has_parent(); }
+    bool _is_global_context() const { return !_current_scope->has_parent(); }
     std::shared_ptr<ir::Value>
-    convert_if_needed(std::shared_ptr<Type> to, std::shared_ptr<Type> from,
-                      std::shared_ptr<ir::Value> val);
+    _convert_if_needed(std::shared_ptr<Type> to, std::shared_ptr<Type> from,
+                       std::shared_ptr<ir::Value> val);
 };
