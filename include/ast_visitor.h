@@ -5,6 +5,7 @@
 #include "midend/symbol.h"
 #include <iostream>
 #include <memory>
+#include <stack>
 #include <variant>
 
 using exp_return_t =
@@ -15,6 +16,9 @@ using exp_return_t =
 using BlockPtrList = std::vector<std::shared_ptr<ir::Block>>;
 using cond_return_t = std::tuple<BlockPtrList, BlockPtrList>;
 
+// jump insts for while loop, first vector for continue, second vector for break
+using while_jump_t = std::tuple<BlockPtrList, BlockPtrList>;
+
 class ASTVisitor {
   private:
     std::shared_ptr<SymbolTable> _current_scope;
@@ -22,6 +26,7 @@ class ASTVisitor {
     ir::IRBuilder _builder;
 
     std::shared_ptr<Type> _current_return_type = nullptr;
+    std::stack<while_jump_t> _while_stack;
 
   public:
     ASTVisitor(ir::Module &module)

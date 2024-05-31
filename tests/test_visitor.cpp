@@ -9,8 +9,13 @@ TEST_CASE("testing ast visitor") {
     const char *content = R"(
         int a[3][3] = {1, 2, 3, {3}, {4, 5}};
         int main() {
-            int c[3][3] = {1, 2, 3, {3}, {4, 5}};
-            return c[0][0];
+            while(1) {
+                if (1) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
         }
     )";
 

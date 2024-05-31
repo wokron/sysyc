@@ -423,9 +423,14 @@ void ASTVisitor::visitWhileStmt(const WhileStmt &node) {
 
     auto body_block = _builder.create_label("while_body");
 
+    _while_stack.push(while_jump_t({}, {}));
+
     _current_scope = _current_scope->push_scope();
     visitStmt(*node.stmt);
     _current_scope = _current_scope->pop_scope();
+
+    auto [continue_jmp, break_jmp] = _while_stack.top();
+    _while_stack.pop();
 
     _builder.create_jmp(cond_block);
 
@@ -438,13 +443,25 @@ void ASTVisitor::visitWhileStmt(const WhileStmt &node) {
     for (auto &jmp_block : jmp_to_false) {
         jmp_block->jump.blk[1] = join_block;
     }
+    for (auto &jmp_block : continue_jmp) {
+        jmp_block->jump.blk[0] = cond_block;
+    }
+    for (auto &jmp_block : break_jmp) {
+        jmp_block->jump.blk[0] = join_block;
+    }
 }
 
 void ASTVisitor::visitControlStmt(const ControlStmt &node) {
+    if (_while_stack.empty()) {
+        error(-1, "break/continue statement not in while loop");
+        return;
+    }
+
+    auto &[continue_jmp, break_jmp] = _while_stack.top();
     if (node.type == ControlStmt::BREAK) {
-        // IR: jmp @while_join
+        break_jmp.push_back(_builder.create_jmp(nullptr));
     } else { // CONTINUE
-        // IR: jmp @while_cond
+        continue_jmp.push_back(_builder.create_jmp(nullptr));
     }
 }
 
