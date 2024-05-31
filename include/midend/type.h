@@ -40,12 +40,19 @@ class Type {
 
     TypeId get_type_id() { return this->_tid; }
 
+    virtual std::shared_ptr<Type> implicit_cast(const Type &other) const = 0;
+
   private:
     TypeId _tid = VOID;
 };
 
 class ErrorType : public Type {
   public:
+    static std::shared_ptr<ErrorType> get() {
+        static std::shared_ptr<ErrorType> instance(new ErrorType());
+        return instance;
+    }
+
     ErrorType() : Type(TypeId::VOID) {}
 
     int get_size() const override { return -1; }
@@ -53,10 +60,19 @@ class ErrorType : public Type {
     bool operator==(const Type &other) const override { return false; }
 
     std::string tostring() const override { return "error-type"; }
+
+    std::shared_ptr<Type> implicit_cast(const Type &other) const override {
+        return ErrorType::get();
+    }
 };
 
 class VoidType : public Type {
   public:
+    static std::shared_ptr<VoidType> get() {
+        static std::shared_ptr<VoidType> instance(new VoidType());
+        return instance;
+    }
+
     VoidType() : Type(TypeId::VOID) {}
 
     int get_size() const override { return 1; }
@@ -66,10 +82,19 @@ class VoidType : public Type {
     }
 
     std::string tostring() const override { return "void"; }
+
+    std::shared_ptr<Type> implicit_cast(const Type &other) const override {
+        return ErrorType::get();
+    }
 };
 
 class Int32Type : public Type {
   public:
+    static std::shared_ptr<Int32Type> get() {
+        static std::shared_ptr<Int32Type> instance(new Int32Type());
+        return instance;
+    }
+
     Int32Type() : Type(TypeId::INT32) {}
 
     int get_size() const override { return 4; }
@@ -79,10 +104,17 @@ class Int32Type : public Type {
     }
 
     std::string tostring() const override { return "int"; }
+
+    std::shared_ptr<Type> implicit_cast(const Type &other) const override;
 };
 
 class FloatType : public Type {
   public:
+    static std::shared_ptr<FloatType> get() {
+        static std::shared_ptr<FloatType> instance(new FloatType());
+        return instance;
+    }
+
     FloatType() : Type(TypeId::FLOAT) {}
 
     int get_size() const override { return 4; }
@@ -92,6 +124,8 @@ class FloatType : public Type {
     }
 
     std::string tostring() const override { return "float"; }
+
+    std::shared_ptr<Type> implicit_cast(const Type &other) const override;
 };
 
 class IndirectType : public Type {
@@ -101,6 +135,10 @@ class IndirectType : public Type {
     virtual std::shared_ptr<Type> get_base_type() const = 0;
 
     bool operator==(const Type &other) const override;
+
+    std::shared_ptr<Type> implicit_cast(const Type &other) const override {
+        return ErrorType::get();
+    }
 };
 
 class PointerType : public IndirectType {
