@@ -52,6 +52,26 @@ struct ConstBits : public Const {
     void emit(std::ostream &out) const override;
 
     Type get_type() const override;
+
+    std::shared_ptr<ConstBits> to_int() const {
+        if (auto int_val = std::get_if<int>(&value); int_val) {
+            return ConstBits::get(*int_val);
+        } else if (auto float_val = std::get_if<float>(&value); float_val) {
+            return ConstBits::get((int)*float_val);
+        } else {
+            throw std::logic_error("variant empty");
+        }
+    }
+
+    std::shared_ptr<ConstBits> to_float() const {
+        if (auto int_val = std::get_if<int>(&value); int_val) {
+            return ConstBits::get((float)*int_val);
+        } else if (auto float_val = std::get_if<float>(&value); float_val) {
+            return ConstBits::get(*float_val);
+        } else {
+            throw std::logic_error("variant empty");
+        }
+    }
 };
 
 extern std::unordered_map<float, std::shared_ptr<ConstBits>> _floatcon_cache;

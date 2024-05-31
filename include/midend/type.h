@@ -30,6 +30,9 @@ class Type {
 
     bool is_array() const { return this->_tid == ARRAY; }
 
+    /**
+     * @brief Get the size of the type in bytes
+     */
     virtual int get_size() const = 0;
 
     virtual bool operator==(const Type &other) const = 0;
@@ -40,6 +43,11 @@ class Type {
 
     TypeId get_type_id() { return this->_tid; }
 
+    /**
+     * @brief Check if the type can be implicitly casted to another type
+     * @param other The target type
+     * @return The type after implicit cast, or nullptr if the cast is invalid
+     */
     virtual std::shared_ptr<Type> implicit_cast(const Type &other) const = 0;
 
   private:

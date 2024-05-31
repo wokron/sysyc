@@ -2,8 +2,8 @@
 
 #include "ir/ir.h"
 #include "type.h"
+#include <map>
 #include <memory>
-#include <unordered_map>
 
 struct Symbol {
     std::string name;
@@ -43,12 +43,14 @@ class Initializer {
         return rt;
     }
 
-    std::unordered_map<int, std::shared_ptr<ir::Value>> get_values() {
+    std::map<int, std::shared_ptr<ir::Value>> get_values() const {
         return _init_values;
     }
 
+    int get_space() const { return _space; }
+
   private:
-    std::unordered_map<int, std::shared_ptr<ir::Value>> _init_values;
+    std::map<int, std::shared_ptr<ir::Value>> _init_values;
     int _space;
     int _pos = 0;
 };

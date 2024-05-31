@@ -46,6 +46,55 @@ void ASTVisitor::visitDecl(const Decl &node) {
     }
 }
 
+static std::shared_ptr<ir::ConstBits>
+_convert_const(ir::Type target_type, std::shared_ptr<ir::ConstBits> const_val) {
+    if (target_type == ir::Type::W) {
+        return const_val->to_int();
+    } else if (target_type == ir::Type::S) {
+        return const_val->to_float();
+    } else {
+        return nullptr;
+    }
+}
+
+static void _init_global(ir::Data &data, std::shared_ptr<Type> elm_type,
+                         const Initializer &initializer) {
+    int prev_index = -1;
+    for (auto &[index, val] : initializer.get_values()) {
+        auto zero_count = index - prev_index - 1;
+        prev_index = index;
+        if (zero_count > 0) {
+            data.append_zero(elm_type->get_size() * zero_count);
+        }
+
+        // init value should be constant if the variable is global
+        auto const_val = std::dynamic_pointer_cast<ir::ConstBits>(val);
+
+        if (!const_val) {
+            error(-1, "init value must be constant for global variable");
+            // just to make it work
+            data.append_zero(elm_type->get_size());
+            continue;
+        }
+
+        auto elm_ir_type = _type2irtype(elm_type);
+        const_val = _convert_const(elm_ir_type, const_val);
+        if (!const_val) {
+            error(-1, "unsupported type in global variable");
+            // just to make it work
+            data.append_zero(elm_type->get_size());
+            continue;
+        }
+
+        data.append_const(elm_ir_type, {const_val});
+    }
+
+    auto zero_count = initializer.get_space() - prev_index - 1;
+    if (zero_count > 0) {
+        data.append_zero(elm_type->get_size() * zero_count);
+    }
+}
+
 void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     auto type = visitDims(*node.dims, btype);
 
@@ -65,31 +114,32 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
         auto elm_type = _asttype2type(btype);
         auto data = ir::Data::create(false, symbol->name, elm_type->get_size(),
                                      _module);
-        // TODO: append data items, need ordered map
-    } else {
-        if (type->is_array()) {
-            auto elm_type = _asttype2type(btype);
-            auto elm_ir_type = _type2irtype(elm_type);
 
-            symbol->value =
-                _builder.create_alloc(elm_ir_type, type->get_size());
-
-            if (symbol->initializer) {
-                for (auto &[index, val] : symbol->initializer->get_values()) {
-                    auto offset =
-                        ir::ConstBits::get(elm_type->get_size() * index);
-                    auto elm_addr =
-                        _builder.create_add(ir::Type::L, symbol->value, offset);
-                    _builder.create_store(elm_ir_type, val, elm_addr);
-                }
-            }
+        if (!symbol->initializer) {
+            // still need to append zero if no initializer
+            data->append_zero(elm_type->get_size());
         } else {
-            symbol->value =
-                _builder.create_alloc(_type2irtype(type), type->get_size());
-            if (symbol->initializer) {
-                _builder.create_store(_type2irtype(type),
-                                      symbol->initializer->get_values()[0],
-                                      symbol->value);
+            _init_global(*data, elm_type, *initializer);
+        }
+    } else { // in a function
+        auto elm_type = _asttype2type(btype);
+        auto elm_ir_type = _type2irtype(elm_type);
+
+        symbol->value = _builder.create_alloc(elm_ir_type, type->get_size());
+
+        if (symbol->initializer) {
+            for (auto &[index, val] : symbol->initializer->get_values()) {
+                if (auto const_val =
+                        std::dynamic_pointer_cast<ir::ConstBits>(val);
+                    !const_val && is_const) {
+                    error(-1, "init value must be constant for const variable");
+                    continue;
+                }
+
+                auto offset = ir::ConstBits::get(elm_type->get_size() * index);
+                auto elm_addr =
+                    _builder.create_add(ir::Type::L, symbol->value, offset);
+                _builder.create_store(elm_ir_type, val, elm_addr);
             }
         }
     }
@@ -720,8 +770,8 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
 
     BlockPtrList truelist, falselist;
     if (node.op == LogicalExp::AND) {
-        // if the logical expression is `&&`, we need to merge the false list
-        // from left and right expression
+        // if the logical expression is `&&`, we need to merge the false
+        // list from left and right expression
         falselist.assign(lfalselist.begin(), lfalselist.end());
         falselist.insert(falselist.end(), rfalselist.begin(), rfalselist.end());
 
@@ -731,17 +781,17 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
             jmp_block->jump.blk[0] = logic_right_block;
         }
 
-        // and the true list from right expression is the true list of the whole
-        // expression
+        // and the true list from right expression is the true list of the
+        // whole expression
         truelist.assign(rtruelist.begin(), rtruelist.end());
     } else { // OR
-        // vice versa, if the logical expression is `||`, we need to merge the
-        // true list from left and right expression
+        // vice versa, if the logical expression is `||`, we need to merge
+        // the true list from left and right expression
         truelist.assign(ltruelist.begin(), ltruelist.end());
         truelist.insert(truelist.end(), rtruelist.begin(), rtruelist.end());
 
-        // as for the false list from left expression, just jump to the right
-        // expression
+        // as for the false list from left expression, just jump to the
+        // right expression
         for (auto &jmp_block : lfalselist) {
             jmp_block->jump.blk[1] = logic_right_block;
         }
