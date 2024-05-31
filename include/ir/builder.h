@@ -73,6 +73,7 @@ class IRBuilder {
     ValuePtr create_cges(ValuePtr lhs, ValuePtr rhs);
     ValuePtr create_cgts(ValuePtr lhs, ValuePtr rhs);
 
+    ValuePtr create_extsw(ValuePtr value);
     ValuePtr create_stosi(ValuePtr value);
     ValuePtr create_swtof(ValuePtr value);
 

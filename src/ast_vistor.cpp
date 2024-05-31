@@ -143,11 +143,11 @@ std::shared_ptr<Type> ASTVisitor::visitDims(const Dims &node, ASTType btype) {
             auto [exp_type, exp_val] = visitConstExp(*exp);
             if (exp_type->is_int32() || exp_type->is_float()) {
                 auto exp_const_val =
-                    std::dynamic_pointer_cast<ir::ConstBits>(exp_type);
-                if (auto val = std::get_if<int>(&exp_const_val->value)) {
+                    std::dynamic_pointer_cast<ir::ConstBits>(exp_val);
+                if (auto val = std::get_if<int>(&(exp_const_val->value))) {
                     tb.in_array(*val);
                 } else if (auto val =
-                               std::get_if<float>(&exp_const_val->value)) {
+                               std::get_if<float>(&(exp_const_val->value))) {
                     tb.in_array(*val); // implicit cast to int
                 } else {
                     throw std::logic_error("no value in const bits");
@@ -182,6 +182,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
         error(-1, "redefine function " + node.ident);
         return;
     }
+    _current_return_type = symbol->type;
 
     // create function in IR
     auto [ir_func, ir_params] = ir::Function::create(
@@ -219,6 +220,8 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     _current_scope = _current_scope->pop_scope();
 
     _builder.set_function(nullptr);
+
+    _current_return_type = nullptr;
 }
 
 std::vector<std::shared_ptr<Symbol>>
@@ -377,6 +380,16 @@ void ASTVisitor::visitControlStmt(const ControlStmt &node) {
 void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
     if (node.exp) {
         auto [exp_type, exp_val] = visitExp(*node.exp);
+        if (exp_type->is_error()) {
+            return;
+        }
+
+        exp_val = convert_if_needed(_current_return_type, exp_type, exp_val);
+        if (!exp_val) {
+            error(-1, "type not matched in return statement");
+            return;
+        }
+
         _builder.create_ret(exp_val);
     }
     _builder.create_ret(nullptr);
@@ -390,7 +403,7 @@ exp_return_t ASTVisitor::visitConstExp(const Exp &node) {
     }
 
     // check if the expression is constant
-    if (auto const_val = std::dynamic_pointer_cast<ir::Const>(type);
+    if (auto const_val = std::dynamic_pointer_cast<ir::Const>(val);
         !const_val) {
         error(-1, "not a const expression");
         return exp_return_t(ErrorType::get(), nullptr);
@@ -501,12 +514,17 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                 auto lval_indirect_type =
                     std::static_pointer_cast<IndirectType>(lval_type);
 
+                // since exp_type is int, we need to convert it to long
+                exp_val = _builder.create_extsw(exp_val);
+
                 auto elm_size = ir::ConstBits::get(
                     lval_indirect_type->get_base_type()->get_size());
+
                 auto offset =
-                    _builder.create_mul(ir::Type::W, exp_val, elm_size);
+                    _builder.create_mul(ir::Type::L, exp_val, elm_size);
                 auto val = _builder.create_add(ir::Type::L, lval_val, offset);
 
+                // addr = base_addr + index * elm_size
                 return exp_return_t(lval_indirect_type->get_base_type(), val);
             }},
         node);

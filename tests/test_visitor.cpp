@@ -1,6 +1,7 @@
 #include "ast_visitor.h"
 #include "parser.h"
 #include <doctest.h>
+#include <sstream>
 
 extern FILE *yyin;
 
@@ -31,4 +32,10 @@ TEST_CASE("testing ast visitor") {
     ASTVisitor visitor(module);
 
     visitor.visit(*root);
+
+    std::ostringstream ss;
+
+    module.emit(ss);
+
+    std::cout << ss.str();
 }

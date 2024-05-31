@@ -21,6 +21,8 @@ class ASTVisitor {
     ir::Module &_module;
     ir::IRBuilder _builder;
 
+    std::shared_ptr<Type> _current_return_type = nullptr;
+
   public:
     ASTVisitor(ir::Module &module)
         : _module(module),

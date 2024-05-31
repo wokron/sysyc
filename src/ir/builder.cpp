@@ -237,6 +237,15 @@ ValuePtr IRBuilder::create_cgts(ValuePtr lhs, ValuePtr rhs) {
 }
 
 /**
+ * @brief Create a sign extension instruction,
+ * format: %to =w extsw <value>
+ */
+ValuePtr IRBuilder::create_extsw(ValuePtr value) {
+    auto inst = Inst::create(InstType::IEXTSW, Type::L, value, nullptr);
+    return insert_inst(inst);
+}
+
+/**
  * @brief Create a float to signed integer instruction,
  * format: %to =w stosi <value>
  */

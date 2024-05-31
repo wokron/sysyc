@@ -98,7 +98,7 @@ void Phi::emit(std::ostream &out) const {
 
 std::shared_ptr<Block> Block::create(std::string name, Function &func) {
     // use a counter to generate unique block id in file scope
-    static uint *block_counter_ptr = func.block_counter_ptr;
+    uint *block_counter_ptr = func.block_counter_ptr;
     if (func.start == nullptr) {
         func.start =
             std::shared_ptr<Block>(new Block{(*block_counter_ptr)++, name});
