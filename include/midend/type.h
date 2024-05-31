@@ -72,7 +72,7 @@ class ErrorType : public Type {
     }
 
   private:
-    ErrorType() : Type(TypeId::VOID) {}
+    ErrorType() : Type(TypeId::ERROR) {}
 };
 
 class VoidType : public Type {

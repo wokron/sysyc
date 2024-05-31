@@ -161,6 +161,9 @@ ASTVisitor::visitInitVal(const InitVal &node, std::shared_ptr<Type> type) {
             [this](const Exp &node) {
                 auto initializer = std::make_shared<Initializer>();
                 auto [exp_type, exp_value] = visitConstExp(node);
+                if (exp_type->is_error()) {
+                    return std::shared_ptr<Initializer>(nullptr);
+                }
                 initializer->insert(exp_value);
                 return initializer;
             },
@@ -200,20 +203,25 @@ std::shared_ptr<Type> ASTVisitor::visitDims(const Dims &node, ASTType btype) {
             tb.in_ptr();
         } else {
             auto [exp_type, exp_val] = visitConstExp(*exp);
-            if (exp_type->is_int32() || exp_type->is_float()) {
-                auto exp_const_val =
-                    std::dynamic_pointer_cast<ir::ConstBits>(exp_val);
-                if (auto val = std::get_if<int>(&(exp_const_val->value))) {
-                    tb.in_array(*val);
-                } else if (auto val =
-                               std::get_if<float>(&(exp_const_val->value))) {
-                    tb.in_array(*val); // implicit cast to int
-                } else {
-                    throw std::logic_error("no value in const bits");
-                }
-            } else {
-                error(-1, "array size must an int value");
+            if (exp_type->is_error()) {
                 tb.in_array(1); // just to make it work
+                continue;
+            }
+
+            if (!exp_type->is_int32() && !exp_type->is_float()) {
+                error(-1, "array size must be int or float");
+                tb.in_array(1); // just to make it work
+                continue;
+            }
+
+            auto exp_const_val =
+                std::dynamic_pointer_cast<ir::ConstBits>(exp_val);
+            if (auto val = std::get_if<int>(&(exp_const_val->value))) {
+                tb.in_array(*val);
+            } else if (auto val = std::get_if<float>(&(exp_const_val->value))) {
+                tb.in_array(*val); // implicit cast to int
+            } else {
+                throw std::logic_error("no value in const bits");
             }
         }
     }
@@ -532,6 +540,9 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
 
 exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
     auto [type, val] = visitLVal(*node.lval);
+    if (type->is_error()) {
+        return exp_return_t(ErrorType::get(), nullptr);
+    }
 
     // still an array, the value is the address itself
     if (type->is_array()) {
@@ -552,7 +563,7 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                 auto symbol = _current_scope->get_symbol(node);
                 if (!symbol) {
                     error(-1, "undefined symbol " + node);
-                    return exp_return_t(VoidType::get(), nullptr);
+                    return exp_return_t(ErrorType::get(), nullptr);
                 }
 
                 return exp_return_t(symbol->type, symbol->value);
@@ -561,10 +572,14 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                 auto [lval_type, lval_val] = visitLVal(*node.lval);
                 auto [exp_type, exp_val] = visitExp(*node.exp);
 
+                if (lval_type->is_error() || exp_type->is_error()) {
+                    return exp_return_t(ErrorType::get(), nullptr);
+                }
+
                 if (!lval_type->is_array() && !lval_type->is_pointer()) {
                     error(-1, "index operator [] can only be used on "
                               "array or pointer");
-                    return exp_return_t(VoidType::get(), nullptr);
+                    return exp_return_t(ErrorType::get(), nullptr);
                 }
 
                 // calc the address through index. if the curr lval
@@ -649,14 +664,14 @@ exp_return_t ASTVisitor::visitUnaryExp(const UnaryExp &node) {
         return exp_return_t(exp_type, exp_val); // do nothing
     case UnaryExp::SUB:
         if (!exp_type->is_int32() && !exp_type->is_float()) {
-            error(-1, "neg operator can only be used on int or float");
+            error(-1, "neg operator - can only be used on int or float");
             return exp_return_t(ErrorType::get(), nullptr);
         }
         return exp_return_t(
             exp_type, _builder.create_neg(_type2irtype(exp_type), exp_val));
     case UnaryExp::NOT:
         if (!exp_type->is_int32()) {
-            error(-1, "not operator can only be used on int");
+            error(-1, "not operator ! can only be used on int");
             return exp_return_t(ErrorType::get(), nullptr);
         }
         // !a equal to (a == 0)
