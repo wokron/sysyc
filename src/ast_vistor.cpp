@@ -734,16 +734,16 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
                                 _builder.create_cnew(left_val, right_val));
         case CompareExp::LT:
             return exp_return_t(Int32Type::get(),
-                                _builder.create_cslew(left_val, right_val));
+                                _builder.create_csltw(left_val, right_val));
         case CompareExp::LE:
             return exp_return_t(Int32Type::get(),
                                 _builder.create_cslew(right_val, left_val));
         case CompareExp::GT:
             return exp_return_t(Int32Type::get(),
-                                _builder.create_cslew(right_val, left_val));
+                                _builder.create_csgtw(right_val, left_val));
         case CompareExp::GE:
             return exp_return_t(Int32Type::get(),
-                                _builder.create_cslew(left_val, right_val));
+                                _builder.create_csgew(left_val, right_val));
         default:
             throw std::logic_error("unreachable");
         }
@@ -757,16 +757,16 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
                                 _builder.create_cnes(left_val, right_val));
         case CompareExp::LT:
             return exp_return_t(Int32Type::get(),
-                                _builder.create_csltw(left_val, right_val));
+                                _builder.create_clts(left_val, right_val));
         case CompareExp::LE:
             return exp_return_t(Int32Type::get(),
-                                _builder.create_csgew(left_val, right_val));
+                                _builder.create_cles(left_val, right_val));
         case CompareExp::GT:
             return exp_return_t(Int32Type::get(),
-                                _builder.create_csgtw(left_val, right_val));
+                                _builder.create_cgts(left_val, right_val));
         case CompareExp::GE:
             return exp_return_t(Int32Type::get(),
-                                _builder.create_csltw(right_val, left_val));
+                                _builder.create_cges(right_val, left_val));
         default:
             throw std::logic_error("unreachable");
         }
