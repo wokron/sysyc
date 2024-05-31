@@ -18,11 +18,11 @@ using cond_return_t = std::tuple<BlockPtrList, BlockPtrList>;
 class ASTVisitor {
   private:
     std::shared_ptr<SymbolTable> _current_scope;
-    std::shared_ptr<ir::Module> _module;
+    ir::Module &_module;
     ir::IRBuilder _builder;
 
   public:
-    ASTVisitor(std::shared_ptr<ir::Module> module)
+    ASTVisitor(ir::Module &module)
         : _module(module),
           _current_scope(std::make_shared<SymbolTable>(nullptr)) {}
 

@@ -64,7 +64,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     if (is_global_context()) {
         auto elm_type = _asttype2type(btype);
         auto data = ir::Data::create(false, symbol->name, elm_type->get_size(),
-                                     *_module);
+                                     _module);
         // TODO: append data items, need ordered map
     } else {
         if (type->is_array()) {
@@ -172,7 +172,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     // create function in IR
     auto [ir_func, ir_params] = ir::Function::create(
         symbol->name == "main", symbol->name, _type2irtype(return_type),
-        params_ir_type, *_module);
+        params_ir_type, _module);
     symbol->value = ir_func->get_address();
     _builder.set_function(ir_func);
 
