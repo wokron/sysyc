@@ -53,8 +53,6 @@ class ErrorType : public Type {
         return instance;
     }
 
-    ErrorType() : Type(TypeId::VOID) {}
-
     int get_size() const override { return -1; }
 
     bool operator==(const Type &other) const override { return false; }
@@ -64,6 +62,9 @@ class ErrorType : public Type {
     std::shared_ptr<Type> implicit_cast(const Type &other) const override {
         return ErrorType::get();
     }
+
+  private:
+    ErrorType() : Type(TypeId::VOID) {}
 };
 
 class VoidType : public Type {
@@ -72,8 +73,6 @@ class VoidType : public Type {
         static std::shared_ptr<VoidType> instance(new VoidType());
         return instance;
     }
-
-    VoidType() : Type(TypeId::VOID) {}
 
     int get_size() const override { return 1; }
 
@@ -86,6 +85,9 @@ class VoidType : public Type {
     std::shared_ptr<Type> implicit_cast(const Type &other) const override {
         return ErrorType::get();
     }
+
+  private:
+    VoidType() : Type(TypeId::VOID) {}
 };
 
 class Int32Type : public Type {
@@ -94,8 +96,6 @@ class Int32Type : public Type {
         static std::shared_ptr<Int32Type> instance(new Int32Type());
         return instance;
     }
-
-    Int32Type() : Type(TypeId::INT32) {}
 
     int get_size() const override { return 4; }
 
@@ -106,6 +106,9 @@ class Int32Type : public Type {
     std::string tostring() const override { return "int"; }
 
     std::shared_ptr<Type> implicit_cast(const Type &other) const override;
+
+  private:
+    Int32Type() : Type(TypeId::INT32) {}
 };
 
 class FloatType : public Type {
@@ -114,8 +117,6 @@ class FloatType : public Type {
         static std::shared_ptr<FloatType> instance(new FloatType());
         return instance;
     }
-
-    FloatType() : Type(TypeId::FLOAT) {}
 
     int get_size() const override { return 4; }
 
@@ -126,6 +127,9 @@ class FloatType : public Type {
     std::string tostring() const override { return "float"; }
 
     std::shared_ptr<Type> implicit_cast(const Type &other) const override;
+
+  private:
+    FloatType() : Type(TypeId::FLOAT) {}
 };
 
 class IndirectType : public Type {

@@ -3,7 +3,7 @@
 #include <doctest.h>
 
 TEST_CASE("testing symbol table") {
-    auto int_type = std::make_shared<Int32Type>();
+    auto int_type = Int32Type::get();
 
     auto table = std::make_shared<SymbolTable>();
     CHECK_FALSE(table->has_parent());

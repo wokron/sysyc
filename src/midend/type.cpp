@@ -11,9 +11,9 @@ bool IndirectType::operator==(const Type &other) const {
 
 std::shared_ptr<Type> Int32Type::implicit_cast(const Type &other) const {
     if (other.is_int32()) {
-        return std::make_shared<Int32Type>();
+        return Int32Type::get();
     } else if (other.is_float()) {
-        return std::make_shared<FloatType>();
+        return FloatType::get();
     } else {
         return std::shared_ptr<Type>();
     }
@@ -21,7 +21,7 @@ std::shared_ptr<Type> Int32Type::implicit_cast(const Type &other) const {
 
 std::shared_ptr<Type> FloatType::implicit_cast(const Type &other) const {
     if (other.is_int32() || other.is_float()) {
-        return std::make_shared<FloatType>();
+        return FloatType::get();
     } else {
         return std::shared_ptr<Type>();
     }

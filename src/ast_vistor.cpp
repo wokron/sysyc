@@ -7,11 +7,11 @@
 static std::shared_ptr<Type> _asttype2type(ASTType type) {
     switch (type) {
     case ASTType::INT:
-        return std::make_shared<Int32Type>();
+        return Int32Type::get();
     case ASTType::FLOAT:
-        return std::make_shared<FloatType>();
+        return FloatType::get();
     case ASTType::VOID:
-        return std::make_shared<VoidType>();
+        return VoidType::get();
     default:
         return nullptr; // unreachable
     }
@@ -353,10 +353,10 @@ static std::shared_ptr<Type> _calc_type(std::shared_ptr<Type> ltype,
         } else if (rtype->is_int32()) {
             return rtype;
         } else {
-            return std::make_shared<ErrorType>(); // error
+            return ErrorType::get(); // error
         }
     } else {
-        return std::make_shared<ErrorType>(); // error
+        return ErrorType::get(); // error
     }
 }
 
@@ -394,7 +394,7 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                 auto symbol = _current_scope->get_symbol(node);
                 if (!symbol) {
                     error(-1, "undefined symbol " + node);
-                    return exp_return_t(std::make_shared<VoidType>(), nullptr);
+                    return exp_return_t(VoidType::get(), nullptr);
                 }
 
                 return exp_return_t(symbol->type, symbol->value);
@@ -406,7 +406,7 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                 if (!lval_type->is_array() && !lval_type->is_pointer()) {
                     error(-1, "index operator [] can only be used on "
                               "array or pointer");
-                    return exp_return_t(std::make_shared<VoidType>(), nullptr);
+                    return exp_return_t(VoidType::get(), nullptr);
                 }
 
                 // calc the address through index. if the curr lval
@@ -434,20 +434,20 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
     auto symbol = _current_scope->get_symbol(node.ident);
     if (!symbol) {
         error(-1, "undefined function " + node.ident);
-        return exp_return_t(std::make_shared<VoidType>(), nullptr);
+        return exp_return_t(VoidType::get(), nullptr);
     }
 
     auto func_symbol = std::dynamic_pointer_cast<FunctionSymbol>(symbol);
     if (!func_symbol) {
         error(-1, node.ident + " is not a function");
-        return exp_return_t(std::make_shared<VoidType>(), nullptr);
+        return exp_return_t(VoidType::get(), nullptr);
     }
 
     auto params_type = func_symbol->param_types;
 
     if (params_type.size() != node.func_rparams->size()) {
         error(-1, "params number not matched in function call " + node.ident);
-        return exp_return_t(std::make_shared<VoidType>(), nullptr);
+        return exp_return_t(VoidType::get(), nullptr);
     }
 
     std::vector<ir::ValuePtr> ir_args;
@@ -458,7 +458,7 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
             error(-1, "params type not matched in function call " + node.ident +
                           ", expected " + params_type[i]->tostring() +
                           ", got " + exp_type->tostring());
-            return exp_return_t(std::make_shared<VoidType>(), nullptr);
+            return exp_return_t(VoidType::get(), nullptr);
         }
         ir_args.push_back(exp_val);
     }
@@ -487,17 +487,17 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
     // TODO: type convert and support different ops
     auto val = _builder.create_ceqw(left_val, right_val);
 
-    return exp_return_t(std::make_shared<Int32Type>(), val);
+    return exp_return_t(Int32Type::get(), val);
 }
 
 exp_return_t ASTVisitor::visitNumber(const Number &node) {
     return std::visit(
         overloaded{
             [this](int node) {
-                return exp_return_t(std::make_shared<Int32Type>(), nullptr);
+                return exp_return_t(Int32Type::get(), nullptr);
             },
             [this](float node) {
-                return exp_return_t(std::make_shared<FloatType>(), nullptr);
+                return exp_return_t(FloatType::get(), nullptr);
             },
         },
         node);

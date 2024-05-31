@@ -2,9 +2,9 @@
 #include <doctest.h>
 
 TEST_CASE("testing type system") {
-    auto int_type = std::make_shared<Int32Type>();
-    auto float_type = std::make_shared<FloatType>();
-    auto void_type = std::make_shared<VoidType>();
+    auto int_type = Int32Type::get();
+    auto float_type = FloatType::get();
+    auto void_type = VoidType::get();
 
     CHECK(int_type->tostring() == "int");
     CHECK(float_type->tostring() == "float");
