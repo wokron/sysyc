@@ -8,6 +8,7 @@
 class Type {
   public:
     enum TypeId {
+        ERROR,
         VOID,
         INT32,
         FLOAT,
@@ -18,6 +19,8 @@ class Type {
     Type(TypeId tid) : _tid(tid) {}
 
     bool is_void() const { return this->_tid == VOID; }
+
+    bool is_error() const { return this->_tid == ERROR; }
 
     bool is_int32() const { return this->_tid == INT32; }
 
@@ -39,6 +42,17 @@ class Type {
 
   private:
     TypeId _tid = VOID;
+};
+
+class ErrorType : public Type {
+  public:
+    ErrorType() : Type(TypeId::VOID) {}
+
+    int get_size() const override { return -1; }
+
+    bool operator==(const Type &other) const override { return false; }
+
+    std::string tostring() const override { return "error-type"; }
 };
 
 class VoidType : public Type {

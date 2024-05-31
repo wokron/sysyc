@@ -353,10 +353,10 @@ static std::shared_ptr<Type> _calc_type(std::shared_ptr<Type> ltype,
         } else if (rtype->is_int32()) {
             return rtype;
         } else {
-            return std::make_shared<VoidType>(); // error
+            return std::make_shared<ErrorType>(); // error
         }
     } else {
-        return std::make_shared<VoidType>(); // error
+        return std::make_shared<ErrorType>(); // error
     }
 }
 
