@@ -115,6 +115,8 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
         auto data = ir::Data::create(false, symbol->name, elm_type->get_size(),
                                      _module);
 
+        symbol->value = data->get_address();
+
         if (!symbol->initializer) {
             // still need to append zero if no initializer
             data->append_zero(elm_type->get_size());
@@ -128,7 +130,14 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
         symbol->value = _builder.create_alloc(elm_ir_type, type->get_size());
 
         if (symbol->initializer) {
-            for (auto &[index, val] : symbol->initializer->get_values()) {
+            auto values = symbol->initializer->get_values();
+            for (int index = 0; index < initializer->get_space(); index++) {
+                // if no init value, just store zero
+                ir::ValuePtr val = ir::ConstBits::get(0);
+                if (values.find(index) != values.end()) {
+                    val = values[index];
+                }
+
                 if (auto const_val =
                         std::dynamic_pointer_cast<ir::ConstBits>(val);
                     !const_val && is_const) {
@@ -267,6 +276,10 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
 
     visitBlockItems(*node.block);
 
+    if (ir_func->end->jump.type == ir::Jump::NONE) {
+        error(-1, "function missing return statement");
+    }
+
     _current_scope = _current_scope->pop_scope();
 
     _builder.set_function(nullptr);
@@ -336,7 +349,7 @@ void ASTVisitor::visitAssignStmt(const AssignStmt &node) {
     }
 
     if (lval_type->is_array() || lval_type->is_pointer()) {
-        error(-1, "left side of assignment is not ");
+        error(-1, "left side of assignment is not a lval");
         return;
     }
 
