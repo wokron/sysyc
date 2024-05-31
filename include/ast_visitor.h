@@ -38,7 +38,7 @@ class ASTVisitor {
     void visitDecl(const Decl &node);
     void visitVarDef(const VarDef &node, ASTType btype, bool is_const);
     std::shared_ptr<Initializer> visitInitVal(const InitVal &node,
-                                              std::shared_ptr<Type> type);
+                                              Type &type);
     std::shared_ptr<Type> visitDims(const Dims &node, ASTType btype);
     void visitFuncDef(const FuncDef &node);
     std::vector<std::shared_ptr<Symbol>>

@@ -17,12 +17,12 @@ static std::shared_ptr<Type> _asttype2type(ASTType type) {
     }
 }
 
-static ir::Type _type2irtype(std::shared_ptr<Type> type) {
-    if (type->is_int32()) {
+static ir::Type _type2irtype(Type &type) {
+    if (type.is_int32()) {
         return ir::Type::W;
-    } else if (type->is_float()) {
+    } else if (type.is_float()) {
         return ir::Type::S;
-    } else if (type->is_array() || type->is_pointer()) {
+    } else if (type.is_array() || type.is_pointer()) {
         return ir::Type::L;
     } else {
         return ir::Type::X;
@@ -47,24 +47,24 @@ void ASTVisitor::visitDecl(const Decl &node) {
 }
 
 static std::shared_ptr<ir::ConstBits>
-_convert_const(ir::Type target_type, std::shared_ptr<ir::ConstBits> const_val) {
+_convert_const(ir::Type target_type, ir::ConstBits &const_val) {
     if (target_type == ir::Type::W) {
-        return const_val->to_int();
+        return const_val.to_int();
     } else if (target_type == ir::Type::S) {
-        return const_val->to_float();
+        return const_val.to_float();
     } else {
         return nullptr;
     }
 }
 
-static void _init_global(ir::Data &data, std::shared_ptr<Type> elm_type,
+static void _init_global(ir::Data &data, Type &elm_type,
                          const Initializer &initializer) {
     int prev_index = -1;
     for (auto &[index, val] : initializer.get_values()) {
         auto zero_count = index - prev_index - 1;
         prev_index = index;
         if (zero_count > 0) {
-            data.append_zero(elm_type->get_size() * zero_count);
+            data.append_zero(elm_type.get_size() * zero_count);
         }
 
         // init value should be constant if the variable is global
@@ -73,16 +73,16 @@ static void _init_global(ir::Data &data, std::shared_ptr<Type> elm_type,
         if (!const_val) {
             error(-1, "init value must be constant for global variable");
             // just to make it work
-            data.append_zero(elm_type->get_size());
+            data.append_zero(elm_type.get_size());
             continue;
         }
 
         auto elm_ir_type = _type2irtype(elm_type);
-        const_val = _convert_const(elm_ir_type, const_val);
+        const_val = _convert_const(elm_ir_type, *const_val);
         if (!const_val) {
             error(-1, "unsupported type in global variable");
             // just to make it work
-            data.append_zero(elm_type->get_size());
+            data.append_zero(elm_type.get_size());
             continue;
         }
 
@@ -91,7 +91,7 @@ static void _init_global(ir::Data &data, std::shared_ptr<Type> elm_type,
 
     auto zero_count = initializer.get_space() - prev_index - 1;
     if (zero_count > 0) {
-        data.append_zero(elm_type->get_size() * zero_count);
+        data.append_zero(elm_type.get_size() * zero_count);
     }
 }
 
@@ -100,7 +100,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
 
     std::shared_ptr<Initializer> initializer = nullptr;
     if (node.init_val != nullptr) {
-        initializer = visitInitVal(*node.init_val, type);
+        initializer = visitInitVal(*node.init_val, *type);
     }
 
     auto symbol = std::make_shared<VariableSymbol>(node.ident, type, is_const,
@@ -121,11 +121,11 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
             // still need to append zero if no initializer
             data->append_zero(elm_type->get_size());
         } else {
-            _init_global(*data, elm_type, *initializer);
+            _init_global(*data, *elm_type, *initializer);
         }
     } else { // in a function
         auto elm_type = _asttype2type(btype);
-        auto elm_ir_type = _type2irtype(elm_type);
+        auto elm_ir_type = _type2irtype(*elm_type);
 
         symbol->value = _builder.create_alloc(elm_ir_type, type->get_size());
 
@@ -155,7 +155,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
 }
 
 std::shared_ptr<Initializer>
-ASTVisitor::visitInitVal(const InitVal &node, std::shared_ptr<Type> type) {
+ASTVisitor::visitInitVal(const InitVal &node, Type &type) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
@@ -168,20 +168,20 @@ ASTVisitor::visitInitVal(const InitVal &node, std::shared_ptr<Type> type) {
                 return initializer;
             },
             [this, &type](const ArrayInitVal &node) {
-                if (!type->is_array()) {
+                if (!type.is_array()) {
                     error(-1, "cannot use array initializer on non-array type");
                     return std::shared_ptr<Initializer>(nullptr);
                 }
-                auto array_type = std::static_pointer_cast<ArrayType>(type);
+                auto array_type = static_cast<ArrayType&>(type);
 
                 // get element number of array, for example, a[2][3] has 6
                 // elements, so its initializer should have 6 elements
                 auto initializer = std::make_shared<Initializer>(
-                    array_type->get_total_elm_count());
+                    array_type.get_total_elm_count());
                 for (auto &elm : node.items) {
                     // get initializer of each element
                     auto elm_initializer =
-                        visitInitVal(*elm, array_type->get_base_type());
+                        visitInitVal(*elm, *array_type.get_base_type());
                     // then insert the initializer to the array initializer
                     initializer->insert(*elm_initializer);
                 }
@@ -239,7 +239,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     std::vector<ir::Type> params_ir_type;
     for (auto &param_symbol : param_symbols) {
         params_type.push_back(param_symbol->type);
-        params_ir_type.push_back(_type2irtype(param_symbol->type));
+        params_ir_type.push_back(_type2irtype(*param_symbol->type));
     }
 
     // add function symbol
@@ -253,7 +253,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
 
     // create function in IR
     auto [ir_func, ir_params] = ir::Function::create(
-        symbol->name == "main", symbol->name, _type2irtype(return_type),
+        symbol->name == "main", symbol->name, _type2irtype(*return_type),
         params_ir_type, _module);
     symbol->value = ir_func->get_address();
     _builder.set_function(ir_func);
@@ -271,7 +271,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
         }
 
         // alloc and store for param values
-        auto param_ir_type = _type2irtype(param_symbol->type);
+        auto param_ir_type = _type2irtype(*param_symbol->type);
         param_symbol->value = _builder.create_alloc(
             param_ir_type, param_symbol->type->get_size());
         _builder.create_store(param_ir_type, ir_params[no],
@@ -367,7 +367,7 @@ void ASTVisitor::visitAssignStmt(const AssignStmt &node) {
         return;
     }
 
-    _builder.create_store(_type2irtype(lval_type), exp_val, lval_val);
+    _builder.create_store(_type2irtype(*lval_type), exp_val, lval_val);
 }
 
 void ASTVisitor::visitExpStmt(const ExpStmt &node) {
@@ -533,7 +533,7 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
         return exp_return_t(ErrorType::get(), nullptr);
     }
 
-    auto ir_type = _type2irtype(type);
+    auto ir_type = _type2irtype(*type);
     switch (node.op) {
     case BinaryExp::ADD:
         return exp_return_t(type,
@@ -568,7 +568,7 @@ exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
 
     // since lval is in an expression, we need to get the value from the
     // lval address
-    auto exp_val = _builder.create_load(_type2irtype(type), val);
+    auto exp_val = _builder.create_load(_type2irtype(*type), val);
 
     return exp_return_t(type, exp_val);
 }
@@ -663,7 +663,7 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
         ir_args.push_back(exp_val);
     }
 
-    auto ir_ret = _builder.create_call(_type2irtype(func_symbol->type),
+    auto ir_ret = _builder.create_call(_type2irtype(*func_symbol->type),
                                        func_symbol->value, ir_args);
 
     return exp_return_t(symbol->type, ir_ret);
@@ -685,7 +685,7 @@ exp_return_t ASTVisitor::visitUnaryExp(const UnaryExp &node) {
             return exp_return_t(ErrorType::get(), nullptr);
         }
         return exp_return_t(
-            exp_type, _builder.create_neg(_type2irtype(exp_type), exp_val));
+            exp_type, _builder.create_neg(_type2irtype(*exp_type), exp_val));
     case UnaryExp::NOT:
         if (!exp_type->is_int32()) {
             error(-1, "not operator ! can only be used on int");
