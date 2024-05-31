@@ -70,7 +70,18 @@ class ASTVisitor {
   private:
     // some utility methods
     bool _is_global_context() const { return !_current_scope->has_parent(); }
+
     std::shared_ptr<ir::Value>
     _convert_if_needed(std::shared_ptr<Type> to, std::shared_ptr<Type> from,
                        std::shared_ptr<ir::Value> val);
+
+    static std::shared_ptr<Type> _asttype2type(ASTType type);
+
+    static ir::Type _type2irtype(Type &type);
+
+    static std::shared_ptr<ir::ConstBits>
+    _convert_const(ir::Type target_type, ir::ConstBits &const_val);
+
+    static void _init_global(ir::Data &data, Type &elm_type,
+                             const Initializer &initializer);
 };

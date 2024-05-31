@@ -4,7 +4,7 @@
 #include "utils.h"
 #include <variant>
 
-static std::shared_ptr<Type> _asttype2type(ASTType type) {
+std::shared_ptr<Type> ASTVisitor::_asttype2type(ASTType type) {
     switch (type) {
     case ASTType::INT:
         return Int32Type::get();
@@ -17,7 +17,7 @@ static std::shared_ptr<Type> _asttype2type(ASTType type) {
     }
 }
 
-static ir::Type _type2irtype(Type &type) {
+ir::Type ASTVisitor::_type2irtype(Type &type) {
     if (type.is_int32()) {
         return ir::Type::W;
     } else if (type.is_float()) {
@@ -46,8 +46,8 @@ void ASTVisitor::visitDecl(const Decl &node) {
     }
 }
 
-static std::shared_ptr<ir::ConstBits>
-_convert_const(ir::Type target_type, ir::ConstBits &const_val) {
+std::shared_ptr<ir::ConstBits>
+ASTVisitor::_convert_const(ir::Type target_type, ir::ConstBits &const_val) {
     if (target_type == ir::Type::W) {
         return const_val.to_int();
     } else if (target_type == ir::Type::S) {
@@ -57,7 +57,7 @@ _convert_const(ir::Type target_type, ir::ConstBits &const_val) {
     }
 }
 
-static void _init_global(ir::Data &data, Type &elm_type,
+void ASTVisitor::_init_global(ir::Data &data, Type &elm_type,
                          const Initializer &initializer) {
     int prev_index = -1;
     for (auto &[index, val] : initializer.get_values()) {
@@ -154,8 +154,8 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     }
 }
 
-std::shared_ptr<Initializer>
-ASTVisitor::visitInitVal(const InitVal &node, Type &type) {
+std::shared_ptr<Initializer> ASTVisitor::visitInitVal(const InitVal &node,
+                                                      Type &type) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
@@ -172,7 +172,7 @@ ASTVisitor::visitInitVal(const InitVal &node, Type &type) {
                     error(-1, "cannot use array initializer on non-array type");
                     return std::shared_ptr<Initializer>(nullptr);
                 }
-                auto array_type = static_cast<ArrayType&>(type);
+                auto array_type = static_cast<ArrayType &>(type);
 
                 // get element number of array, for example, a[2][3] has 6
                 // elements, so its initializer should have 6 elements
@@ -334,8 +334,8 @@ void ASTVisitor::visitStmt(const Stmt &node) {
 
 std::shared_ptr<ir::Value>
 ASTVisitor::_convert_if_needed(std::shared_ptr<Type> to,
-                              std::shared_ptr<Type> from,
-                              std::shared_ptr<ir::Value> val) {
+                               std::shared_ptr<Type> from,
+                               std::shared_ptr<ir::Value> val) {
     if (to == from) {
         return val;
     } else if (to->is_int32() && from->is_float()) {
