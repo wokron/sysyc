@@ -17,7 +17,7 @@ std::shared_ptr<Type> ASTVisitor::_asttype2type(ASTType type) {
     }
 }
 
-ir::Type ASTVisitor::_type2irtype(Type &type) {
+ir::Type ASTVisitor::_type2irtype(const Type &type) {
     if (type.is_int32()) {
         return ir::Type::W;
     } else if (type.is_float()) {
@@ -47,7 +47,7 @@ void ASTVisitor::visitDecl(const Decl &node) {
 }
 
 std::shared_ptr<ir::ConstBits>
-ASTVisitor::_convert_const(ir::Type target_type, ir::ConstBits &const_val) {
+ASTVisitor::_convert_const(ir::Type target_type, const ir::ConstBits &const_val) {
     if (target_type == ir::Type::W) {
         return const_val.to_int();
     } else if (target_type == ir::Type::S) {
@@ -57,7 +57,7 @@ ASTVisitor::_convert_const(ir::Type target_type, ir::ConstBits &const_val) {
     }
 }
 
-void ASTVisitor::_init_global(ir::Data &data, Type &elm_type,
+void ASTVisitor::_init_global(ir::Data &data, const Type &elm_type,
                               const Initializer &initializer) {
     int prev_index = -1;
     for (auto &[index, value] : initializer.get_values()) {
@@ -152,7 +152,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
                 auto offset = ir::ConstBits::get(elm_type->get_size() * index);
                 auto elm_addr =
                     _builder.create_add(ir::Type::L, symbol->value, offset);
-                val = _convert_if_needed(elm_type, val_type, val);
+                val = _convert_if_needed(*elm_type, *val_type, val);
                 _builder.create_store(elm_ir_type, val, elm_addr);
             }
         }
@@ -341,14 +341,13 @@ void ASTVisitor::visitStmt(const Stmt &node) {
 }
 
 std::shared_ptr<ir::Value>
-ASTVisitor::_convert_if_needed(std::shared_ptr<Type> to,
-                               std::shared_ptr<Type> from,
+ASTVisitor::_convert_if_needed(const Type &to, const Type &from,
                                std::shared_ptr<ir::Value> val) {
     if (to == from) {
         return val;
-    } else if (to->is_int32() && from->is_float()) {
+    } else if (to.is_int32() && from.is_float()) {
         return _builder.create_stosi(val);
-    } else if (to->is_float() && from->is_int32()) {
+    } else if (to.is_float() && from.is_int32()) {
         return _builder.create_swtof(val);
     } else {
         error(-1, "type convert not supported");
@@ -369,7 +368,7 @@ void ASTVisitor::visitAssignStmt(const AssignStmt &node) {
         return;
     }
 
-    exp_val = _convert_if_needed(lval_type, exp_type, exp_val);
+    exp_val = _convert_if_needed(*lval_type, *exp_type, exp_val);
     if (!exp_val) {
         error(-1, "type not matched in assignment");
         return;
@@ -480,7 +479,7 @@ void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
             return;
         }
 
-        exp_val = _convert_if_needed(_current_return_type, exp_type, exp_val);
+        exp_val = _convert_if_needed(*_current_return_type, *exp_type, exp_val);
         if (!exp_val) {
             error(-1, "type not matched in return statement");
             return;
@@ -530,12 +529,12 @@ exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     }
 
     auto type = left_type->implicit_cast(*right_type);
-    left_val = _convert_if_needed(type, left_type, left_val);
+    left_val = _convert_if_needed(*type, *left_type, left_val);
     if (!left_val) {
         error(-1, "type not matched in binary expression");
         return exp_return_t(ErrorType::get(), nullptr);
     }
-    right_val = _convert_if_needed(type, right_type, right_val);
+    right_val = _convert_if_needed(*type, *right_type, right_val);
     if (!right_val) {
         error(-1, "type not matched in binary expression");
         return exp_return_t(ErrorType::get(), nullptr);
@@ -662,7 +661,7 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
         }
 
         if (exp_type != params_type[i]) {
-            exp_val = _convert_if_needed(params_type[i], exp_type, exp_val);
+            exp_val = _convert_if_needed(*params_type[i], *exp_type, exp_val);
 
             if (!exp_val) {
                 error(-1, "params type not matched in function call " +
@@ -721,12 +720,12 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
     }
 
     auto type = left_type->implicit_cast(*right_type);
-    left_val = _convert_if_needed(type, left_type, left_val);
+    left_val = _convert_if_needed(*type, *left_type, left_val);
     if (!left_val) {
         error(-1, "type not matched in compare expression");
         return exp_return_t(ErrorType::get(), nullptr);
     }
-    right_val = _convert_if_needed(type, right_type, right_val);
+    right_val = _convert_if_needed(*type, *right_type, right_val);
     if (!right_val) {
         error(-1, "type not matched in compare expression");
         return exp_return_t(ErrorType::get(), nullptr);
