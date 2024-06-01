@@ -1634,7 +1634,7 @@ yyuserAction (yyRuleNum yyrule, int yyrhslen, yyGLRStackItem* yyvsp,
 
   case 73: /* FuncRParams: Exp  */
 #line 245 "parser.y"
-        { ((*yyvalp).rparams) = new FuncRParams{}; }
+        { ((*yyvalp).rparams) = new FuncRParams{sp<Exp>((YY_CAST (yyGLRStackItem const *, yyvsp)[YYFILL (0)].yystate.yysemantics.yyval.exp))}; }
 #line 1639 "src/parser.cpp"
     break;
 

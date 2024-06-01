@@ -13,7 +13,7 @@ std::shared_ptr<Type> ASTVisitor::_asttype2type(ASTType type) {
     case ASTType::VOID:
         return VoidType::get();
     default:
-        return nullptr; // unreachable
+        throw std::logic_error("unreachable");
     }
 }
 
@@ -58,7 +58,7 @@ ASTVisitor::_convert_const(ir::Type target_type, ir::ConstBits &const_val) {
 }
 
 void ASTVisitor::_init_global(ir::Data &data, Type &elm_type,
-                         const Initializer &initializer) {
+                              const Initializer &initializer) {
     int prev_index = -1;
     for (auto &[index, val] : initializer.get_values()) {
         auto zero_count = index - prev_index - 1;
@@ -119,7 +119,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
 
         if (!symbol->initializer) {
             // still need to append zero if no initializer
-            data->append_zero(elm_type->get_size());
+            data->append_zero(type->get_size());
         } else {
             _init_global(*data, *elm_type, *initializer);
         }
@@ -285,7 +285,10 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     visitBlockItems(*node.block);
 
     if (ir_func->end->jump.type == ir::Jump::NONE) {
-        error(-1, "function missing return statement");
+        if (!_current_return_type->is_void()) {
+            error(-1, "function missing return statement");
+        }
+        ir_func->end->jump.type = ir::Jump::RET;
     }
 
     _current_scope = _current_scope->pop_scope();
@@ -846,7 +849,11 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
         falselist.assign(rfalselist.begin(), rfalselist.end());
     }
 
-    _builder.create_label("logic_join");
+    // since if and while stmt will always create a new block for the body,
+    // we don't need to create a new block after the right expression.
+    // just comment the following line
+
+    // _builder.create_label("logic_join");
 
     return cond_return_t(truelist, falselist);
 }

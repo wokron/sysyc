@@ -242,7 +242,7 @@ UnaryExp:
     | '!' UnaryExp { $$ = new Exp(UnaryExp{UnaryExp::NOT, sp<Exp>($2)}); }
 
 FuncRParams:
-    Exp { $$ = new FuncRParams{}; }
+    Exp { $$ = new FuncRParams{sp<Exp>($1)}; }
     | FuncRParams ',' Exp { $$ = $1; $$->push_back(sp<Exp>($3)); }
 
 MulExp:
