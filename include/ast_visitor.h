@@ -8,16 +8,16 @@
 #include <stack>
 #include <variant>
 
-using exp_return_t =
-    std::tuple<std::shared_ptr<Type>, std::shared_ptr<ir::Value>>;
+using ExpReturn = std::tuple<std::shared_ptr<Type>, std::shared_ptr<ir::Value>>;
+
+using BlockPtrList = std::vector<std::shared_ptr<ir::Block>>;
 
 // return type for conditional expression, first vector is the true path, second
 // vector is the false path
-using BlockPtrList = std::vector<std::shared_ptr<ir::Block>>;
-using cond_return_t = std::tuple<BlockPtrList, BlockPtrList>;
+using CondReturn = std::tuple<BlockPtrList, BlockPtrList>;
 
 // jump insts for while loop, first vector for continue, second vector for break
-using while_jump_t = std::tuple<BlockPtrList, BlockPtrList>;
+using ContinueBreak = std::tuple<BlockPtrList, BlockPtrList>;
 
 class ASTVisitor {
   private:
@@ -26,7 +26,7 @@ class ASTVisitor {
     ir::IRBuilder _builder;
 
     std::shared_ptr<Type> _current_return_type = nullptr;
-    std::stack<while_jump_t> _while_stack;
+    std::stack<ContinueBreak> _while_stack;
 
   public:
     ASTVisitor(ir::Module &module)
@@ -54,18 +54,18 @@ class ASTVisitor {
     void visitControlStmt(const ControlStmt &node);
     void visitReturnStmt(const ReturnStmt &node);
 
-    exp_return_t visitConstExp(const Exp &node);
-    exp_return_t visitExp(const Exp &node);
-    exp_return_t visitBinaryExp(const BinaryExp &node);
-    exp_return_t visitLValExp(const LValExp &node);
-    exp_return_t visitCallExp(const CallExp &node);
-    exp_return_t visitUnaryExp(const UnaryExp &node);
-    exp_return_t visitCompareExp(const CompareExp &node);
-    exp_return_t visitNumber(const Number &node);
-    exp_return_t visitLVal(const LVal &node);
+    ExpReturn visitConstExp(const Exp &node);
+    ExpReturn visitExp(const Exp &node);
+    ExpReturn visitBinaryExp(const BinaryExp &node);
+    ExpReturn visitLValExp(const LValExp &node);
+    ExpReturn visitCallExp(const CallExp &node);
+    ExpReturn visitUnaryExp(const UnaryExp &node);
+    ExpReturn visitCompareExp(const CompareExp &node);
+    ExpReturn visitNumber(const Number &node);
+    ExpReturn visitLVal(const LVal &node);
 
-    cond_return_t visitCond(const Cond &node);
-    cond_return_t visitLogicalExp(const LogicalExp &node);
+    CondReturn visitCond(const Cond &node);
+    CondReturn visitLogicalExp(const LogicalExp &node);
 
   private:
     // some utility methods

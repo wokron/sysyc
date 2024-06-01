@@ -430,7 +430,7 @@ void ASTVisitor::visitWhileStmt(const WhileStmt &node) {
 
     auto body_block = _builder.create_label("while_body");
 
-    _while_stack.push(while_jump_t({}, {}));
+    _while_stack.push(ContinueBreak({}, {}));
 
     _current_scope = _current_scope->push_scope();
     visitStmt(*node.stmt);
@@ -490,24 +490,24 @@ void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
     _builder.create_ret(nullptr);
 }
 
-exp_return_t ASTVisitor::visitConstExp(const Exp &node) {
+ExpReturn ASTVisitor::visitConstExp(const Exp &node) {
     auto [type, val] = visitExp(node);
 
     if (type->is_error()) {
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     // check if the expression is constant
     if (auto const_val = std::dynamic_pointer_cast<ir::Const>(val);
         !const_val) {
         error(-1, "not a const expression");
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
-    return exp_return_t(type, val);
+    return ExpReturn(type, val);
 }
 
-exp_return_t ASTVisitor::visitExp(const Exp &node) {
+ExpReturn ASTVisitor::visitExp(const Exp &node) {
     return std::visit(
         overloaded{
             [this](const BinaryExp &node) { return visitBinaryExp(node); },
@@ -520,90 +520,90 @@ exp_return_t ASTVisitor::visitExp(const Exp &node) {
         node);
 }
 
-exp_return_t ASTVisitor::visitBinaryExp(const BinaryExp &node) {
+ExpReturn ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     auto [left_type, left_val] = visitExp(*node.left);
     auto [right_type, right_val] = visitExp(*node.right);
 
     if (left_type->is_error() || right_type->is_error()) {
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     auto type = left_type->implicit_cast(*right_type);
     left_val = _convert_if_needed(*type, *left_type, left_val);
     if (!left_val) {
         error(-1, "type not matched in binary expression");
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
     right_val = _convert_if_needed(*type, *right_type, right_val);
     if (!right_val) {
         error(-1, "type not matched in binary expression");
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     auto ir_type = _type2irtype(*type);
     switch (node.op) {
     case BinaryExp::ADD:
-        return exp_return_t(type,
+        return ExpReturn(type,
                             _builder.create_add(ir_type, left_val, right_val));
     case BinaryExp::SUB:
-        return exp_return_t(type,
+        return ExpReturn(type,
                             _builder.create_sub(ir_type, left_val, right_val));
     case BinaryExp::MULT:
-        return exp_return_t(type,
+        return ExpReturn(type,
                             _builder.create_mul(ir_type, left_val, right_val));
     case BinaryExp::DIV:
-        return exp_return_t(type,
+        return ExpReturn(type,
                             _builder.create_div(ir_type, left_val, right_val));
     case BinaryExp::MOD:
-        return exp_return_t(type,
+        return ExpReturn(type,
                             _builder.create_rem(ir_type, left_val, right_val));
     default:
         throw std::logic_error("unreachable");
     }
 }
 
-exp_return_t ASTVisitor::visitLValExp(const LValExp &node) {
+ExpReturn ASTVisitor::visitLValExp(const LValExp &node) {
     auto [type, val] = visitLVal(*node.lval);
     if (type->is_error()) {
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     // still an array, the value is the address itself
     if (type->is_array()) {
-        return exp_return_t(type, val);
+        return ExpReturn(type, val);
     }
 
     // since lval is in an expression, we need to get the value from the
     // lval address
     auto exp_val = _builder.create_load(_type2irtype(*type), val);
 
-    return exp_return_t(type, exp_val);
+    return ExpReturn(type, exp_val);
 }
 
-exp_return_t ASTVisitor::visitLVal(const LVal &node) {
+ExpReturn ASTVisitor::visitLVal(const LVal &node) {
     return std::visit(
         overloaded{
             [this](const Ident &node) {
                 auto symbol = _current_scope->get_symbol(node);
                 if (!symbol) {
                     error(-1, "undefined symbol " + node);
-                    return exp_return_t(ErrorType::get(), nullptr);
+                    return ExpReturn(ErrorType::get(), nullptr);
                 }
 
-                return exp_return_t(symbol->type, symbol->value);
+                return ExpReturn(symbol->type, symbol->value);
             },
             [this](const Index &node) {
                 auto [lval_type, lval_val] = visitLVal(*node.lval);
                 auto [exp_type, exp_val] = visitExp(*node.exp);
 
                 if (lval_type->is_error() || exp_type->is_error()) {
-                    return exp_return_t(ErrorType::get(), nullptr);
+                    return ExpReturn(ErrorType::get(), nullptr);
                 }
 
                 if (!lval_type->is_array() && !lval_type->is_pointer()) {
                     error(-1, "index operator [] can only be used on "
                               "array or pointer");
-                    return exp_return_t(ErrorType::get(), nullptr);
+                    return ExpReturn(ErrorType::get(), nullptr);
                 }
 
                 // calc the address through index. if the curr lval
@@ -627,29 +627,29 @@ exp_return_t ASTVisitor::visitLVal(const LVal &node) {
                 auto val = _builder.create_add(ir::Type::L, lval_val, offset);
 
                 // addr = base_addr + index * elm_size
-                return exp_return_t(lval_indirect_type->get_base_type(), val);
+                return ExpReturn(lval_indirect_type->get_base_type(), val);
             }},
         node);
 }
 
-exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
+ExpReturn ASTVisitor::visitCallExp(const CallExp &node) {
     auto symbol = _current_scope->get_symbol(node.ident);
     if (!symbol) {
         error(-1, "undefined function " + node.ident);
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     auto func_symbol = std::dynamic_pointer_cast<FunctionSymbol>(symbol);
     if (!func_symbol) {
         error(-1, node.ident + " is not a function");
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     auto params_type = func_symbol->param_types;
 
     if (params_type.size() != node.func_rparams->size()) {
         error(-1, "params number not matched in function call " + node.ident);
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     std::vector<ir::ValuePtr> ir_args;
@@ -657,7 +657,7 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
         auto [exp_type, exp_val] = visitExp(*node.func_rparams->at(i));
 
         if (exp_type->is_error()) {
-            return exp_return_t(ErrorType::get(), nullptr);
+            return ExpReturn(ErrorType::get(), nullptr);
         }
 
         if (exp_type != params_type[i]) {
@@ -668,7 +668,7 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
                               node.ident + ", expected " +
                               params_type[i]->tostring() + ", got " +
                               exp_type->tostring());
-                return exp_return_t(ErrorType::get(), nullptr);
+                return ExpReturn(ErrorType::get(), nullptr);
             }
         }
 
@@ -678,83 +678,83 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
     auto ir_ret = _builder.create_call(_type2irtype(*func_symbol->type),
                                        func_symbol->value, ir_args);
 
-    return exp_return_t(symbol->type, ir_ret);
+    return ExpReturn(symbol->type, ir_ret);
 }
 
-exp_return_t ASTVisitor::visitUnaryExp(const UnaryExp &node) {
+ExpReturn ASTVisitor::visitUnaryExp(const UnaryExp &node) {
     auto [exp_type, exp_val] = visitExp(*node.exp);
 
     if (exp_type->is_error()) {
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     switch (node.op) {
     case UnaryExp::ADD:
-        return exp_return_t(exp_type, exp_val); // do nothing
+        return ExpReturn(exp_type, exp_val); // do nothing
     case UnaryExp::SUB:
         if (!exp_type->is_int32() && !exp_type->is_float()) {
             error(-1, "neg operator - can only be used on int or float");
-            return exp_return_t(ErrorType::get(), nullptr);
+            return ExpReturn(ErrorType::get(), nullptr);
         }
-        return exp_return_t(
+        return ExpReturn(
             exp_type, _builder.create_neg(_type2irtype(*exp_type), exp_val));
     case UnaryExp::NOT:
         if (!exp_type->is_int32()) {
             error(-1, "not operator ! can only be used on int");
-            return exp_return_t(ErrorType::get(), nullptr);
+            return ExpReturn(ErrorType::get(), nullptr);
         }
         // !a equal to (a == 0)
-        return exp_return_t(
+        return ExpReturn(
             exp_type, _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
     default:
         throw std::logic_error("unreachable");
     }
 }
 
-exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
+ExpReturn ASTVisitor::visitCompareExp(const CompareExp &node) {
     auto [left_type, left_val] = visitExp(*node.left);
     auto [right_type, right_val] = visitExp(*node.right);
 
     if (left_type->is_error() || right_type->is_error()) {
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     auto type = left_type->implicit_cast(*right_type);
     left_val = _convert_if_needed(*type, *left_type, left_val);
     if (!left_val) {
         error(-1, "type not matched in compare expression");
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
     right_val = _convert_if_needed(*type, *right_type, right_val);
     if (!right_val) {
         error(-1, "type not matched in compare expression");
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     if (!type->is_int32() && !type->is_float()) {
         error(-1, "compare operator can only be used on int or float");
-        return exp_return_t(ErrorType::get(), nullptr);
+        return ExpReturn(ErrorType::get(), nullptr);
     }
 
     if (type->is_int32()) {
         switch (node.op) {
         case CompareExp::EQ:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_ceqw(left_val, right_val));
         case CompareExp::NE:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_cnew(left_val, right_val));
         case CompareExp::LT:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_csltw(left_val, right_val));
         case CompareExp::LE:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_cslew(right_val, left_val));
         case CompareExp::GT:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_csgtw(right_val, left_val));
         case CompareExp::GE:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_csgew(left_val, right_val));
         default:
             throw std::logic_error("unreachable");
@@ -762,22 +762,22 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
     } else { // float
         switch (node.op) {
         case CompareExp::EQ:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_ceqs(left_val, right_val));
         case CompareExp::NE:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_cnes(left_val, right_val));
         case CompareExp::LT:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_clts(left_val, right_val));
         case CompareExp::LE:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_cles(left_val, right_val));
         case CompareExp::GT:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_cgts(left_val, right_val));
         case CompareExp::GE:
-            return exp_return_t(Int32Type::get(),
+            return ExpReturn(Int32Type::get(),
                                 _builder.create_cges(right_val, left_val));
         default:
             throw std::logic_error("unreachable");
@@ -785,31 +785,31 @@ exp_return_t ASTVisitor::visitCompareExp(const CompareExp &node) {
     }
 }
 
-exp_return_t ASTVisitor::visitNumber(const Number &node) {
+ExpReturn ASTVisitor::visitNumber(const Number &node) {
     return std::visit(
         overloaded{
             [this](int node) {
-                return exp_return_t(Int32Type::get(), ir::ConstBits::get(node));
+                return ExpReturn(Int32Type::get(), ir::ConstBits::get(node));
             },
             [this](float node) {
-                return exp_return_t(FloatType::get(), ir::ConstBits::get(node));
+                return ExpReturn(FloatType::get(), ir::ConstBits::get(node));
             },
         },
         node);
 }
 
-cond_return_t ASTVisitor::visitCond(const Cond &node) {
+CondReturn ASTVisitor::visitCond(const Cond &node) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
                 auto [type, val] = visitExp(node);
                 if (type->is_error() || !type->is_int32()) {
-                    return cond_return_t(BlockPtrList{}, BlockPtrList{});
+                    return CondReturn(BlockPtrList{}, BlockPtrList{});
                 }
 
                 // generate conditional jump instruction
                 auto jnz_block = _builder.create_jnz(val, nullptr, nullptr);
-                return cond_return_t(BlockPtrList{jnz_block},
+                return CondReturn(BlockPtrList{jnz_block},
                                      BlockPtrList{jnz_block});
             },
             [this](const LogicalExp &node) { return visitLogicalExp(node); },
@@ -817,7 +817,7 @@ cond_return_t ASTVisitor::visitCond(const Cond &node) {
         node);
 }
 
-cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
+CondReturn ASTVisitor::visitLogicalExp(const LogicalExp &node) {
     auto [ltruelist, lfalselist] = visitCond(*node.left);
 
     // create a new block for the right expression
@@ -864,5 +864,5 @@ cond_return_t ASTVisitor::visitLogicalExp(const LogicalExp &node) {
 
     // _builder.create_label("logic_join");
 
-    return cond_return_t(truelist, falselist);
+    return CondReturn(truelist, falselist);
 }
