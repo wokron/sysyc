@@ -2,6 +2,8 @@
 #include "midend/type.h"
 #include <doctest.h>
 
+using namespace sym;
+
 TEST_CASE("testing symbol table") {
     auto int_type = Int32Type::get();
 

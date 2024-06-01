@@ -8,7 +8,7 @@
 #include <stack>
 #include <variant>
 
-using ExpReturn = std::tuple<TypePtr, ir::ValuePtr>;
+using ExpReturn = std::tuple<sym::TypePtr, ir::ValuePtr>;
 
 using BlockPtrList = std::vector<ir::BlockPtr>;
 
@@ -21,28 +21,28 @@ using ContinueBreak = std::tuple<BlockPtrList, BlockPtrList>;
 
 class Visitor {
   private:
-    SymbolTablePtr _current_scope;
+    sym::SymbolTablePtr _current_scope;
     ir::Module &_module;
     ir::IRBuilder _builder;
 
-    TypePtr _current_return_type = nullptr;
+    sym::TypePtr _current_return_type = nullptr;
     std::stack<ContinueBreak> _while_stack;
 
   public:
     Visitor(ir::Module &module)
         : _module(module),
-          _current_scope(std::make_shared<SymbolTable>(nullptr)) {}
+          _current_scope(std::make_shared<sym::SymbolTable>(nullptr)) {}
 
     // define methods for each AST node type
     void visit(const CompUnits &node);
 
     void visitDecl(const Decl &node);
     void visitVarDef(const VarDef &node, ASTType btype, bool is_const);
-    InitializerPtr visitInitVal(const InitVal &node, Type &type);
-    TypePtr visitDims(const Dims &node, ASTType btype);
+    sym::InitializerPtr visitInitVal(const InitVal &node, sym::Type &type);
+    sym::TypePtr visitDims(const Dims &node, ASTType btype);
 
     void visitFuncDef(const FuncDef &node);
-    std::vector<SymbolPtr> visitFuncFParams(const FuncFParams &node);
+    std::vector<sym::SymbolPtr> visitFuncFParams(const FuncFParams &node);
 
     void visitBlockItems(const BlockItems &node);
 
@@ -72,16 +72,16 @@ class Visitor {
     // some utility methods
     bool _is_global_context() const { return !_current_scope->has_parent(); }
 
-    ir::ValuePtr _convert_if_needed(const Type &to, const Type &from,
+    ir::ValuePtr _convert_if_needed(const sym::Type &to, const sym::Type &from,
                                     ir::ValuePtr val);
 
-    static TypePtr _asttype2type(ASTType type);
+    static sym::TypePtr _asttype2type(ASTType type);
 
-    static ir::Type _type2irtype(const Type &type);
+    static ir::Type _type2irtype(const sym::Type &type);
 
     static ir::ConstBitsPtr _convert_const(ir::Type target_type,
                                            const ir::ConstBits &const_val);
 
-    static void _init_global(ir::Data &data, const Type &elm_type,
-                             const Initializer &initializer);
+    static void _init_global(ir::Data &data, const sym::Type &elm_type,
+                             const sym::Initializer &initializer);
 };

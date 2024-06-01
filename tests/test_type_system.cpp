@@ -1,6 +1,8 @@
 #include "midend/type.h"
 #include <doctest.h>
 
+using namespace sym;
+
 TEST_CASE("testing type system") {
     auto int_type = Int32Type::get();
     auto float_type = FloatType::get();

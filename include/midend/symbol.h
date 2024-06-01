@@ -5,6 +5,8 @@
 #include <map>
 #include <memory>
 
+namespace sym {
+
 struct Symbol {
     std::string name;
     std::shared_ptr<Type> type;
@@ -153,3 +155,5 @@ class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
 using SymbolPtr = std::shared_ptr<Symbol>;
 using InitializerPtr = std::shared_ptr<Initializer>;
 using SymbolTablePtr = std::shared_ptr<SymbolTable>;
+
+} // namespace sym

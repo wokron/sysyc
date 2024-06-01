@@ -1,5 +1,7 @@
 #include "midend/type.h"
 
+namespace sym {
+
 bool IndirectType::operator==(const Type &other) const {
     if (!other.is_array() || !other.is_pointer()) {
         return false;
@@ -26,3 +28,5 @@ std::shared_ptr<Type> FloatType::implicit_cast(const Type &other) const {
         return std::shared_ptr<Type>();
     }
 }
+
+} // namespace sym

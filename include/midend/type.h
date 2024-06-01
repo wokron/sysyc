@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+namespace sym {
+
 class Type {
   public:
     enum TypeId {
@@ -226,3 +228,5 @@ using Int32TypePtr = std::shared_ptr<Int32Type>;
 using FloatTypePtr = std::shared_ptr<FloatType>;
 using PointerTypePtr = std::shared_ptr<PointerType>;
 using ArrayTypePtr = std::shared_ptr<ArrayType>;
+
+} // namespace sym
