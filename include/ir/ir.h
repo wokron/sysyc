@@ -40,6 +40,10 @@ struct Address : public Const {
     void emit(std::ostream &out) const override { out << "$" << name; }
 
     Type get_type() const override { return Type::L; }
+
+  private:
+    static std::unordered_map<std::string, std::shared_ptr<Address>>
+        _addrcon_cache;
 };
 
 struct ConstBits : public Const {
@@ -72,10 +76,12 @@ struct ConstBits : public Const {
             throw std::logic_error("variant empty");
         }
     }
-};
 
-extern std::unordered_map<float, std::shared_ptr<ConstBits>> _floatcon_cache;
-extern std::unordered_map<int, std::shared_ptr<ConstBits>> _intcon_cache;
+  private:
+    static std::unordered_map<float, std::shared_ptr<ConstBits>>
+        _floatcon_cache;
+    static std::unordered_map<int, std::shared_ptr<ConstBits>> _intcon_cache;
+};
 
 template <typename T>
 inline std::shared_ptr<ConstBits> ConstBits::get(T value) {
