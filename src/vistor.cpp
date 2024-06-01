@@ -1,7 +1,7 @@
 #include "ast.h"
-#include "visitor.h"
 #include "error.h"
 #include "utils.h"
+#include "visitor.h"
 #include <variant>
 
 sym::TypePtr Visitor::_asttype2symtype(ASTType type) {
@@ -47,7 +47,7 @@ void Visitor::visitDecl(const Decl &node) {
 }
 
 ir::ConstBitsPtr Visitor::_convert_const(ir::Type target_type,
-                                            const ir::ConstBits &const_val) {
+                                         const ir::ConstBits &const_val) {
     if (target_type == ir::Type::W) {
         return const_val.to_int();
     } else if (target_type == ir::Type::S) {
@@ -58,7 +58,9 @@ ir::ConstBitsPtr Visitor::_convert_const(ir::Type target_type,
 }
 
 void Visitor::_init_global(ir::Data &data, const sym::Type &elm_type,
-                              const sym::Initializer &initializer) {
+                           const sym::Initializer &initializer) {
+    // since we use map instead of unordered_map in Initializer, the order of
+    // initial values is guaranteed
     int prev_index = -1;
     for (auto &[index, value] : initializer.get_values()) {
         auto &[val_type, val] = value;
@@ -90,6 +92,7 @@ void Visitor::_init_global(ir::Data &data, const sym::Type &elm_type,
         data.append_const(elm_ir_type, {const_val});
     }
 
+    // don't forget this
     auto zero_count = initializer.get_space() - prev_index - 1;
     if (zero_count > 0) {
         data.append_zero(elm_type.get_size() * zero_count);
@@ -104,8 +107,8 @@ void Visitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
         initializer = visitInitVal(*node.init_val, *type);
     }
 
-    auto symbol = std::make_shared<sym::VariableSymbol>(node.ident, type, is_const,
-                                                   initializer);
+    auto symbol = std::make_shared<sym::VariableSymbol>(node.ident, type,
+                                                        is_const, initializer);
 
     if (!_current_scope->add_symbol(symbol)) {
         error(-1, "redefine variable " + node.ident);
@@ -159,7 +162,8 @@ void Visitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     }
 }
 
-sym::InitializerPtr Visitor::visitInitVal(const InitVal &node, sym::Type &type) {
+sym::InitializerPtr Visitor::visitInitVal(const InitVal &node,
+                                          sym::Type &type) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
@@ -168,7 +172,8 @@ sym::InitializerPtr Visitor::visitInitVal(const InitVal &node, sym::Type &type) 
                 if (exp_type->is_error()) {
                     return sym::InitializerPtr(nullptr);
                 }
-                initializer->insert(sym::Initializer::InitValue(exp_type, exp_value));
+                initializer->insert(
+                    sym::Initializer::InitValue(exp_type, exp_value));
                 return initializer;
             },
             [this, &type](const ArrayInitVal &node) {
@@ -247,8 +252,8 @@ void Visitor::visitFuncDef(const FuncDef &node) {
     }
 
     // add function symbol
-    auto symbol =
-        std::make_shared<sym::FunctionSymbol>(node.ident, params_type, return_type);
+    auto symbol = std::make_shared<sym::FunctionSymbol>(node.ident, params_type,
+                                                        return_type);
     if (!_current_scope->add_symbol(symbol)) {
         error(-1, "redefine function " + node.ident);
         return;
@@ -307,8 +312,8 @@ std::vector<sym::SymbolPtr> Visitor::visitFuncFParams(const FuncFParams &node) {
 
     for (auto &elm : node) {
         auto type = visitDims(*elm->dims, elm->btype);
-        auto symbol =
-            std::make_shared<sym::VariableSymbol>(elm->ident, type, false, nullptr);
+        auto symbol = std::make_shared<sym::VariableSymbol>(elm->ident, type,
+                                                            false, nullptr);
         params.push_back(symbol);
     }
 
@@ -338,8 +343,9 @@ void Visitor::visitStmt(const Stmt &node) {
                node);
 }
 
-ir::ValuePtr Visitor::_convert_if_needed(const sym::Type &to, const sym::Type &from,
-                                            ir::ValuePtr val) {
+ir::ValuePtr Visitor::_convert_if_needed(const sym::Type &to,
+                                         const sym::Type &from,
+                                         ir::ValuePtr val) {
     if (to == from) {
         return val;
     } else if (to.is_int32() && from.is_float()) {
@@ -693,8 +699,8 @@ ExpReturn Visitor::visitUnaryExp(const UnaryExp &node) {
             error(-1, "neg operator - can only be used on int or float");
             return ExpReturn(sym::ErrorType::get(), nullptr);
         }
-        return ExpReturn(exp_type,
-                         _builder.create_neg(_symtype2irtype(*exp_type), exp_val));
+        return ExpReturn(
+            exp_type, _builder.create_neg(_symtype2irtype(*exp_type), exp_val));
     case UnaryExp::NOT:
         if (!exp_type->is_int32()) {
             error(-1, "not operator ! can only be used on int");
@@ -783,16 +789,17 @@ ExpReturn Visitor::visitCompareExp(const CompareExp &node) {
 }
 
 ExpReturn Visitor::visitNumber(const Number &node) {
-    return std::visit(
-        overloaded{
-            [this](int node) {
-                return ExpReturn(sym::Int32Type::get(), ir::ConstBits::get(node));
-            },
-            [this](float node) {
-                return ExpReturn(sym::FloatType::get(), ir::ConstBits::get(node));
-            },
-        },
-        node);
+    return std::visit(overloaded{
+                          [this](int node) {
+                              return ExpReturn(sym::Int32Type::get(),
+                                               ir::ConstBits::get(node));
+                          },
+                          [this](float node) {
+                              return ExpReturn(sym::FloatType::get(),
+                                               ir::ConstBits::get(node));
+                          },
+                      },
+                      node);
 }
 
 CondReturn Visitor::visitCond(const Cond &node) {

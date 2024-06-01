@@ -34,6 +34,11 @@ class Visitor {
           _current_scope(std::make_shared<sym::SymbolTable>(nullptr)) {}
 
     // define methods for each AST node type
+
+    /**
+     * @brief Visit the whole AST
+     * @param node The root node of the AST
+     */
     void visit(const CompUnits &node);
 
     void visitDecl(const Decl &node);
@@ -63,25 +68,60 @@ class Visitor {
     ExpReturn visitUnaryExp(const UnaryExp &node);
     ExpReturn visitCompareExp(const CompareExp &node);
     ExpReturn visitNumber(const Number &node);
-    ExpReturn visitLVal(const LVal &node);
+    ExpReturn visitLVal(const LVal &node); // TODO: support getting const value,
+                                           // which is important for competition
 
     CondReturn visitCond(const Cond &node);
     CondReturn visitLogicalExp(const LogicalExp &node);
 
   private:
     // some utility methods
+
+    /**
+     * @brief Check if the current context is global
+     * @return true if the current context is global, false otherwise
+     */
     bool _is_global_context() const { return !_current_scope->has_parent(); }
 
+    /**
+     * @brief Convert a value to a specific type if needed
+     * @param to The target type
+     * @param from The original type
+     * @param val The value to be converted
+     * @return The converted value
+     */
     ir::ValuePtr _convert_if_needed(const sym::Type &to, const sym::Type &from,
                                     ir::ValuePtr val);
 
+    /**
+     * @brief Convert an AST type to a symbol type
+     * @param type The AST type
+     * @return The symbol type
+     */
     static sym::TypePtr _asttype2symtype(ASTType type);
 
+    /**
+     * @brief Convert a symbol type to an IR type
+     * @param type The symbol type
+     * @return The IR type
+     */
     static ir::Type _symtype2irtype(const sym::Type &type);
 
+    /**
+     * @brief Convert a constant value to a specific type
+     * @param target_type The target type
+     * @param const_val The constant value
+     * @return The converted constant value
+     */
     static ir::ConstBitsPtr _convert_const(ir::Type target_type,
                                            const ir::ConstBits &const_val);
 
+    /**
+     * @brief Initialize a global variable by building ir::Data
+     * @param data The ir::Data to be initialized
+     * @param elm_type The element type of the data
+     * @param initializer The initializer of the data
+     */
     static void _init_global(ir::Data &data, const sym::Type &elm_type,
                              const sym::Initializer &initializer);
 };

@@ -25,6 +25,11 @@ class Initializer {
 
     Initializer(int space = 1) : _space(space) {}
 
+    /**
+     * @brief Insert a value to the initializer
+     * @param value The value to insert
+     * @return true if the value is inserted successfully, false otherwise
+     */
     bool insert(InitValue value) {
         if (_pos >= _space) {
             return false;
@@ -33,6 +38,11 @@ class Initializer {
         return true;
     }
 
+    /**
+     * @brief Insert a initializer to the initializer
+     * @param init The initializer to insert
+     * @return true if the initializer is inserted successfully, false otherwise
+     */
     bool insert(Initializer &init) {
         bool rt = true;
         for (auto &kv : init._init_values) {
@@ -127,28 +137,21 @@ class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
         }
     }
 
-    // create a new scope
+    /**
+     * @brief Create a new scope
+     * @return The new scope
+     */
     std::shared_ptr<SymbolTable> push_scope() {
         return std::make_shared<SymbolTable>(shared_from_this());
     }
 
-    // return parent scope
+    /**
+     * @brief Pop the current scope
+     * @return The parent scope
+     */
     std::shared_ptr<SymbolTable> pop_scope() { return _parent; }
 
     bool has_parent() const { return _parent != nullptr; }
-
-    std::string tostring() const {
-        std::string rt;
-        if (_parent != nullptr) {
-            rt.append(_parent->tostring());
-        }
-
-        rt.append("==========");
-        for (auto &symbol : _symbols) {
-            rt.append(symbol.second->tostring()).append("\n");
-        }
-        return rt;
-    }
 };
 
 // alias

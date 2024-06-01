@@ -190,4 +190,9 @@ struct FuncDef {
     std::shared_ptr<BlockItems> block;
 };
 
+/**
+ * @brief Print the AST to the output stream
+ * @param out The output stream
+ * @param comp_units The root node of the AST
+ */
 void print_ast(std::ostream &out, const CompUnits &comp_units);

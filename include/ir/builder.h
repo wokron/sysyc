@@ -7,6 +7,8 @@ namespace ir {
 
 using ValuePtr = std::shared_ptr<Value>;
 
+// TODO: support constant folding
+
 class IRBuilder {
   private:
     std::shared_ptr<Function> _function = nullptr;
