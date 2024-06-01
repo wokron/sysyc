@@ -2,7 +2,7 @@
 #include "ast.h"
 #include "ir/builder.h"
 #include "ir/ir.h"
-#include "midend/symbol.h"
+#include "sym/symbol.h"
 #include <iostream>
 #include <memory>
 #include <stack>
@@ -75,9 +75,9 @@ class Visitor {
     ir::ValuePtr _convert_if_needed(const sym::Type &to, const sym::Type &from,
                                     ir::ValuePtr val);
 
-    static sym::TypePtr _asttype2type(ASTType type);
+    static sym::TypePtr _asttype2symtype(ASTType type);
 
-    static ir::Type _type2irtype(const sym::Type &type);
+    static ir::Type _symtype2irtype(const sym::Type &type);
 
     static ir::ConstBitsPtr _convert_const(ir::Type target_type,
                                            const ir::ConstBits &const_val);

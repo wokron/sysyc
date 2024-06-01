@@ -1,5 +1,5 @@
-#include "midend/symbol.h"
-#include "midend/type.h"
+#include "sym/symbol.h"
+#include "sym/type.h"
 #include <doctest.h>
 
 using namespace sym;

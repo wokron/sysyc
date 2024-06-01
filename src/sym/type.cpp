@@ -1,4 +1,4 @@
-#include "midend/type.h"
+#include "sym/type.h"
 
 namespace sym {
 

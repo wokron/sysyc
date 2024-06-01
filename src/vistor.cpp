@@ -4,7 +4,7 @@
 #include "utils.h"
 #include <variant>
 
-sym::TypePtr Visitor::_asttype2type(ASTType type) {
+sym::TypePtr Visitor::_asttype2symtype(ASTType type) {
     switch (type) {
     case ASTType::INT:
         return sym::Int32Type::get();
@@ -17,7 +17,7 @@ sym::TypePtr Visitor::_asttype2type(ASTType type) {
     }
 }
 
-ir::Type Visitor::_type2irtype(const sym::Type &type) {
+ir::Type Visitor::_symtype2irtype(const sym::Type &type) {
     if (type.is_int32()) {
         return ir::Type::W;
     } else if (type.is_float()) {
@@ -78,7 +78,7 @@ void Visitor::_init_global(ir::Data &data, const sym::Type &elm_type,
             continue;
         }
 
-        auto elm_ir_type = _type2irtype(elm_type);
+        auto elm_ir_type = _symtype2irtype(elm_type);
         const_val = _convert_const(elm_ir_type, *const_val);
         if (!const_val) {
             error(-1, "unsupported type in global variable");
@@ -112,7 +112,7 @@ void Visitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     }
 
     if (_is_global_context()) {
-        auto elm_type = _asttype2type(btype);
+        auto elm_type = _asttype2symtype(btype);
         auto data = ir::Data::create(false, symbol->name, elm_type->get_size(),
                                      _module);
 
@@ -125,8 +125,8 @@ void Visitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
             _init_global(*data, *elm_type, *initializer);
         }
     } else { // in a function
-        auto elm_type = _asttype2type(btype);
-        auto elm_ir_type = _type2irtype(*elm_type);
+        auto elm_type = _asttype2symtype(btype);
+        auto elm_ir_type = _symtype2irtype(*elm_type);
 
         symbol->value = _builder.create_alloc(elm_ir_type, type->get_size());
 
@@ -197,7 +197,7 @@ sym::InitializerPtr Visitor::visitInitVal(const InitVal &node, sym::Type &type) 
 }
 
 sym::TypePtr Visitor::visitDims(const Dims &node, ASTType btype) {
-    auto base_type = _asttype2type(btype);
+    auto base_type = _asttype2symtype(btype);
     sym::TypeBuilder tb(base_type);
 
     // reverse is needed
@@ -238,12 +238,12 @@ void Visitor::visitFuncDef(const FuncDef &node) {
     auto param_symbols = visitFuncFParams(*node.func_fparams);
 
     // get function type
-    auto return_type = _asttype2type(node.func_type);
+    auto return_type = _asttype2symtype(node.func_type);
     std::vector<sym::TypePtr> params_type;
     std::vector<ir::Type> params_ir_type;
     for (auto &param_symbol : param_symbols) {
         params_type.push_back(param_symbol->type);
-        params_ir_type.push_back(_type2irtype(*param_symbol->type));
+        params_ir_type.push_back(_symtype2irtype(*param_symbol->type));
     }
 
     // add function symbol
@@ -257,7 +257,7 @@ void Visitor::visitFuncDef(const FuncDef &node) {
 
     // create function in IR
     auto [ir_func, ir_params] = ir::Function::create(
-        symbol->name == "main", symbol->name, _type2irtype(*return_type),
+        symbol->name == "main", symbol->name, _symtype2irtype(*return_type),
         params_ir_type, _module);
     symbol->value = ir_func->get_address();
     _builder.set_function(ir_func);
@@ -275,7 +275,7 @@ void Visitor::visitFuncDef(const FuncDef &node) {
         }
 
         // alloc and store for param values
-        auto param_ir_type = _type2irtype(*param_symbol->type);
+        auto param_ir_type = _symtype2irtype(*param_symbol->type);
         param_symbol->value = _builder.create_alloc(
             param_ir_type, param_symbol->type->get_size());
         _builder.create_store(param_ir_type, ir_params[no],
@@ -371,7 +371,7 @@ void Visitor::visitAssignStmt(const AssignStmt &node) {
         return;
     }
 
-    _builder.create_store(_type2irtype(*lval_type), exp_val, lval_val);
+    _builder.create_store(_symtype2irtype(*lval_type), exp_val, lval_val);
 }
 
 void Visitor::visitExpStmt(const ExpStmt &node) {
@@ -537,7 +537,7 @@ ExpReturn Visitor::visitBinaryExp(const BinaryExp &node) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
     }
 
-    auto ir_type = _type2irtype(*type);
+    auto ir_type = _symtype2irtype(*type);
     switch (node.op) {
     case BinaryExp::ADD:
         return ExpReturn(type,
@@ -572,7 +572,7 @@ ExpReturn Visitor::visitLValExp(const LValExp &node) {
 
     // since lval is in an expression, we need to get the value from the
     // lval address
-    auto exp_val = _builder.create_load(_type2irtype(*type), val);
+    auto exp_val = _builder.create_load(_symtype2irtype(*type), val);
 
     return ExpReturn(type, exp_val);
 }
@@ -672,7 +672,7 @@ ExpReturn Visitor::visitCallExp(const CallExp &node) {
         ir_args.push_back(exp_val);
     }
 
-    auto ir_ret = _builder.create_call(_type2irtype(*func_symbol->type),
+    auto ir_ret = _builder.create_call(_symtype2irtype(*func_symbol->type),
                                        func_symbol->value, ir_args);
 
     return ExpReturn(symbol->type, ir_ret);
@@ -694,7 +694,7 @@ ExpReturn Visitor::visitUnaryExp(const UnaryExp &node) {
             return ExpReturn(sym::ErrorType::get(), nullptr);
         }
         return ExpReturn(exp_type,
-                         _builder.create_neg(_type2irtype(*exp_type), exp_val));
+                         _builder.create_neg(_symtype2irtype(*exp_type), exp_val));
     case UnaryExp::NOT:
         if (!exp_type->is_int32()) {
             error(-1, "not operator ! can only be used on int");
