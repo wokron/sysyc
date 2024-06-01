@@ -46,8 +46,9 @@ void ASTVisitor::visitDecl(const Decl &node) {
     }
 }
 
-std::shared_ptr<ir::ConstBits>
-ASTVisitor::_convert_const(ir::Type target_type, const ir::ConstBits &const_val) {
+ir::ConstBitsPtr
+ASTVisitor::_convert_const(ir::Type target_type,
+                           const ir::ConstBits &const_val) {
     if (target_type == ir::Type::W) {
         return const_val.to_int();
     } else if (target_type == ir::Type::S) {
@@ -340,9 +341,8 @@ void ASTVisitor::visitStmt(const Stmt &node) {
                node);
 }
 
-std::shared_ptr<ir::Value>
-ASTVisitor::_convert_if_needed(const Type &to, const Type &from,
-                               std::shared_ptr<ir::Value> val) {
+ir::ValuePtr ASTVisitor::_convert_if_needed(const Type &to, const Type &from,
+                                ir::ValuePtr val) {
     if (to == from) {
         return val;
     } else if (to.is_int32() && from.is_float()) {
@@ -398,7 +398,7 @@ void ASTVisitor::visitIfStmt(const IfStmt &node) {
     visitStmt(*node.if_stmt);
     _current_scope = _current_scope->pop_scope();
 
-    std::shared_ptr<ir::Block> jmp_to_join;
+    ir::BlockPtr jmp_to_join;
     if (node.else_stmt) {
         jmp_to_join = _builder.create_jmp(nullptr);
     }
@@ -544,19 +544,19 @@ ExpReturn ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     switch (node.op) {
     case BinaryExp::ADD:
         return ExpReturn(type,
-                            _builder.create_add(ir_type, left_val, right_val));
+                         _builder.create_add(ir_type, left_val, right_val));
     case BinaryExp::SUB:
         return ExpReturn(type,
-                            _builder.create_sub(ir_type, left_val, right_val));
+                         _builder.create_sub(ir_type, left_val, right_val));
     case BinaryExp::MULT:
         return ExpReturn(type,
-                            _builder.create_mul(ir_type, left_val, right_val));
+                         _builder.create_mul(ir_type, left_val, right_val));
     case BinaryExp::DIV:
         return ExpReturn(type,
-                            _builder.create_div(ir_type, left_val, right_val));
+                         _builder.create_div(ir_type, left_val, right_val));
     case BinaryExp::MOD:
         return ExpReturn(type,
-                            _builder.create_rem(ir_type, left_val, right_val));
+                         _builder.create_rem(ir_type, left_val, right_val));
     default:
         throw std::logic_error("unreachable");
     }
@@ -696,16 +696,16 @@ ExpReturn ASTVisitor::visitUnaryExp(const UnaryExp &node) {
             error(-1, "neg operator - can only be used on int or float");
             return ExpReturn(ErrorType::get(), nullptr);
         }
-        return ExpReturn(
-            exp_type, _builder.create_neg(_type2irtype(*exp_type), exp_val));
+        return ExpReturn(exp_type,
+                         _builder.create_neg(_type2irtype(*exp_type), exp_val));
     case UnaryExp::NOT:
         if (!exp_type->is_int32()) {
             error(-1, "not operator ! can only be used on int");
             return ExpReturn(ErrorType::get(), nullptr);
         }
         // !a equal to (a == 0)
-        return ExpReturn(
-            exp_type, _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
+        return ExpReturn(exp_type,
+                         _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
     default:
         throw std::logic_error("unreachable");
     }
@@ -740,22 +740,22 @@ ExpReturn ASTVisitor::visitCompareExp(const CompareExp &node) {
         switch (node.op) {
         case CompareExp::EQ:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_ceqw(left_val, right_val));
+                             _builder.create_ceqw(left_val, right_val));
         case CompareExp::NE:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_cnew(left_val, right_val));
+                             _builder.create_cnew(left_val, right_val));
         case CompareExp::LT:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_csltw(left_val, right_val));
+                             _builder.create_csltw(left_val, right_val));
         case CompareExp::LE:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_cslew(right_val, left_val));
+                             _builder.create_cslew(right_val, left_val));
         case CompareExp::GT:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_csgtw(right_val, left_val));
+                             _builder.create_csgtw(right_val, left_val));
         case CompareExp::GE:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_csgew(left_val, right_val));
+                             _builder.create_csgew(left_val, right_val));
         default:
             throw std::logic_error("unreachable");
         }
@@ -763,22 +763,22 @@ ExpReturn ASTVisitor::visitCompareExp(const CompareExp &node) {
         switch (node.op) {
         case CompareExp::EQ:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_ceqs(left_val, right_val));
+                             _builder.create_ceqs(left_val, right_val));
         case CompareExp::NE:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_cnes(left_val, right_val));
+                             _builder.create_cnes(left_val, right_val));
         case CompareExp::LT:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_clts(left_val, right_val));
+                             _builder.create_clts(left_val, right_val));
         case CompareExp::LE:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_cles(left_val, right_val));
+                             _builder.create_cles(left_val, right_val));
         case CompareExp::GT:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_cgts(left_val, right_val));
+                             _builder.create_cgts(left_val, right_val));
         case CompareExp::GE:
             return ExpReturn(Int32Type::get(),
-                                _builder.create_cges(right_val, left_val));
+                             _builder.create_cges(right_val, left_val));
         default:
             throw std::logic_error("unreachable");
         }
@@ -810,7 +810,7 @@ CondReturn ASTVisitor::visitCond(const Cond &node) {
                 // generate conditional jump instruction
                 auto jnz_block = _builder.create_jnz(val, nullptr, nullptr);
                 return CondReturn(BlockPtrList{jnz_block},
-                                     BlockPtrList{jnz_block});
+                                  BlockPtrList{jnz_block});
             },
             [this](const LogicalExp &node) { return visitLogicalExp(node); },
         },

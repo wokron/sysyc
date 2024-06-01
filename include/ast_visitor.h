@@ -8,9 +8,9 @@
 #include <stack>
 #include <variant>
 
-using ExpReturn = std::tuple<std::shared_ptr<Type>, std::shared_ptr<ir::Value>>;
+using ExpReturn = std::tuple<std::shared_ptr<Type>, ir::ValuePtr>;
 
-using BlockPtrList = std::vector<std::shared_ptr<ir::Block>>;
+using BlockPtrList = std::vector<ir::BlockPtr>;
 
 // return type for conditional expression, first vector is the true path, second
 // vector is the false path
@@ -71,16 +71,15 @@ class ASTVisitor {
     // some utility methods
     bool _is_global_context() const { return !_current_scope->has_parent(); }
 
-    std::shared_ptr<ir::Value>
-    _convert_if_needed(const Type &to, const Type &from,
-                       std::shared_ptr<ir::Value> val);
+    ir::ValuePtr _convert_if_needed(const Type &to, const Type &from,
+                                    ir::ValuePtr val);
 
     static std::shared_ptr<Type> _asttype2type(ASTType type);
 
     static ir::Type _type2irtype(const Type &type);
 
-    static std::shared_ptr<ir::ConstBits>
-    _convert_const(ir::Type target_type, const ir::ConstBits &const_val);
+    static ir::ConstBitsPtr _convert_const(ir::Type target_type,
+                                           const ir::ConstBits &const_val);
 
     static void _init_global(ir::Data &data, const Type &elm_type,
                              const Initializer &initializer);

@@ -132,7 +132,7 @@ struct Phi {
 
 struct Jump {
     enum {
-        NONE,
+        NONE, // none means fall through
         JMP,
         JNZ,
         RET,
@@ -281,5 +281,17 @@ struct Module {
 
     void emit(std::ostream &out) const;
 };
+
+// some alias for easier use
+using TempPtr = std::shared_ptr<Temp>;
+using ValuePtr = std::shared_ptr<Value>;
+using ConstPtr = std::shared_ptr<Const>;
+using ConstBitsPtr = std::shared_ptr<ConstBits>;
+using AddressPtr = std::shared_ptr<Address>;
+using InstPtr = std::shared_ptr<Inst>;
+using BlockPtr = std::shared_ptr<Block>;
+using PhiPtr = std::shared_ptr<Phi>;
+using FunctionPtr = std::shared_ptr<Function>;
+using DataPtr = std::shared_ptr<Data>;
 
 } // namespace ir
