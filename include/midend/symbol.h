@@ -148,3 +148,8 @@ class SymbolTable : public std::enable_shared_from_this<SymbolTable> {
         return rt;
     }
 };
+
+// alias
+using SymbolPtr = std::shared_ptr<Symbol>;
+using InitializerPtr = std::shared_ptr<Initializer>;
+using SymbolTablePtr = std::shared_ptr<SymbolTable>;

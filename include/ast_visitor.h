@@ -8,7 +8,7 @@
 #include <stack>
 #include <variant>
 
-using ExpReturn = std::tuple<std::shared_ptr<Type>, ir::ValuePtr>;
+using ExpReturn = std::tuple<TypePtr, ir::ValuePtr>;
 
 using BlockPtrList = std::vector<ir::BlockPtr>;
 
@@ -21,11 +21,11 @@ using ContinueBreak = std::tuple<BlockPtrList, BlockPtrList>;
 
 class ASTVisitor {
   private:
-    std::shared_ptr<SymbolTable> _current_scope;
+    SymbolTablePtr _current_scope;
     ir::Module &_module;
     ir::IRBuilder _builder;
 
-    std::shared_ptr<Type> _current_return_type = nullptr;
+    TypePtr _current_return_type = nullptr;
     std::stack<ContinueBreak> _while_stack;
 
   public:
@@ -35,17 +35,18 @@ class ASTVisitor {
 
     // define methods for each AST node type
     void visit(const CompUnits &node);
+
     void visitDecl(const Decl &node);
     void visitVarDef(const VarDef &node, ASTType btype, bool is_const);
-    std::shared_ptr<Initializer> visitInitVal(const InitVal &node, Type &type);
-    std::shared_ptr<Type> visitDims(const Dims &node, ASTType btype);
+    InitializerPtr visitInitVal(const InitVal &node, Type &type);
+    TypePtr visitDims(const Dims &node, ASTType btype);
+
     void visitFuncDef(const FuncDef &node);
-    std::vector<std::shared_ptr<Symbol>>
-    visitFuncFParams(const FuncFParams &node);
+    std::vector<SymbolPtr> visitFuncFParams(const FuncFParams &node);
+
     void visitBlockItems(const BlockItems &node);
 
     void visitStmt(const Stmt &node);
-
     void visitAssignStmt(const AssignStmt &node);
     void visitExpStmt(const ExpStmt &node);
     void visitBlockStmt(const BlockStmt &node);
@@ -74,7 +75,7 @@ class ASTVisitor {
     ir::ValuePtr _convert_if_needed(const Type &to, const Type &from,
                                     ir::ValuePtr val);
 
-    static std::shared_ptr<Type> _asttype2type(ASTType type);
+    static TypePtr _asttype2type(ASTType type);
 
     static ir::Type _type2irtype(const Type &type);
 

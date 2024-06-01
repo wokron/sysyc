@@ -4,7 +4,7 @@
 #include "utils.h"
 #include <variant>
 
-std::shared_ptr<Type> ASTVisitor::_asttype2type(ASTType type) {
+TypePtr ASTVisitor::_asttype2type(ASTType type) {
     switch (type) {
     case ASTType::INT:
         return Int32Type::get();
@@ -46,9 +46,8 @@ void ASTVisitor::visitDecl(const Decl &node) {
     }
 }
 
-ir::ConstBitsPtr
-ASTVisitor::_convert_const(ir::Type target_type,
-                           const ir::ConstBits &const_val) {
+ir::ConstBitsPtr ASTVisitor::_convert_const(ir::Type target_type,
+                                            const ir::ConstBits &const_val) {
     if (target_type == ir::Type::W) {
         return const_val.to_int();
     } else if (target_type == ir::Type::S) {
@@ -100,7 +99,7 @@ void ASTVisitor::_init_global(ir::Data &data, const Type &elm_type,
 void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     auto type = visitDims(*node.dims, btype);
 
-    std::shared_ptr<Initializer> initializer = nullptr;
+    InitializerPtr initializer = nullptr;
     if (node.init_val != nullptr) {
         initializer = visitInitVal(*node.init_val, *type);
     }
@@ -135,7 +134,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
             auto values = symbol->initializer->get_values();
             for (int index = 0; index < initializer->get_space(); index++) {
                 // if no init value, just store zero
-                std::shared_ptr<Type> val_type = elm_type;
+                TypePtr val_type = elm_type;
                 ir::ValuePtr val = ir::ConstBits::get(0);
                 if (values.find(index) != values.end()) {
                     auto value = values[index];
@@ -160,15 +159,14 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     }
 }
 
-std::shared_ptr<Initializer> ASTVisitor::visitInitVal(const InitVal &node,
-                                                      Type &type) {
+InitializerPtr ASTVisitor::visitInitVal(const InitVal &node, Type &type) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
                 auto initializer = std::make_shared<Initializer>();
                 auto [exp_type, exp_value] = visitConstExp(node);
                 if (exp_type->is_error()) {
-                    return std::shared_ptr<Initializer>(nullptr);
+                    return InitializerPtr(nullptr);
                 }
                 initializer->insert(Initializer::value_t(exp_type, exp_value));
                 return initializer;
@@ -176,7 +174,7 @@ std::shared_ptr<Initializer> ASTVisitor::visitInitVal(const InitVal &node,
             [this, &type](const ArrayInitVal &node) {
                 if (!type.is_array()) {
                     error(-1, "cannot use array initializer on non-array type");
-                    return std::shared_ptr<Initializer>(nullptr);
+                    return InitializerPtr(nullptr);
                 }
                 auto array_type = static_cast<ArrayType &>(type);
 
@@ -198,7 +196,7 @@ std::shared_ptr<Initializer> ASTVisitor::visitInitVal(const InitVal &node,
         node);
 }
 
-std::shared_ptr<Type> ASTVisitor::visitDims(const Dims &node, ASTType btype) {
+TypePtr ASTVisitor::visitDims(const Dims &node, ASTType btype) {
     auto base_type = _asttype2type(btype);
     TypeBuilder tb(base_type);
 
@@ -241,7 +239,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
 
     // get function type
     auto return_type = _asttype2type(node.func_type);
-    std::vector<std::shared_ptr<Type>> params_type;
+    std::vector<TypePtr> params_type;
     std::vector<ir::Type> params_ir_type;
     for (auto &param_symbol : param_symbols) {
         params_type.push_back(param_symbol->type);
@@ -304,9 +302,8 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     _current_return_type = nullptr;
 }
 
-std::vector<std::shared_ptr<Symbol>>
-ASTVisitor::visitFuncFParams(const FuncFParams &node) {
-    std::vector<std::shared_ptr<Symbol>> params;
+std::vector<SymbolPtr> ASTVisitor::visitFuncFParams(const FuncFParams &node) {
+    std::vector<SymbolPtr> params;
 
     for (auto &elm : node) {
         auto type = visitDims(*elm->dims, elm->btype);
@@ -342,7 +339,7 @@ void ASTVisitor::visitStmt(const Stmt &node) {
 }
 
 ir::ValuePtr ASTVisitor::_convert_if_needed(const Type &to, const Type &from,
-                                ir::ValuePtr val) {
+                                            ir::ValuePtr val) {
     if (to == from) {
         return val;
     } else if (to.is_int32() && from.is_float()) {

@@ -217,3 +217,12 @@ class TypeBuilder {
   private:
     std::shared_ptr<Type> _type;
 };
+
+// some alias for types
+using TypePtr = std::shared_ptr<Type>;
+using ErrorTypePtr = std::shared_ptr<ErrorType>;
+using VoidTypePtr = std::shared_ptr<VoidType>;
+using Int32TypePtr = std::shared_ptr<Int32Type>;
+using FloatTypePtr = std::shared_ptr<FloatType>;
+using PointerTypePtr = std::shared_ptr<PointerType>;
+using ArrayTypePtr = std::shared_ptr<ArrayType>;
