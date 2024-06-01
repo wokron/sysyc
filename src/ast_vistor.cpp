@@ -60,7 +60,8 @@ ASTVisitor::_convert_const(ir::Type target_type, ir::ConstBits &const_val) {
 void ASTVisitor::_init_global(ir::Data &data, Type &elm_type,
                               const Initializer &initializer) {
     int prev_index = -1;
-    for (auto &[index, val] : initializer.get_values()) {
+    for (auto &[index, value] : initializer.get_values()) {
+        auto &[val_type, val] = value;
         auto zero_count = index - prev_index - 1;
         prev_index = index;
         if (zero_count > 0) {
@@ -133,9 +134,12 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
             auto values = symbol->initializer->get_values();
             for (int index = 0; index < initializer->get_space(); index++) {
                 // if no init value, just store zero
+                std::shared_ptr<Type> val_type = elm_type;
                 ir::ValuePtr val = ir::ConstBits::get(0);
                 if (values.find(index) != values.end()) {
-                    val = values[index];
+                    auto value = values[index];
+                    val_type = std::get<0>(value);
+                    val = std::get<1>(value);
                 }
 
                 if (auto const_val =
@@ -148,6 +152,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
                 auto offset = ir::ConstBits::get(elm_type->get_size() * index);
                 auto elm_addr =
                     _builder.create_add(ir::Type::L, symbol->value, offset);
+                val = _convert_if_needed(elm_type, val_type, val);
                 _builder.create_store(elm_ir_type, val, elm_addr);
             }
         }
@@ -164,7 +169,7 @@ std::shared_ptr<Initializer> ASTVisitor::visitInitVal(const InitVal &node,
                 if (exp_type->is_error()) {
                     return std::shared_ptr<Initializer>(nullptr);
                 }
-                initializer->insert(exp_value);
+                initializer->insert(Initializer::value_t(exp_type, exp_value));
                 return initializer;
             },
             [this, &type](const ArrayInitVal &node) {
@@ -657,10 +662,15 @@ exp_return_t ASTVisitor::visitCallExp(const CallExp &node) {
         }
 
         if (exp_type != params_type[i]) {
-            error(-1, "params type not matched in function call " + node.ident +
-                          ", expected " + params_type[i]->tostring() +
-                          ", got " + exp_type->tostring());
-            return exp_return_t(ErrorType::get(), nullptr);
+            exp_val = _convert_if_needed(params_type[i], exp_type, exp_val);
+
+            if (!exp_val) {
+                error(-1, "params type not matched in function call " +
+                              node.ident + ", expected " +
+                              params_type[i]->tostring() + ", got " +
+                              exp_type->tostring());
+                return exp_return_t(ErrorType::get(), nullptr);
+            }
         }
 
         ir_args.push_back(exp_val);

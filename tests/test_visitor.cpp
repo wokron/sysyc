@@ -899,3 +899,84 @@ TEST_CASE("testing short-circuit evaluation") {
 
     CHECK_EQ(ss.str(), EXPECTED5);
 }
+
+static constexpr char CONTENT6[] = R"(
+void func(int a, float b) {
+    return;
+}
+
+int a = 1.0;
+float b = 1;
+
+int main() {
+    int a = 1.0;
+    float b = 1;
+    a = b + 1;
+    b = a + 1.0;
+    func(a, b);
+    func(b, a);
+    return 0;
+}
+)";
+
+static constexpr char EXPECTED6[] = R"(data $a = align 4 { w 1, }
+data $b = align 4 { s s_1, }
+function $func(w %.1, s %.2, ) {
+@start.1
+    %.3 =l alloc4 4
+    storew %.1, %.3
+    %.4 =l alloc4 4
+    stores %.2, %.4
+@body.2
+    ret
+}
+export
+function w $main() {
+@start.3
+    %.1 =l alloc4 4
+    %.4 =l alloc4 4
+@body.4
+    %.2 =l add %.1, 0
+    %.3 =w stosi s_1
+    storew %.3, %.2
+    %.5 =l add %.4, 0
+    %.6 =s swtof 1
+    stores %.6, %.5
+    %.7 =s loads %.4
+    %.8 =s swtof 1
+    %.9 =s add %.7, %.8
+    %.10 =w stosi %.9
+    storew %.10, %.1
+    %.11 =w loadw %.1
+    %.12 =s swtof %.11
+    %.13 =s add %.12, s_1
+    stores %.13, %.4
+    %.14 =w loadw %.1
+    %.15 =s loads %.4
+    call $func(w %.14, s %.15, )
+    %.16 =s loads %.4
+    %.17 =w stosi %.16
+    %.18 =w loadw %.1
+    %.19 =s swtof %.18
+    call $func(w %.17, s %.19, )
+    ret 0
+}
+)";
+
+TEST_CASE("testing implicit cast") {
+    auto root = parse(CONTENT6);
+
+    ir::Module module;
+
+    ASTVisitor visitor(module);
+
+    visitor.visit(*root);
+
+    CHECK_FALSE(has_error());
+
+    std::ostringstream ss;
+
+    module.emit(ss);
+
+    CHECK_EQ(ss.str(), EXPECTED6);
+}
