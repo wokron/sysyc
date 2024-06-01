@@ -3,7 +3,7 @@
 namespace sym {
 
 bool IndirectType::operator==(const Type &other) const {
-    if (!other.is_array() || !other.is_pointer()) {
+    if (!other.is_array() && !other.is_pointer()) {
         return false;
     }
 

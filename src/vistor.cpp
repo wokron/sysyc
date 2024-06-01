@@ -657,7 +657,7 @@ ExpReturn Visitor::visitCallExp(const CallExp &node) {
             return ExpReturn(sym::ErrorType::get(), nullptr);
         }
 
-        if (exp_type != params_type[i]) {
+        if (*exp_type != *(params_type[i])) {
             exp_val = _convert_if_needed(*params_type[i], *exp_type, exp_val);
 
             if (!exp_val) {
