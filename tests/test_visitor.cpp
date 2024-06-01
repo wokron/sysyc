@@ -1,7 +1,7 @@
 #include "ast.h"
-#include "visitor.h"
 #include "error.h"
 #include "parser.h"
+#include "visitor.h"
 #include <doctest.h>
 #include <sstream>
 
@@ -979,4 +979,200 @@ TEST_CASE("testing implicit cast") {
     module.emit(ss);
 
     CHECK_EQ(ss.str(), EXPECTED6);
+}
+
+static constexpr char CONTENT7[] = R"(
+void testparam(int a[], float b[], int c[][3], float d[][3]) {
+    return;
+}
+
+void testinit() {
+    int a[4][2] = {};
+    int b[4][2] = {1, 2, 3, 4, 5, 6, 7, 8};
+    int c[4][2] = {{1, 2}, {3, 4}, 5, 6, 7, 8};
+    int d[4][2] = {{1, 2}, {3}, {5}, 7, 8};
+    int e[4][2] = {{1, 2}, {3, 4}, {5, 6}, {7, 8}};
+}
+
+int main() {
+    int a[3][3] = {{1, 2, 3}, {4}, {7, 8, 9}};
+    float b[3][3] = {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0}, {7.0, 8.0, 9.0}};
+    testparam(a[0], b[0], a, b);
+    return 0;
+}
+)";
+
+static constexpr char EXPECTED7[] =
+    R"(function $testparam(l %.1, l %.2, l %.3, l %.4, ) {
+@start.1
+    %.5 =l alloc8 8
+    storel %.1, %.5
+    %.6 =l alloc8 8
+    storel %.2, %.6
+    %.7 =l alloc8 8
+    storel %.3, %.7
+    %.8 =l alloc8 8
+    storel %.4, %.8
+@body.2
+    ret
+}
+function $testinit() {
+@start.3
+    %.1 =l alloc4 32
+    %.10 =l alloc4 32
+    %.19 =l alloc4 32
+    %.28 =l alloc4 32
+    %.37 =l alloc4 32
+@body.4
+    %.2 =l add %.1, 0
+    storew 0, %.2
+    %.3 =l add %.1, 4
+    storew 0, %.3
+    %.4 =l add %.1, 8
+    storew 0, %.4
+    %.5 =l add %.1, 12
+    storew 0, %.5
+    %.6 =l add %.1, 16
+    storew 0, %.6
+    %.7 =l add %.1, 20
+    storew 0, %.7
+    %.8 =l add %.1, 24
+    storew 0, %.8
+    %.9 =l add %.1, 28
+    storew 0, %.9
+    %.11 =l add %.10, 0
+    storew 1, %.11
+    %.12 =l add %.10, 4
+    storew 2, %.12
+    %.13 =l add %.10, 8
+    storew 3, %.13
+    %.14 =l add %.10, 12
+    storew 4, %.14
+    %.15 =l add %.10, 16
+    storew 5, %.15
+    %.16 =l add %.10, 20
+    storew 6, %.16
+    %.17 =l add %.10, 24
+    storew 7, %.17
+    %.18 =l add %.10, 28
+    storew 8, %.18
+    %.20 =l add %.19, 0
+    storew 1, %.20
+    %.21 =l add %.19, 4
+    storew 2, %.21
+    %.22 =l add %.19, 8
+    storew 3, %.22
+    %.23 =l add %.19, 12
+    storew 4, %.23
+    %.24 =l add %.19, 16
+    storew 5, %.24
+    %.25 =l add %.19, 20
+    storew 6, %.25
+    %.26 =l add %.19, 24
+    storew 7, %.26
+    %.27 =l add %.19, 28
+    storew 8, %.27
+    %.29 =l add %.28, 0
+    storew 1, %.29
+    %.30 =l add %.28, 4
+    storew 2, %.30
+    %.31 =l add %.28, 8
+    storew 3, %.31
+    %.32 =l add %.28, 12
+    storew 0, %.32
+    %.33 =l add %.28, 16
+    storew 5, %.33
+    %.34 =l add %.28, 20
+    storew 0, %.34
+    %.35 =l add %.28, 24
+    storew 7, %.35
+    %.36 =l add %.28, 28
+    storew 8, %.36
+    %.38 =l add %.37, 0
+    storew 1, %.38
+    %.39 =l add %.37, 4
+    storew 2, %.39
+    %.40 =l add %.37, 8
+    storew 3, %.40
+    %.41 =l add %.37, 12
+    storew 4, %.41
+    %.42 =l add %.37, 16
+    storew 5, %.42
+    %.43 =l add %.37, 20
+    storew 6, %.43
+    %.44 =l add %.37, 24
+    storew 7, %.44
+    %.45 =l add %.37, 28
+    storew 8, %.45
+    ret
+}
+export
+function w $main() {
+@start.5
+    %.1 =l alloc4 36
+    %.11 =l alloc4 36
+@body.6
+    %.2 =l add %.1, 0
+    storew 1, %.2
+    %.3 =l add %.1, 4
+    storew 2, %.3
+    %.4 =l add %.1, 8
+    storew 3, %.4
+    %.5 =l add %.1, 12
+    storew 4, %.5
+    %.6 =l add %.1, 16
+    storew 0, %.6
+    %.7 =l add %.1, 20
+    storew 0, %.7
+    %.8 =l add %.1, 24
+    storew 7, %.8
+    %.9 =l add %.1, 28
+    storew 8, %.9
+    %.10 =l add %.1, 32
+    storew 9, %.10
+    %.12 =l add %.11, 0
+    stores s_1, %.12
+    %.13 =l add %.11, 4
+    stores s_2, %.13
+    %.14 =l add %.11, 8
+    stores s_3, %.14
+    %.15 =l add %.11, 12
+    stores s_4, %.15
+    %.16 =l add %.11, 16
+    stores s_5, %.16
+    %.17 =l add %.11, 20
+    stores s_6, %.17
+    %.18 =l add %.11, 24
+    stores s_7, %.18
+    %.19 =l add %.11, 28
+    stores s_8, %.19
+    %.20 =l add %.11, 32
+    stores s_9, %.20
+    %.21 =l extsw 0
+    %.22 =l mul %.21, 12
+    %.23 =l add %.1, %.22
+    %.24 =l extsw 0
+    %.25 =l mul %.24, 12
+    %.26 =l add %.11, %.25
+    call $testparam(l %.23, l %.26, l %.1, l %.11, )
+    ret 0
+}
+)";
+
+TEST_CASE("testing array") {
+    auto root = parse(CONTENT7);
+
+    ir::Module module;
+
+    Visitor visitor(module);
+
+    visitor.visit(*root);
+
+    CHECK_FALSE(has_error());
+
+    std::ostringstream ss;
+
+    module.emit(ss);
+
+    CHECK_EQ(ss.str(), EXPECTED7);
 }
