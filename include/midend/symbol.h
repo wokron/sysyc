@@ -18,12 +18,12 @@ struct Symbol {
 
 class Initializer {
   public:
-    using value_t =
+    using InitValue =
         std::tuple<std::shared_ptr<Type>, std::shared_ptr<ir::Value>>;
 
     Initializer(int space = 1) : _space(space) {}
 
-    bool insert(value_t value) {
+    bool insert(InitValue value) {
         if (_pos >= _space) {
             return false;
         }
@@ -46,12 +46,12 @@ class Initializer {
         return rt;
     }
 
-    std::map<int, value_t> get_values() const { return _init_values; }
+    std::map<int, InitValue> get_values() const { return _init_values; }
 
     int get_space() const { return _space; }
 
   private:
-    std::map<int, value_t> _init_values;
+    std::map<int, InitValue> _init_values;
     int _space;
     int _pos = 0;
 };

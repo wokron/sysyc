@@ -168,7 +168,7 @@ InitializerPtr ASTVisitor::visitInitVal(const InitVal &node, Type &type) {
                 if (exp_type->is_error()) {
                     return InitializerPtr(nullptr);
                 }
-                initializer->insert(Initializer::value_t(exp_type, exp_value));
+                initializer->insert(Initializer::InitValue(exp_type, exp_value));
                 return initializer;
             },
             [this, &type](const ArrayInitVal &node) {

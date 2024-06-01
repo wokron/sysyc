@@ -46,15 +46,15 @@ TEST_CASE("testing initializer") {
     Initializer init1(3);
     Initializer init2(3);
 
-    CHECK(init.insert(Initializer::value_t(nullptr, nullptr)));
-    CHECK(init.insert(Initializer::value_t(nullptr, nullptr)));
-    CHECK(init.insert(Initializer::value_t(nullptr, nullptr)));
+    CHECK(init.insert(Initializer::InitValue(nullptr, nullptr)));
+    CHECK(init.insert(Initializer::InitValue(nullptr, nullptr)));
+    CHECK(init.insert(Initializer::InitValue(nullptr, nullptr)));
 
-    CHECK(init1.insert(Initializer::value_t(nullptr, nullptr)));
-    CHECK(init1.insert(Initializer::value_t(nullptr, nullptr)));
+    CHECK(init1.insert(Initializer::InitValue(nullptr, nullptr)));
+    CHECK(init1.insert(Initializer::InitValue(nullptr, nullptr)));
     CHECK(init.insert(init1));
 
-    CHECK(init2.insert(Initializer::value_t(nullptr, nullptr)));
+    CHECK(init2.insert(Initializer::InitValue(nullptr, nullptr)));
     CHECK(init.insert(init2));
 
     int a[9] = {1, 1, 1, 1, 1, 0, 1, 0, 0};
