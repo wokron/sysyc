@@ -1,10 +1,10 @@
 #include "ast.h"
-#include "ast_visitor.h"
+#include "visitor.h"
 #include "error.h"
 #include "utils.h"
 #include <variant>
 
-TypePtr ASTVisitor::_asttype2type(ASTType type) {
+TypePtr Visitor::_asttype2type(ASTType type) {
     switch (type) {
     case ASTType::INT:
         return Int32Type::get();
@@ -17,7 +17,7 @@ TypePtr ASTVisitor::_asttype2type(ASTType type) {
     }
 }
 
-ir::Type ASTVisitor::_type2irtype(const Type &type) {
+ir::Type Visitor::_type2irtype(const Type &type) {
     if (type.is_int32()) {
         return ir::Type::W;
     } else if (type.is_float()) {
@@ -29,7 +29,7 @@ ir::Type ASTVisitor::_type2irtype(const Type &type) {
     }
 }
 
-void ASTVisitor::visit(const CompUnits &node) {
+void Visitor::visit(const CompUnits &node) {
     for (auto &elm : node) {
         std::visit(overloaded{
                        [this](const Decl &node) { visitDecl(node); },
@@ -39,14 +39,14 @@ void ASTVisitor::visit(const CompUnits &node) {
     }
 }
 
-void ASTVisitor::visitDecl(const Decl &node) {
+void Visitor::visitDecl(const Decl &node) {
     for (auto &elm : *node.var_defs) {
         bool is_const = (node.type == Decl::CONST);
         visitVarDef(*elm, node.btype, is_const);
     }
 }
 
-ir::ConstBitsPtr ASTVisitor::_convert_const(ir::Type target_type,
+ir::ConstBitsPtr Visitor::_convert_const(ir::Type target_type,
                                             const ir::ConstBits &const_val) {
     if (target_type == ir::Type::W) {
         return const_val.to_int();
@@ -57,7 +57,7 @@ ir::ConstBitsPtr ASTVisitor::_convert_const(ir::Type target_type,
     }
 }
 
-void ASTVisitor::_init_global(ir::Data &data, const Type &elm_type,
+void Visitor::_init_global(ir::Data &data, const Type &elm_type,
                               const Initializer &initializer) {
     int prev_index = -1;
     for (auto &[index, value] : initializer.get_values()) {
@@ -96,7 +96,7 @@ void ASTVisitor::_init_global(ir::Data &data, const Type &elm_type,
     }
 }
 
-void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
+void Visitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     auto type = visitDims(*node.dims, btype);
 
     InitializerPtr initializer = nullptr;
@@ -159,7 +159,7 @@ void ASTVisitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     }
 }
 
-InitializerPtr ASTVisitor::visitInitVal(const InitVal &node, Type &type) {
+InitializerPtr Visitor::visitInitVal(const InitVal &node, Type &type) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
@@ -196,7 +196,7 @@ InitializerPtr ASTVisitor::visitInitVal(const InitVal &node, Type &type) {
         node);
 }
 
-TypePtr ASTVisitor::visitDims(const Dims &node, ASTType btype) {
+TypePtr Visitor::visitDims(const Dims &node, ASTType btype) {
     auto base_type = _asttype2type(btype);
     TypeBuilder tb(base_type);
 
@@ -233,7 +233,7 @@ TypePtr ASTVisitor::visitDims(const Dims &node, ASTType btype) {
     return tb.get_type();
 }
 
-void ASTVisitor::visitFuncDef(const FuncDef &node) {
+void Visitor::visitFuncDef(const FuncDef &node) {
     // get symbols of params
     auto param_symbols = visitFuncFParams(*node.func_fparams);
 
@@ -302,7 +302,7 @@ void ASTVisitor::visitFuncDef(const FuncDef &node) {
     _current_return_type = nullptr;
 }
 
-std::vector<SymbolPtr> ASTVisitor::visitFuncFParams(const FuncFParams &node) {
+std::vector<SymbolPtr> Visitor::visitFuncFParams(const FuncFParams &node) {
     std::vector<SymbolPtr> params;
 
     for (auto &elm : node) {
@@ -315,7 +315,7 @@ std::vector<SymbolPtr> ASTVisitor::visitFuncFParams(const FuncFParams &node) {
     return params;
 }
 
-void ASTVisitor::visitBlockItems(const BlockItems &node) {
+void Visitor::visitBlockItems(const BlockItems &node) {
     for (auto &elm : node) {
         std::visit(overloaded{
                        [this](const Decl &node) { visitDecl(node); },
@@ -325,7 +325,7 @@ void ASTVisitor::visitBlockItems(const BlockItems &node) {
     }
 }
 
-void ASTVisitor::visitStmt(const Stmt &node) {
+void Visitor::visitStmt(const Stmt &node) {
     std::visit(overloaded{
                    [this](const AssignStmt &node) { visitAssignStmt(node); },
                    [this](const ExpStmt &node) { visitExpStmt(node); },
@@ -338,7 +338,7 @@ void ASTVisitor::visitStmt(const Stmt &node) {
                node);
 }
 
-ir::ValuePtr ASTVisitor::_convert_if_needed(const Type &to, const Type &from,
+ir::ValuePtr Visitor::_convert_if_needed(const Type &to, const Type &from,
                                             ir::ValuePtr val) {
     if (to == from) {
         return val;
@@ -352,7 +352,7 @@ ir::ValuePtr ASTVisitor::_convert_if_needed(const Type &to, const Type &from,
     }
 }
 
-void ASTVisitor::visitAssignStmt(const AssignStmt &node) {
+void Visitor::visitAssignStmt(const AssignStmt &node) {
     auto [exp_type, exp_val] = visitExp(*node.exp);
     auto [lval_type, lval_val] = visitLVal(*node.lval);
 
@@ -374,19 +374,19 @@ void ASTVisitor::visitAssignStmt(const AssignStmt &node) {
     _builder.create_store(_type2irtype(*lval_type), exp_val, lval_val);
 }
 
-void ASTVisitor::visitExpStmt(const ExpStmt &node) {
+void Visitor::visitExpStmt(const ExpStmt &node) {
     if (node.exp) {
         visitExp(*node.exp);
     }
 }
 
-void ASTVisitor::visitBlockStmt(const BlockStmt &node) {
+void Visitor::visitBlockStmt(const BlockStmt &node) {
     _current_scope = _current_scope->push_scope();
     visitBlockItems(*node.block);
     _current_scope = _current_scope->pop_scope();
 }
 
-void ASTVisitor::visitIfStmt(const IfStmt &node) {
+void Visitor::visitIfStmt(const IfStmt &node) {
     auto [jmp_to_true, jmp_to_false] = visitCond(*node.cond);
 
     auto true_block = _builder.create_label("if_true");
@@ -420,7 +420,7 @@ void ASTVisitor::visitIfStmt(const IfStmt &node) {
     }
 }
 
-void ASTVisitor::visitWhileStmt(const WhileStmt &node) {
+void Visitor::visitWhileStmt(const WhileStmt &node) {
     auto cond_block = _builder.create_label("while_cond");
 
     auto [jmp_to_true, jmp_to_false] = visitCond(*node.cond);
@@ -455,7 +455,7 @@ void ASTVisitor::visitWhileStmt(const WhileStmt &node) {
     }
 }
 
-void ASTVisitor::visitControlStmt(const ControlStmt &node) {
+void Visitor::visitControlStmt(const ControlStmt &node) {
     if (_while_stack.empty()) {
         error(-1, "break/continue statement not in while loop");
         return;
@@ -469,7 +469,7 @@ void ASTVisitor::visitControlStmt(const ControlStmt &node) {
     }
 }
 
-void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
+void Visitor::visitReturnStmt(const ReturnStmt &node) {
     if (node.exp) {
         auto [exp_type, exp_val] = visitExp(*node.exp);
         if (exp_type->is_error()) {
@@ -487,7 +487,7 @@ void ASTVisitor::visitReturnStmt(const ReturnStmt &node) {
     _builder.create_ret(nullptr);
 }
 
-ExpReturn ASTVisitor::visitConstExp(const Exp &node) {
+ExpReturn Visitor::visitConstExp(const Exp &node) {
     auto [type, val] = visitExp(node);
 
     if (type->is_error()) {
@@ -504,7 +504,7 @@ ExpReturn ASTVisitor::visitConstExp(const Exp &node) {
     return ExpReturn(type, val);
 }
 
-ExpReturn ASTVisitor::visitExp(const Exp &node) {
+ExpReturn Visitor::visitExp(const Exp &node) {
     return std::visit(
         overloaded{
             [this](const BinaryExp &node) { return visitBinaryExp(node); },
@@ -517,7 +517,7 @@ ExpReturn ASTVisitor::visitExp(const Exp &node) {
         node);
 }
 
-ExpReturn ASTVisitor::visitBinaryExp(const BinaryExp &node) {
+ExpReturn Visitor::visitBinaryExp(const BinaryExp &node) {
     auto [left_type, left_val] = visitExp(*node.left);
     auto [right_type, right_val] = visitExp(*node.right);
 
@@ -559,7 +559,7 @@ ExpReturn ASTVisitor::visitBinaryExp(const BinaryExp &node) {
     }
 }
 
-ExpReturn ASTVisitor::visitLValExp(const LValExp &node) {
+ExpReturn Visitor::visitLValExp(const LValExp &node) {
     auto [type, val] = visitLVal(*node.lval);
     if (type->is_error()) {
         return ExpReturn(ErrorType::get(), nullptr);
@@ -577,7 +577,7 @@ ExpReturn ASTVisitor::visitLValExp(const LValExp &node) {
     return ExpReturn(type, exp_val);
 }
 
-ExpReturn ASTVisitor::visitLVal(const LVal &node) {
+ExpReturn Visitor::visitLVal(const LVal &node) {
     return std::visit(
         overloaded{
             [this](const Ident &node) {
@@ -629,7 +629,7 @@ ExpReturn ASTVisitor::visitLVal(const LVal &node) {
         node);
 }
 
-ExpReturn ASTVisitor::visitCallExp(const CallExp &node) {
+ExpReturn Visitor::visitCallExp(const CallExp &node) {
     auto symbol = _current_scope->get_symbol(node.ident);
     if (!symbol) {
         error(-1, "undefined function " + node.ident);
@@ -678,7 +678,7 @@ ExpReturn ASTVisitor::visitCallExp(const CallExp &node) {
     return ExpReturn(symbol->type, ir_ret);
 }
 
-ExpReturn ASTVisitor::visitUnaryExp(const UnaryExp &node) {
+ExpReturn Visitor::visitUnaryExp(const UnaryExp &node) {
     auto [exp_type, exp_val] = visitExp(*node.exp);
 
     if (exp_type->is_error()) {
@@ -708,7 +708,7 @@ ExpReturn ASTVisitor::visitUnaryExp(const UnaryExp &node) {
     }
 }
 
-ExpReturn ASTVisitor::visitCompareExp(const CompareExp &node) {
+ExpReturn Visitor::visitCompareExp(const CompareExp &node) {
     auto [left_type, left_val] = visitExp(*node.left);
     auto [right_type, right_val] = visitExp(*node.right);
 
@@ -782,7 +782,7 @@ ExpReturn ASTVisitor::visitCompareExp(const CompareExp &node) {
     }
 }
 
-ExpReturn ASTVisitor::visitNumber(const Number &node) {
+ExpReturn Visitor::visitNumber(const Number &node) {
     return std::visit(
         overloaded{
             [this](int node) {
@@ -795,7 +795,7 @@ ExpReturn ASTVisitor::visitNumber(const Number &node) {
         node);
 }
 
-CondReturn ASTVisitor::visitCond(const Cond &node) {
+CondReturn Visitor::visitCond(const Cond &node) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
@@ -814,7 +814,7 @@ CondReturn ASTVisitor::visitCond(const Cond &node) {
         node);
 }
 
-CondReturn ASTVisitor::visitLogicalExp(const LogicalExp &node) {
+CondReturn Visitor::visitLogicalExp(const LogicalExp &node) {
     auto [ltruelist, lfalselist] = visitCond(*node.left);
 
     // create a new block for the right expression

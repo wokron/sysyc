@@ -19,7 +19,7 @@ using CondReturn = std::tuple<BlockPtrList, BlockPtrList>;
 // jump insts for while loop, first vector for continue, second vector for break
 using ContinueBreak = std::tuple<BlockPtrList, BlockPtrList>;
 
-class ASTVisitor {
+class Visitor {
   private:
     SymbolTablePtr _current_scope;
     ir::Module &_module;
@@ -29,7 +29,7 @@ class ASTVisitor {
     std::stack<ContinueBreak> _while_stack;
 
   public:
-    ASTVisitor(ir::Module &module)
+    Visitor(ir::Module &module)
         : _module(module),
           _current_scope(std::make_shared<SymbolTable>(nullptr)) {}
 

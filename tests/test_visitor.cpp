@@ -1,5 +1,5 @@
 #include "ast.h"
-#include "ast_visitor.h"
+#include "visitor.h"
 #include "error.h"
 #include "parser.h"
 #include <doctest.h>
@@ -103,7 +103,7 @@ TEST_CASE("testing variable declaration") {
 
     ir::Module module;
 
-    ASTVisitor visitor(module);
+    Visitor visitor(module);
 
     visitor.visit(*root);
 
@@ -179,7 +179,7 @@ TEST_CASE("testing function params and call") {
 
     ir::Module module;
 
-    ASTVisitor visitor(module);
+    Visitor visitor(module);
 
     visitor.visit(*root);
 
@@ -482,7 +482,7 @@ TEST_CASE("testing if statement") {
 
     ir::Module module;
 
-    ASTVisitor visitor(module);
+    Visitor visitor(module);
 
     visitor.visit(*root);
 
@@ -713,7 +713,7 @@ TEST_CASE("testing while statement") {
 
     ir::Module module;
 
-    ASTVisitor visitor(module);
+    Visitor visitor(module);
 
     visitor.visit(*root);
 
@@ -887,7 +887,7 @@ TEST_CASE("testing short-circuit evaluation") {
 
     ir::Module module;
 
-    ASTVisitor visitor(module);
+    Visitor visitor(module);
 
     visitor.visit(*root);
 
@@ -968,7 +968,7 @@ TEST_CASE("testing implicit cast") {
 
     ir::Module module;
 
-    ASTVisitor visitor(module);
+    Visitor visitor(module);
 
     visitor.visit(*root);
 
