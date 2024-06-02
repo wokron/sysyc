@@ -2,11 +2,11 @@
 
 #include <iostream>
 
-static bool _has_error = false;
+static bool has_error_flag = false;
 
-bool has_error() { return _has_error; }
+bool has_error() { return has_error_flag; }
 
 void error(int lineno, const std::string &msg) {
-    _has_error = true;
+    has_error_flag = true;
     std::cerr << lineno << ": " << msg << std::endl;
 }
