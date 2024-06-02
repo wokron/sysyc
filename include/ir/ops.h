@@ -50,6 +50,7 @@ OP(ICGES, "cges")
 OP(ICGTS, "cgts")
 
 /* conversions */
+OP(IEXTSW, "extsw")
 OP(ISTOSI, "stosi")
 OP(ISWTOF, "swtof")
 

@@ -6,23 +6,25 @@
 
 extern FILE *yyin;
 
-const char *content = "int a = 10;\n"
-                      "const int b = 20;\n"
-                      "const int c[10] = {1, 2, 3};\n"
-                      "int d[10][4 / 2] = {1, 2, 3, {4, 5}, 6};\n"
-                      "int main(int a, float b, float c[], int d[][2]) {\n"
-                      "    while (1) {\n"
-                      "        return 0;\n"
-                      "    }\n"
-                      "    if (a < b && c > d || e == f) {\n"
-                      "        return a + b * c - 10;\n"
-                      "    } else {\n"
-                      "        return 3.14e-10 + 0x123.4P10;\n"
-                      "    }\n"
-                      "}\n"
-                      "void func() {\n"
-                      "    return 0;\n"
-                      "}";
+static const char *content = R"(
+int a = 10;
+const int b = 20;
+const int c[10] = {1, 2, 3};
+int d[10][4 / 2] = {1, 2, 3, {4, 5}, 6};
+int main(int a, float b, float c[], int d[][2]) {
+    while (1) {
+        return 0;
+    }
+    if (a < b && c > d || e == f) {
+        return a + b * c - 10;
+    } else {
+        return 3.14e-10 + 0x123.4P10;
+    }
+}
+void func() {
+    return 0;
+}
+)";
 
 TEST_CASE("testing lexical and syntax analysis") {
     FILE *testfile = fopen("test_frontend.sy", "w");
@@ -36,6 +38,7 @@ TEST_CASE("testing lexical and syntax analysis") {
 
     fclose(yyin);
     yyin = NULL;
+    remove("test_frontend.sy");
 
     std::ostringstream ss;
     print_ast(ss, *root);
@@ -57,11 +60,11 @@ TEST_CASE("testing lexical and syntax analysis") {
         "\"dims\":[null,2]}],\"block\":[{\"cond\":1,\"stmt\":{\"block\":[{"
         "\"exp\":0}]}},{\"cond\":{\"left\":{\"left\":{\"left\":\"a\",\"right\":"
         "\"b\",\"compare_op\":2},\"right\":{\"left\":\"c\",\"right\":\"d\","
-        "\"compare_op\":4},\"bool_op\":0},\"right\":{\"left\":\"e\",\"right\":"
-        "\"f\",\"compare_op\":0},\"bool_op\":1},\"if_stmt\":{\"block\":[{"
-        "\"exp\":{\"left\":{\"left\":\"a\",\"right\":{\"left\":\"b\",\"right\":"
-        "\"c\",\"binary_op\":2},\"binary_op\":0},\"right\":10,\"binary_op\":1}}"
-        "]},\"else_stmt\":{\"block\":[{\"exp\":{\"left\":3.14e-10,\"right\":"
-        "298240,\"binary_op\":0}}]}}]},{\"btype\":2,\"ident\":\"func\",\"func_"
-        "fparams\":[],\"block\":[{\"exp\":0}]}]}");
+        "\"compare_op\":4},\"logical_op\":0},\"right\":{\"left\":\"e\","
+        "\"right\":\"f\",\"compare_op\":0},\"logical_op\":1},\"if_stmt\":{"
+        "\"block\":[{\"exp\":{\"left\":{\"left\":\"a\",\"right\":{\"left\":"
+        "\"b\",\"right\":\"c\",\"binary_op\":2},\"binary_op\":0},\"right\":10,"
+        "\"binary_op\":1}}]},\"else_stmt\":{\"block\":[{\"exp\":{\"left\":3."
+        "14e-10,\"right\":298240,\"binary_op\":0}}]}}]},{\"btype\":2,\"ident\":"
+        "\"func\",\"func_fparams\":[],\"block\":[{\"exp\":0}]}]}");
 }

@@ -1,18 +1,27 @@
 #pragma once
 
 #include "ir.h"
+#include <cassert>
 
 namespace ir {
 
 using ValuePtr = std::shared_ptr<Value>;
 
+// TODO: support constant folding
+
 class IRBuilder {
   private:
-    std::shared_ptr<Function> _function;
+    std::shared_ptr<Function> _function = nullptr;
     std::shared_ptr<Block> _insert_point = nullptr;
 
   public:
+    IRBuilder() = default;
     IRBuilder(std::shared_ptr<Function> function) : _function(function) {}
+
+    void set_function(std::shared_ptr<Function> function) {
+        _function = function;
+        _insert_point = nullptr;
+    }
 
     void set_insert_point(std::shared_ptr<Block> block) {
         _insert_point = block;
@@ -32,6 +41,7 @@ class IRBuilder {
         if (_insert_point) {
             return _insert_point;
         }
+        assert(_function->end);
         return _function->end;
     }
 
@@ -65,8 +75,9 @@ class IRBuilder {
     ValuePtr create_cges(ValuePtr lhs, ValuePtr rhs);
     ValuePtr create_cgts(ValuePtr lhs, ValuePtr rhs);
 
+    ValuePtr create_extsw(ValuePtr value);
     ValuePtr create_stosi(ValuePtr value);
-    ValuePtr create_swtof(Type ty, ValuePtr value);
+    ValuePtr create_swtof(ValuePtr value);
 
     ValuePtr create_call(Type ty, ValuePtr func, std::vector<ValuePtr> args);
 

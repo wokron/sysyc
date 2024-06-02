@@ -40,6 +40,10 @@ struct Address : public Const {
     void emit(std::ostream &out) const override { out << "$" << name; }
 
     Type get_type() const override { return Type::L; }
+
+  private:
+    static std::unordered_map<std::string, std::shared_ptr<Address>>
+        _addrcon_cache;
 };
 
 struct ConstBits : public Const {
@@ -52,10 +56,32 @@ struct ConstBits : public Const {
     void emit(std::ostream &out) const override;
 
     Type get_type() const override;
-};
 
-extern std::unordered_map<float, std::shared_ptr<ConstBits>> _floatcon_cache;
-extern std::unordered_map<int, std::shared_ptr<ConstBits>> _intcon_cache;
+    std::shared_ptr<ConstBits> to_int() const {
+        if (auto int_val = std::get_if<int>(&value); int_val) {
+            return ConstBits::get(*int_val);
+        } else if (auto float_val = std::get_if<float>(&value); float_val) {
+            return ConstBits::get((int)*float_val);
+        } else {
+            throw std::logic_error("variant empty");
+        }
+    }
+
+    std::shared_ptr<ConstBits> to_float() const {
+        if (auto int_val = std::get_if<int>(&value); int_val) {
+            return ConstBits::get((float)*int_val);
+        } else if (auto float_val = std::get_if<float>(&value); float_val) {
+            return ConstBits::get(*float_val);
+        } else {
+            throw std::logic_error("variant empty");
+        }
+    }
+
+  private:
+    static std::unordered_map<float, std::shared_ptr<ConstBits>>
+        _floatcon_cache;
+    static std::unordered_map<int, std::shared_ptr<ConstBits>> _intcon_cache;
+};
 
 template <typename T>
 inline std::shared_ptr<ConstBits> ConstBits::get(T value) {
@@ -112,7 +138,7 @@ struct Phi {
 
 struct Jump {
     enum {
-        NONE,
+        NONE, // none means fall through
         JMP,
         JNZ,
         RET,
@@ -261,5 +287,17 @@ struct Module {
 
     void emit(std::ostream &out) const;
 };
+
+// some alias for easier use
+using TempPtr = std::shared_ptr<Temp>;
+using ValuePtr = std::shared_ptr<Value>;
+using ConstPtr = std::shared_ptr<Const>;
+using ConstBitsPtr = std::shared_ptr<ConstBits>;
+using AddressPtr = std::shared_ptr<Address>;
+using InstPtr = std::shared_ptr<Inst>;
+using BlockPtr = std::shared_ptr<Block>;
+using PhiPtr = std::shared_ptr<Phi>;
+using FunctionPtr = std::shared_ptr<Function>;
+using DataPtr = std::shared_ptr<Data>;
 
 } // namespace ir

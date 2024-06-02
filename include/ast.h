@@ -1,10 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <ostream>
 #include <string>
 #include <variant>
 #include <vector>
-#include <ostream>
+
+// TODO: add line number to each node
 
 enum ASTType {
     INT,
@@ -21,12 +23,15 @@ struct Index;
 using LVal = std::variant<Ident, Index>;
 
 struct BinaryExp;
-struct BoolExp;
 struct CallExp;
 struct UnaryExp;
 struct CompareExp;
-using Exp = std::variant<BinaryExp, BoolExp, LVal, CallExp, UnaryExp,
-                         CompareExp, Number>;
+struct LValExp;
+using Exp =
+    std::variant<BinaryExp, LValExp, CallExp, UnaryExp, CompareExp, Number>;
+
+struct LogicalExp;
+using Cond = std::variant<Exp, LogicalExp>;
 
 using FuncRParams = Items<Exp>;
 
@@ -77,13 +82,13 @@ struct BinaryExp {
     std::shared_ptr<Exp> right;
 };
 
-struct BoolExp {
-    std::shared_ptr<Exp> left;
+struct LogicalExp {
+    std::shared_ptr<Cond> left;
     enum {
         AND,
         OR,
     } op;
-    std::shared_ptr<Exp> right;
+    std::shared_ptr<Cond> right;
 };
 
 struct CallExp {
@@ -113,6 +118,10 @@ struct CompareExp {
     std::shared_ptr<Exp> right;
 };
 
+struct LValExp {
+    std::shared_ptr<LVal> lval;
+};
+
 struct AssignStmt {
     std::shared_ptr<LVal> lval;
     std::shared_ptr<Exp> exp;
@@ -127,13 +136,13 @@ struct BlockStmt {
 };
 
 struct IfStmt {
-    std::shared_ptr<Exp> cond;
+    std::shared_ptr<Cond> cond;
     std::shared_ptr<Stmt> if_stmt;
     std::shared_ptr<Stmt> else_stmt; // nullable
 };
 
 struct WhileStmt {
-    std::shared_ptr<Exp> cond;
+    std::shared_ptr<Cond> cond;
     std::shared_ptr<Stmt> stmt;
 };
 
@@ -181,4 +190,9 @@ struct FuncDef {
     std::shared_ptr<BlockItems> block;
 };
 
+/**
+ * @brief Print the AST to the output stream
+ * @param out The output stream
+ * @param comp_units The root node of the AST
+ */
 void print_ast(std::ostream &out, const CompUnits &comp_units);

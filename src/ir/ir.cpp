@@ -9,15 +9,14 @@
 
 namespace ir {
 
-std::unordered_map<std::string, std::shared_ptr<Address>> _addrcon_cache;
-std::unordered_map<float, std::shared_ptr<ConstBits>> _floatcon_cache;
-std::unordered_map<int, std::shared_ptr<ConstBits>> _intcon_cache;
-
 static std::unordered_map<InstType, std::string> inst2name = {
 #define OP(op, name) {op, name},
 #include "ir/ops.h"
 #undef OP
 };
+
+std::unordered_map<float, std::shared_ptr<ConstBits>>  ConstBits::_floatcon_cache;
+std::unordered_map<int, std::shared_ptr<ConstBits>> ConstBits::_intcon_cache;
 
 void ConstBits::emit(std::ostream &out) const {
     std::visit(overloaded{
@@ -98,7 +97,7 @@ void Phi::emit(std::ostream &out) const {
 
 std::shared_ptr<Block> Block::create(std::string name, Function &func) {
     // use a counter to generate unique block id in file scope
-    static uint *block_counter_ptr = func.block_counter_ptr;
+    uint *block_counter_ptr = func.block_counter_ptr;
     if (func.start == nullptr) {
         func.start =
             std::shared_ptr<Block>(new Block{(*block_counter_ptr)++, name});
@@ -263,6 +262,8 @@ void Module::emit(std::ostream &out) const {
         func->emit(out);
     }
 }
+
+std::unordered_map<std::string, std::shared_ptr<Address>> Address::_addrcon_cache;
 
 std::shared_ptr<Address> Address::get(std::string name) {
     if (auto it = _addrcon_cache.find(name); it != _addrcon_cache.end()) {
