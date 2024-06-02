@@ -70,8 +70,8 @@ static constexpr char EXPECTED3[] = R"(function $func() {
 TEST_CASE("testing basic blocks") {
     auto module = ir::Module();
 
-    auto [func, _] = ir::Function::create(
-        false, "func", ir::Type::X, {}, module);
+    auto [func, _] =
+        ir::Function::create(false, "func", ir::Type::X, {}, module);
 
     std::ostringstream out1;
     module.emit(out1);
@@ -117,9 +117,9 @@ static constexpr char EXPECTED4[] = R"(function $func(w %.1, s %.2, l %.3, ) {
 TEST_CASE("testing load and store") {
     auto module = ir::Module();
 
-    auto [func, params] = ir::Function::create(
-        false, "func", ir::Type::X, {ir::Type::W, ir::Type::S, ir::Type::L},
-        module);
+    auto [func, params] =
+        ir::Function::create(false, "func", ir::Type::X,
+                             {ir::Type::W, ir::Type::S, ir::Type::L}, module);
 
     auto builder = ir::IRBuilder(func);
 

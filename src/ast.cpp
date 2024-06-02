@@ -4,7 +4,8 @@
 
 template <typename T>
 static void print_attr(std::ostream &out, std::string name, T value) {
-    out << "\"" << name << "\"" << ":";
+    out << "\"" << name << "\""
+        << ":";
 
     if constexpr (std::is_same_v<T, std::string>) {
         out << "\"" << value << "\"";
@@ -20,14 +21,15 @@ using PrintValueFunc = std::function<void(std::ostream &, const T &)>;
 
 template <typename T>
 static void print_attr(std::ostream &out, std::string name, T value,
-                 PrintValueFunc<T> print_value_func) {
-    out << "\"" << name << "\"" << ":";
+                       PrintValueFunc<T> print_value_func) {
+    out << "\"" << name << "\""
+        << ":";
     print_value_func(out, value);
 }
 
 template <typename T>
 static void print_items(std::ostream &out, const Items<T> &items,
-                  PrintValueFunc<T> print_item_func) {
+                        PrintValueFunc<T> print_item_func) {
     out << "[";
     for (const auto &item : items) {
         if (&item != &items[0]) {
@@ -44,20 +46,21 @@ static void print_items(std::ostream &out, const Items<T> &items,
 
 template <typename T>
 static void print_items_attr(std::ostream &out, std::string name,
-                       const Items<T> &items,
-                       PrintValueFunc<T> print_value_func) {
-    out << "\"" << name << "\"" << ":";
+                             const Items<T> &items,
+                             PrintValueFunc<T> print_value_func) {
+    out << "\"" << name << "\""
+        << ":";
     print_items(out, items, print_value_func);
 }
 
 static void print_init_val(std::ostream &out, const InitVal &init_val);
 
 static void print_array_init_val(std::ostream &out,
-                           const ArrayInitVal &array_init_val) {
+                                 const ArrayInitVal &array_init_val) {
     out << "{";
 
     print_items_attr<InitVal>(out, "items", array_init_val.items,
-                               print_init_val);
+                              print_init_val);
     out << "}";
 }
 
@@ -85,8 +88,7 @@ static void print_var_def(std::ostream &out, const VarDef &var_def) {
     if (var_def.init_val == nullptr) {
         print_attr(out, "init_val", nullptr);
     } else {
-        print_attr<InitVal>(out, "init_val", *var_def.init_val,
-                             print_init_val);
+        print_attr<InitVal>(out, "init_val", *var_def.init_val, print_init_val);
     }
     out << "}";
 }
@@ -147,7 +149,7 @@ static void print_stmt(std::ostream &out, const Stmt &stmt) {
                        out << "{";
 
                        print_items_attr<BlockItem>(out, "block", *stmt.block,
-                                                    print_block_item);
+                                                   print_block_item);
                        out << "}";
                    },
                    [&out](const IfStmt &stmt) {
@@ -157,14 +159,14 @@ static void print_stmt(std::ostream &out, const Stmt &stmt) {
                        out << ",";
 
                        print_attr<Stmt>(out, "if_stmt", *stmt.if_stmt,
-                                         print_stmt);
+                                        print_stmt);
                        out << ",";
 
                        if (stmt.else_stmt == nullptr) {
                            print_attr(out, "else_stmt", nullptr);
                        } else {
                            print_attr<Stmt>(out, "else_stmt", *stmt.else_stmt,
-                                             print_stmt);
+                                            print_stmt);
                        }
                        out << "}";
                    },
@@ -220,7 +222,7 @@ static void print_exp(std::ostream &out, const Exp &exp) {
                 out << ",";
 
                 print_items_attr<Exp>(out, "func_rparams", *exp.func_rparams,
-                                       print_exp);
+                                      print_exp);
                 out << "}";
             },
             [&out](const UnaryExp &exp) {
@@ -273,7 +275,8 @@ static void print_cond(std::ostream &out, const Cond &cond) {
                cond);
 }
 
-static void print_func_fparam(std::ostream &out, const FuncFParam &func_fparam) {
+static void print_func_fparam(std::ostream &out,
+                              const FuncFParam &func_fparam) {
     out << "{";
 
     print_attr(out, "btype", func_fparam.btype);
@@ -304,11 +307,11 @@ static void print_func_def(std::ostream &out, const FuncDef &func_def) {
     out << ",";
 
     print_items_attr<FuncFParam>(out, "func_fparams", *func_def.func_fparams,
-                                  print_func_fparam);
+                                 print_func_fparam);
     out << ",";
 
     print_items_attr<BlockItem>(out, "block", *func_def.block,
-                                 print_block_item);
+                                print_block_item);
     out << "}";
 }
 
@@ -323,7 +326,6 @@ static void print_comp_unit(std::ostream &out, const CompUnit &comp_unit) {
 void print_ast(std::ostream &out, const CompUnits &comp_units) {
     out << "{";
 
-    print_items_attr<CompUnit>(out, "comp_units", comp_units,
-                                print_comp_unit);
+    print_items_attr<CompUnit>(out, "comp_units", comp_units, print_comp_unit);
     out << "}";
 }

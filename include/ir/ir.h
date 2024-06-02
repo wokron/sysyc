@@ -78,8 +78,7 @@ struct ConstBits : public Const {
     }
 
   private:
-    static std::unordered_map<float, std::shared_ptr<ConstBits>>
-        floatcon_cache;
+    static std::unordered_map<float, std::shared_ptr<ConstBits>> floatcon_cache;
     static std::unordered_map<int, std::shared_ptr<ConstBits>> intcon_cache;
 };
 
@@ -92,8 +91,7 @@ inline std::shared_ptr<ConstBits> ConstBits::get(T value) {
             return intcon_cache[value] = std::make_shared<ConstBits>(value);
         }
     } else if constexpr (std::is_same_v<T, float>) {
-        if (auto it = floatcon_cache.find(value);
-            it != floatcon_cache.end()) {
+        if (auto it = floatcon_cache.find(value); it != floatcon_cache.end()) {
             return it->second;
         } else {
             return floatcon_cache[value] = std::make_shared<ConstBits>(value);

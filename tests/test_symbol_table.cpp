@@ -10,7 +10,8 @@ TEST_CASE("testing symbol table") {
     auto table = std::make_shared<SymbolTable>();
     CHECK_FALSE(table->has_parent());
 
-    auto sym = std::make_shared<VariableSymbol>("sym", int_type, false, nullptr);
+    auto sym =
+        std::make_shared<VariableSymbol>("sym", int_type, false, nullptr);
     table->add_symbol(sym);
     CHECK(table->exist_in_scope("sym"));
 
@@ -18,7 +19,8 @@ TEST_CASE("testing symbol table") {
     CHECK(table->has_parent());
     CHECK_FALSE(table->exist_in_scope("sym"));
 
-    auto sym1 = std::make_shared<VariableSymbol>("sym1", int_type, false, nullptr);
+    auto sym1 =
+        std::make_shared<VariableSymbol>("sym1", int_type, false, nullptr);
     CHECK(sym1->tostring() == "var sym1 int");
 
     table->add_symbol(sym1);
@@ -27,7 +29,8 @@ TEST_CASE("testing symbol table") {
     auto tmp = table->get_symbol("sym1");
     CHECK(tmp == sym1);
 
-    auto sym2 = std::make_shared<VariableSymbol>("sym2", int_type, false, nullptr);
+    auto sym2 =
+        std::make_shared<VariableSymbol>("sym2", int_type, false, nullptr);
     table->add_symbol(sym2);
     CHECK(table->exist_in_scope("sym2"));
 

@@ -163,7 +163,7 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
 }
 
 sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
-                                          sym::Type &type) {
+                                            sym::Type &type) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
@@ -307,7 +307,8 @@ void Visitor::visit_func_def(const FuncDef &node) {
     _current_return_type = nullptr;
 }
 
-std::vector<sym::SymbolPtr> Visitor::visit_func_fparams(const FuncFParams &node) {
+std::vector<sym::SymbolPtr>
+Visitor::visit_func_fparams(const FuncFParams &node) {
     std::vector<sym::SymbolPtr> params;
 
     for (auto &elm : node) {
@@ -331,16 +332,17 @@ void Visitor::visit_block_items(const BlockItems &node) {
 }
 
 void Visitor::visit_stmt(const Stmt &node) {
-    std::visit(overloaded{
-                   [this](const AssignStmt &node) { visit_assign_stmt(node); },
-                   [this](const ExpStmt &node) { visit_exp_stmt(node); },
-                   [this](const BlockStmt &node) { visit_block_stmt(node); },
-                   [this](const IfStmt &node) { visit_if_stmt(node); },
-                   [this](const WhileStmt &node) { visit_while_stmt(node); },
-                   [this](const ControlStmt &node) { visit_control_stmt(node); },
-                   [this](const ReturnStmt &node) { visit_return_stmt(node); },
-               },
-               node);
+    std::visit(
+        overloaded{
+            [this](const AssignStmt &node) { visit_assign_stmt(node); },
+            [this](const ExpStmt &node) { visit_exp_stmt(node); },
+            [this](const BlockStmt &node) { visit_block_stmt(node); },
+            [this](const IfStmt &node) { visit_if_stmt(node); },
+            [this](const WhileStmt &node) { visit_while_stmt(node); },
+            [this](const ControlStmt &node) { visit_control_stmt(node); },
+            [this](const ReturnStmt &node) { visit_return_stmt(node); },
+        },
+        node);
 }
 
 ir::ValuePtr Visitor::_convert_if_needed(const sym::Type &to,

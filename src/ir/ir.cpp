@@ -15,7 +15,7 @@ static std::unordered_map<InstType, std::string> inst2name = {
 #undef OP
 };
 
-std::unordered_map<float, std::shared_ptr<ConstBits>>  ConstBits::floatcon_cache;
+std::unordered_map<float, std::shared_ptr<ConstBits>> ConstBits::floatcon_cache;
 std::unordered_map<int, std::shared_ptr<ConstBits>> ConstBits::intcon_cache;
 
 void ConstBits::emit(std::ostream &out) const {
@@ -263,7 +263,8 @@ void Module::emit(std::ostream &out) const {
     }
 }
 
-std::unordered_map<std::string, std::shared_ptr<Address>> Address::addrcon_cache;
+std::unordered_map<std::string, std::shared_ptr<Address>>
+    Address::addrcon_cache;
 
 std::shared_ptr<Address> Address::get(std::string name) {
     if (auto it = addrcon_cache.find(name); it != addrcon_cache.end()) {
