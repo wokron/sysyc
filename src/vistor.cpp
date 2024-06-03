@@ -32,17 +32,17 @@ ir::Type Visitor::_symtype2irtype(const sym::Type &type) {
 void Visitor::visit(const CompUnits &node) {
     for (auto &elm : node) {
         std::visit(overloaded{
-                       [this](const Decl &node) { visitDecl(node); },
-                       [this](const FuncDef &node) { visitFuncDef(node); },
+                       [this](const Decl &node) { visit_decl(node); },
+                       [this](const FuncDef &node) { visit_func_def(node); },
                    },
                    *elm);
     }
 }
 
-void Visitor::visitDecl(const Decl &node) {
+void Visitor::visit_decl(const Decl &node) {
     for (auto &elm : *node.var_defs) {
         bool is_const = (node.type == Decl::CONST);
-        visitVarDef(*elm, node.btype, is_const);
+        visit_var_def(*elm, node.btype, is_const);
     }
 }
 
@@ -99,12 +99,12 @@ void Visitor::_init_global(ir::Data &data, const sym::Type &elm_type,
     }
 }
 
-void Visitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
-    auto type = visitDims(*node.dims, btype);
+void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
+    auto type = visit_dims(*node.dims, btype);
 
     sym::InitializerPtr initializer = nullptr;
     if (node.init_val != nullptr) {
-        initializer = visitInitVal(*node.init_val, *type);
+        initializer = visit_init_val(*node.init_val, *type);
     }
 
     auto symbol = std::make_shared<sym::VariableSymbol>(node.ident, type,
@@ -162,13 +162,13 @@ void Visitor::visitVarDef(const VarDef &node, ASTType btype, bool is_const) {
     }
 }
 
-sym::InitializerPtr Visitor::visitInitVal(const InitVal &node,
-                                          sym::Type &type) {
+sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
+                                            sym::Type &type) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
                 auto initializer = std::make_shared<sym::Initializer>();
-                auto [exp_type, exp_value] = visitConstExp(node);
+                auto [exp_type, exp_value] = visit_const_exp(node);
                 if (exp_type->is_error()) {
                     return sym::InitializerPtr(nullptr);
                 }
@@ -190,7 +190,7 @@ sym::InitializerPtr Visitor::visitInitVal(const InitVal &node,
                 for (auto &elm : node.items) {
                     // get initializer of each element
                     auto elm_initializer =
-                        visitInitVal(*elm, *array_type.get_base_type());
+                        visit_init_val(*elm, *array_type.get_base_type());
                     // then insert the initializer to the array initializer
                     initializer->insert(*elm_initializer);
                 }
@@ -201,7 +201,7 @@ sym::InitializerPtr Visitor::visitInitVal(const InitVal &node,
         node);
 }
 
-sym::TypePtr Visitor::visitDims(const Dims &node, ASTType btype) {
+sym::TypePtr Visitor::visit_dims(const Dims &node, ASTType btype) {
     auto base_type = _asttype2symtype(btype);
     sym::TypeBuilder tb(base_type);
 
@@ -211,7 +211,7 @@ sym::TypePtr Visitor::visitDims(const Dims &node, ASTType btype) {
         if (exp == nullptr) {
             tb.in_ptr();
         } else {
-            auto [exp_type, exp_val] = visitConstExp(*exp);
+            auto [exp_type, exp_val] = visit_const_exp(*exp);
             if (exp_type->is_error()) {
                 tb.in_array(1); // just to make it work
                 continue;
@@ -238,9 +238,9 @@ sym::TypePtr Visitor::visitDims(const Dims &node, ASTType btype) {
     return tb.get_type();
 }
 
-void Visitor::visitFuncDef(const FuncDef &node) {
+void Visitor::visit_func_def(const FuncDef &node) {
     // get symbols of params
-    auto param_symbols = visitFuncFParams(*node.func_fparams);
+    auto param_symbols = visit_func_fparams(*node.func_fparams);
 
     // get function type
     auto return_type = _asttype2symtype(node.func_type);
@@ -291,7 +291,7 @@ void Visitor::visitFuncDef(const FuncDef &node) {
 
     _builder.create_label("body");
 
-    visitBlockItems(*node.block);
+    visit_block_items(*node.block);
 
     if (ir_func->end->jump.type == ir::Jump::NONE) {
         if (!_current_return_type->is_void()) {
@@ -307,11 +307,12 @@ void Visitor::visitFuncDef(const FuncDef &node) {
     _current_return_type = nullptr;
 }
 
-std::vector<sym::SymbolPtr> Visitor::visitFuncFParams(const FuncFParams &node) {
+std::vector<sym::SymbolPtr>
+Visitor::visit_func_fparams(const FuncFParams &node) {
     std::vector<sym::SymbolPtr> params;
 
     for (auto &elm : node) {
-        auto type = visitDims(*elm->dims, elm->btype);
+        auto type = visit_dims(*elm->dims, elm->btype);
         auto symbol = std::make_shared<sym::VariableSymbol>(elm->ident, type,
                                                             false, nullptr);
         params.push_back(symbol);
@@ -320,27 +321,28 @@ std::vector<sym::SymbolPtr> Visitor::visitFuncFParams(const FuncFParams &node) {
     return params;
 }
 
-void Visitor::visitBlockItems(const BlockItems &node) {
+void Visitor::visit_block_items(const BlockItems &node) {
     for (auto &elm : node) {
         std::visit(overloaded{
-                       [this](const Decl &node) { visitDecl(node); },
-                       [this](const Stmt &node) { visitStmt(node); },
+                       [this](const Decl &node) { visit_decl(node); },
+                       [this](const Stmt &node) { visit_stmt(node); },
                    },
                    *elm);
     }
 }
 
-void Visitor::visitStmt(const Stmt &node) {
-    std::visit(overloaded{
-                   [this](const AssignStmt &node) { visitAssignStmt(node); },
-                   [this](const ExpStmt &node) { visitExpStmt(node); },
-                   [this](const BlockStmt &node) { visitBlockStmt(node); },
-                   [this](const IfStmt &node) { visitIfStmt(node); },
-                   [this](const WhileStmt &node) { visitWhileStmt(node); },
-                   [this](const ControlStmt &node) { visitControlStmt(node); },
-                   [this](const ReturnStmt &node) { visitReturnStmt(node); },
-               },
-               node);
+void Visitor::visit_stmt(const Stmt &node) {
+    std::visit(
+        overloaded{
+            [this](const AssignStmt &node) { visit_assign_stmt(node); },
+            [this](const ExpStmt &node) { visit_exp_stmt(node); },
+            [this](const BlockStmt &node) { visit_block_stmt(node); },
+            [this](const IfStmt &node) { visit_if_stmt(node); },
+            [this](const WhileStmt &node) { visit_while_stmt(node); },
+            [this](const ControlStmt &node) { visit_control_stmt(node); },
+            [this](const ReturnStmt &node) { visit_return_stmt(node); },
+        },
+        node);
 }
 
 ir::ValuePtr Visitor::_convert_if_needed(const sym::Type &to,
@@ -358,9 +360,9 @@ ir::ValuePtr Visitor::_convert_if_needed(const sym::Type &to,
     }
 }
 
-void Visitor::visitAssignStmt(const AssignStmt &node) {
-    auto [exp_type, exp_val] = visitExp(*node.exp);
-    auto [lval_type, lval_val] = visitLVal(*node.lval);
+void Visitor::visit_assign_stmt(const AssignStmt &node) {
+    auto [exp_type, exp_val] = visit_exp(*node.exp);
+    auto [lval_type, lval_val] = visit_lval(*node.lval);
 
     if (lval_type->is_error() || exp_type->is_error()) {
         return;
@@ -380,25 +382,25 @@ void Visitor::visitAssignStmt(const AssignStmt &node) {
     _builder.create_store(_symtype2irtype(*lval_type), exp_val, lval_val);
 }
 
-void Visitor::visitExpStmt(const ExpStmt &node) {
+void Visitor::visit_exp_stmt(const ExpStmt &node) {
     if (node.exp) {
-        visitExp(*node.exp);
+        visit_exp(*node.exp);
     }
 }
 
-void Visitor::visitBlockStmt(const BlockStmt &node) {
+void Visitor::visit_block_stmt(const BlockStmt &node) {
     _current_scope = _current_scope->push_scope();
-    visitBlockItems(*node.block);
+    visit_block_items(*node.block);
     _current_scope = _current_scope->pop_scope();
 }
 
-void Visitor::visitIfStmt(const IfStmt &node) {
-    auto [jmp_to_true, jmp_to_false] = visitCond(*node.cond);
+void Visitor::visit_if_stmt(const IfStmt &node) {
+    auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
 
     auto true_block = _builder.create_label("if_true");
 
     _current_scope = _current_scope->push_scope();
-    visitStmt(*node.if_stmt);
+    visit_stmt(*node.if_stmt);
     _current_scope = _current_scope->pop_scope();
 
     ir::BlockPtr jmp_to_join;
@@ -410,7 +412,7 @@ void Visitor::visitIfStmt(const IfStmt &node) {
 
     if (node.else_stmt) {
         _current_scope = _current_scope->push_scope();
-        visitStmt(*node.else_stmt);
+        visit_stmt(*node.else_stmt);
         _current_scope = _current_scope->pop_scope();
 
         auto join_block = _builder.create_label("if_join");
@@ -426,17 +428,17 @@ void Visitor::visitIfStmt(const IfStmt &node) {
     }
 }
 
-void Visitor::visitWhileStmt(const WhileStmt &node) {
+void Visitor::visit_while_stmt(const WhileStmt &node) {
     auto cond_block = _builder.create_label("while_cond");
 
-    auto [jmp_to_true, jmp_to_false] = visitCond(*node.cond);
+    auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
 
     auto body_block = _builder.create_label("while_body");
 
     _while_stack.push(ContinueBreak({}, {}));
 
     _current_scope = _current_scope->push_scope();
-    visitStmt(*node.stmt);
+    visit_stmt(*node.stmt);
     _current_scope = _current_scope->pop_scope();
 
     auto [continue_jmp, break_jmp] = _while_stack.top();
@@ -461,7 +463,7 @@ void Visitor::visitWhileStmt(const WhileStmt &node) {
     }
 }
 
-void Visitor::visitControlStmt(const ControlStmt &node) {
+void Visitor::visit_control_stmt(const ControlStmt &node) {
     if (_while_stack.empty()) {
         error(-1, "break/continue statement not in while loop");
         return;
@@ -475,9 +477,9 @@ void Visitor::visitControlStmt(const ControlStmt &node) {
     }
 }
 
-void Visitor::visitReturnStmt(const ReturnStmt &node) {
+void Visitor::visit_return_stmt(const ReturnStmt &node) {
     if (node.exp) {
-        auto [exp_type, exp_val] = visitExp(*node.exp);
+        auto [exp_type, exp_val] = visit_exp(*node.exp);
         if (exp_type->is_error()) {
             return;
         }
@@ -493,8 +495,8 @@ void Visitor::visitReturnStmt(const ReturnStmt &node) {
     _builder.create_ret(nullptr);
 }
 
-ExpReturn Visitor::visitConstExp(const Exp &node) {
-    auto [type, val] = visitExp(node);
+ExpReturn Visitor::visit_const_exp(const Exp &node) {
+    auto [type, val] = visit_exp(node);
 
     if (type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -510,22 +512,22 @@ ExpReturn Visitor::visitConstExp(const Exp &node) {
     return ExpReturn(type, val);
 }
 
-ExpReturn Visitor::visitExp(const Exp &node) {
+ExpReturn Visitor::visit_exp(const Exp &node) {
     return std::visit(
         overloaded{
-            [this](const BinaryExp &node) { return visitBinaryExp(node); },
-            [this](const LValExp &node) { return visitLValExp(node); },
-            [this](const CallExp &node) { return visitCallExp(node); },
-            [this](const UnaryExp &node) { return visitUnaryExp(node); },
-            [this](const CompareExp &node) { return visitCompareExp(node); },
-            [this](const Number &node) { return visitNumber(node); },
+            [this](const BinaryExp &node) { return visit_binary_exp(node); },
+            [this](const LValExp &node) { return visit_lval_exp(node); },
+            [this](const CallExp &node) { return visit_call_exp(node); },
+            [this](const UnaryExp &node) { return visit_unary_exp(node); },
+            [this](const CompareExp &node) { return visit_compare_exp(node); },
+            [this](const Number &node) { return visit_number(node); },
         },
         node);
 }
 
-ExpReturn Visitor::visitBinaryExp(const BinaryExp &node) {
-    auto [left_type, left_val] = visitExp(*node.left);
-    auto [right_type, right_val] = visitExp(*node.right);
+ExpReturn Visitor::visit_binary_exp(const BinaryExp &node) {
+    auto [left_type, left_val] = visit_exp(*node.left);
+    auto [right_type, right_val] = visit_exp(*node.right);
 
     if (left_type->is_error() || right_type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -565,8 +567,8 @@ ExpReturn Visitor::visitBinaryExp(const BinaryExp &node) {
     }
 }
 
-ExpReturn Visitor::visitLValExp(const LValExp &node) {
-    auto [type, val] = visitLVal(*node.lval);
+ExpReturn Visitor::visit_lval_exp(const LValExp &node) {
+    auto [type, val] = visit_lval(*node.lval);
     if (type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
     }
@@ -583,7 +585,7 @@ ExpReturn Visitor::visitLValExp(const LValExp &node) {
     return ExpReturn(type, exp_val);
 }
 
-ExpReturn Visitor::visitLVal(const LVal &node) {
+ExpReturn Visitor::visit_lval(const LVal &node) {
     return std::visit(
         overloaded{
             [this](const Ident &node) {
@@ -596,8 +598,8 @@ ExpReturn Visitor::visitLVal(const LVal &node) {
                 return ExpReturn(symbol->type, symbol->value);
             },
             [this](const Index &node) {
-                auto [lval_type, lval_val] = visitLVal(*node.lval);
-                auto [exp_type, exp_val] = visitExp(*node.exp);
+                auto [lval_type, lval_val] = visit_lval(*node.lval);
+                auto [exp_type, exp_val] = visit_exp(*node.exp);
 
                 if (lval_type->is_error() || exp_type->is_error()) {
                     return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -635,7 +637,7 @@ ExpReturn Visitor::visitLVal(const LVal &node) {
         node);
 }
 
-ExpReturn Visitor::visitCallExp(const CallExp &node) {
+ExpReturn Visitor::visit_call_exp(const CallExp &node) {
     auto symbol = _current_scope->get_symbol(node.ident);
     if (!symbol) {
         error(-1, "undefined function " + node.ident);
@@ -657,7 +659,7 @@ ExpReturn Visitor::visitCallExp(const CallExp &node) {
 
     std::vector<ir::ValuePtr> ir_args;
     for (int i = 0; i < params_type.size(); i++) {
-        auto [exp_type, exp_val] = visitExp(*node.func_rparams->at(i));
+        auto [exp_type, exp_val] = visit_exp(*node.func_rparams->at(i));
 
         if (exp_type->is_error()) {
             return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -684,8 +686,8 @@ ExpReturn Visitor::visitCallExp(const CallExp &node) {
     return ExpReturn(symbol->type, ir_ret);
 }
 
-ExpReturn Visitor::visitUnaryExp(const UnaryExp &node) {
-    auto [exp_type, exp_val] = visitExp(*node.exp);
+ExpReturn Visitor::visit_unary_exp(const UnaryExp &node) {
+    auto [exp_type, exp_val] = visit_exp(*node.exp);
 
     if (exp_type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -714,9 +716,9 @@ ExpReturn Visitor::visitUnaryExp(const UnaryExp &node) {
     }
 }
 
-ExpReturn Visitor::visitCompareExp(const CompareExp &node) {
-    auto [left_type, left_val] = visitExp(*node.left);
-    auto [right_type, right_val] = visitExp(*node.right);
+ExpReturn Visitor::visit_compare_exp(const CompareExp &node) {
+    auto [left_type, left_val] = visit_exp(*node.left);
+    auto [right_type, right_val] = visit_exp(*node.right);
 
     if (left_type->is_error() || right_type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -788,7 +790,7 @@ ExpReturn Visitor::visitCompareExp(const CompareExp &node) {
     }
 }
 
-ExpReturn Visitor::visitNumber(const Number &node) {
+ExpReturn Visitor::visit_number(const Number &node) {
     return std::visit(overloaded{
                           [this](int node) {
                               return ExpReturn(sym::Int32Type::get(),
@@ -802,11 +804,11 @@ ExpReturn Visitor::visitNumber(const Number &node) {
                       node);
 }
 
-CondReturn Visitor::visitCond(const Cond &node) {
+CondReturn Visitor::visit_cond(const Cond &node) {
     return std::visit(
         overloaded{
             [this](const Exp &node) {
-                auto [type, val] = visitExp(node);
+                auto [type, val] = visit_exp(node);
                 if (type->is_error() || !type->is_int32()) {
                     return CondReturn(BlockPtrList{}, BlockPtrList{});
                 }
@@ -816,18 +818,18 @@ CondReturn Visitor::visitCond(const Cond &node) {
                 return CondReturn(BlockPtrList{jnz_block},
                                   BlockPtrList{jnz_block});
             },
-            [this](const LogicalExp &node) { return visitLogicalExp(node); },
+            [this](const LogicalExp &node) { return visit_logical_exp(node); },
         },
         node);
 }
 
-CondReturn Visitor::visitLogicalExp(const LogicalExp &node) {
-    auto [ltruelist, lfalselist] = visitCond(*node.left);
+CondReturn Visitor::visit_logical_exp(const LogicalExp &node) {
+    auto [ltruelist, lfalselist] = visit_cond(*node.left);
 
     // create a new block for the right expression
     auto logic_right_block = _builder.create_label("logic_right");
 
-    auto [rtruelist, rfalselist] = visitCond(*node.right);
+    auto [rtruelist, rfalselist] = visit_cond(*node.right);
 
     BlockPtrList truelist, falselist;
     if (node.op == LogicalExp::AND) {

@@ -41,38 +41,38 @@ class Visitor {
      */
     void visit(const CompUnits &node);
 
-    void visitDecl(const Decl &node);
-    void visitVarDef(const VarDef &node, ASTType btype, bool is_const);
-    sym::InitializerPtr visitInitVal(const InitVal &node, sym::Type &type);
-    sym::TypePtr visitDims(const Dims &node, ASTType btype);
+    void visit_decl(const Decl &node);
+    void visit_var_def(const VarDef &node, ASTType btype, bool is_const);
+    sym::InitializerPtr visit_init_val(const InitVal &node, sym::Type &type);
+    sym::TypePtr visit_dims(const Dims &node, ASTType btype);
 
-    void visitFuncDef(const FuncDef &node);
-    std::vector<sym::SymbolPtr> visitFuncFParams(const FuncFParams &node);
+    void visit_func_def(const FuncDef &node);
+    std::vector<sym::SymbolPtr> visit_func_fparams(const FuncFParams &node);
 
-    void visitBlockItems(const BlockItems &node);
+    void visit_block_items(const BlockItems &node);
 
-    void visitStmt(const Stmt &node);
-    void visitAssignStmt(const AssignStmt &node);
-    void visitExpStmt(const ExpStmt &node);
-    void visitBlockStmt(const BlockStmt &node);
-    void visitIfStmt(const IfStmt &node);
-    void visitWhileStmt(const WhileStmt &node);
-    void visitControlStmt(const ControlStmt &node);
-    void visitReturnStmt(const ReturnStmt &node);
+    void visit_stmt(const Stmt &node);
+    void visit_assign_stmt(const AssignStmt &node);
+    void visit_exp_stmt(const ExpStmt &node);
+    void visit_block_stmt(const BlockStmt &node);
+    void visit_if_stmt(const IfStmt &node);
+    void visit_while_stmt(const WhileStmt &node);
+    void visit_control_stmt(const ControlStmt &node);
+    void visit_return_stmt(const ReturnStmt &node);
 
-    ExpReturn visitConstExp(const Exp &node);
-    ExpReturn visitExp(const Exp &node);
-    ExpReturn visitBinaryExp(const BinaryExp &node);
-    ExpReturn visitLValExp(const LValExp &node);
-    ExpReturn visitCallExp(const CallExp &node);
-    ExpReturn visitUnaryExp(const UnaryExp &node);
-    ExpReturn visitCompareExp(const CompareExp &node);
-    ExpReturn visitNumber(const Number &node);
-    ExpReturn visitLVal(const LVal &node); // TODO: support getting const value,
-                                           // which is important for competition
+    ExpReturn visit_const_exp(const Exp &node);
+    ExpReturn visit_exp(const Exp &node);
+    ExpReturn visit_binary_exp(const BinaryExp &node);
+    ExpReturn visit_lval_exp(const LValExp &node);
+    ExpReturn visit_call_exp(const CallExp &node);
+    ExpReturn visit_unary_exp(const UnaryExp &node);
+    ExpReturn visit_compare_exp(const CompareExp &node);
+    ExpReturn visit_number(const Number &node);
+    // TODO: support getting const value, which is important for competition
+    ExpReturn visit_lval(const LVal &node);
 
-    CondReturn visitCond(const Cond &node);
-    CondReturn visitLogicalExp(const LogicalExp &node);
+    CondReturn visit_cond(const Cond &node);
+    CondReturn visit_logical_exp(const LogicalExp &node);
 
   private:
     // some utility methods

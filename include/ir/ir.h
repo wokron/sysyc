@@ -43,7 +43,7 @@ struct Address : public Const {
 
   private:
     static std::unordered_map<std::string, std::shared_ptr<Address>>
-        _addrcon_cache;
+        addrcon_cache;
 };
 
 struct ConstBits : public Const {
@@ -78,25 +78,23 @@ struct ConstBits : public Const {
     }
 
   private:
-    static std::unordered_map<float, std::shared_ptr<ConstBits>>
-        _floatcon_cache;
-    static std::unordered_map<int, std::shared_ptr<ConstBits>> _intcon_cache;
+    static std::unordered_map<float, std::shared_ptr<ConstBits>> floatcon_cache;
+    static std::unordered_map<int, std::shared_ptr<ConstBits>> intcon_cache;
 };
 
 template <typename T>
 inline std::shared_ptr<ConstBits> ConstBits::get(T value) {
     if constexpr (std::is_same_v<T, int>) {
-        if (auto it = _intcon_cache.find(value); it != _intcon_cache.end()) {
+        if (auto it = intcon_cache.find(value); it != intcon_cache.end()) {
             return it->second;
         } else {
-            return _intcon_cache[value] = std::make_shared<ConstBits>(value);
+            return intcon_cache[value] = std::make_shared<ConstBits>(value);
         }
     } else if constexpr (std::is_same_v<T, float>) {
-        if (auto it = _floatcon_cache.find(value);
-            it != _floatcon_cache.end()) {
+        if (auto it = floatcon_cache.find(value); it != floatcon_cache.end()) {
             return it->second;
         } else {
-            return _floatcon_cache[value] = std::make_shared<ConstBits>(value);
+            return floatcon_cache[value] = std::make_shared<ConstBits>(value);
         }
     }
 }
