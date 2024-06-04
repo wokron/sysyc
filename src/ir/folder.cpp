@@ -4,8 +4,8 @@
 namespace ir {
 
 ValuePtr Folder::fold_add(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         if (lhs_const->get_type() == Type::W) {
             return ConstBits::get(std::get<int>(lhs_const->value) +
@@ -52,8 +52,8 @@ ValuePtr Folder::fold_sub(ValuePtr lhs, ValuePtr rhs) {
         }
     }
 
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         if (lhs_const->get_type() == Type::W) {
             return ConstBits::get(std::get<int>(lhs_const->value) -
@@ -92,7 +92,7 @@ ValuePtr Folder::fold_sub(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_neg(ValuePtr operand) {
-    auto operand_const = convert_to_const_bits(operand);
+    auto operand_const = _convert_to_const_bits(operand);
     if (operand_const) {
         if (operand_const->get_type() == Type::W) {
             return ConstBits::get(-std::get<int>(operand_const->value));
@@ -115,8 +115,8 @@ ValuePtr Folder::fold_div(ValuePtr lhs, ValuePtr rhs) {
         }
     }
 
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         if (lhs_const->get_type() == Type::W) {
             return ConstBits::get(std::get<int>(lhs_const->value) /
@@ -155,8 +155,8 @@ ValuePtr Folder::fold_div(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_mul(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         if (lhs_const->get_type() == Type::W) {
             return ConstBits::get(std::get<int>(lhs_const->value) *
@@ -211,8 +211,8 @@ ValuePtr Folder::fold_mul(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_rem(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         if (lhs_const->get_type() == Type::W) {
             return ConstBits::get(std::get<int>(lhs_const->value) %
@@ -240,8 +240,8 @@ ValuePtr Folder::fold_rem(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_eq(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         bool result;
         if (lhs_const->get_type() == Type::W) {
@@ -260,8 +260,8 @@ ValuePtr Folder::fold_eq(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_ne(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         bool result;
         if (lhs_const->get_type() == Type::W) {
@@ -280,8 +280,8 @@ ValuePtr Folder::fold_ne(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_lt(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         bool result;
         if (lhs_const->get_type() == Type::W) {
@@ -300,8 +300,8 @@ ValuePtr Folder::fold_lt(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_le(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         bool result;
         if (lhs_const->get_type() == Type::W) {
@@ -320,8 +320,8 @@ ValuePtr Folder::fold_le(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_gt(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         bool result;
         if (lhs_const->get_type() == Type::W) {
@@ -340,8 +340,8 @@ ValuePtr Folder::fold_gt(ValuePtr lhs, ValuePtr rhs) {
 }
 
 ValuePtr Folder::fold_ge(ValuePtr lhs, ValuePtr rhs) {
-    auto lhs_const = convert_to_const_bits(lhs);
-    auto rhs_const = convert_to_const_bits(rhs);
+    auto lhs_const = _convert_to_const_bits(lhs);
+    auto rhs_const = _convert_to_const_bits(rhs);
     if (lhs_const && rhs_const) {
         bool result;
         if (lhs_const->get_type() == Type::W) {
@@ -375,7 +375,7 @@ ValuePtr Folder::fold_swtof(ValuePtr value) {
     return nullptr;
 }
 
-ConstBitsPtr Folder::convert_to_const_bits(ValuePtr value) {
+ConstBitsPtr Folder::_convert_to_const_bits(ValuePtr value) {
     if (auto constant = std::dynamic_pointer_cast<ConstBits>(value)) {
         return constant;
     }

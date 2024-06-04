@@ -30,7 +30,7 @@ class Folder {
      * @return A constant bits pointer, or nullptr if the value is not a
      * constant.
      */
-    static ConstBitsPtr convert_to_const_bits(ValuePtr value);
+    static ConstBitsPtr _convert_to_const_bits(ValuePtr value);
 };
 
 } // namespace ir
