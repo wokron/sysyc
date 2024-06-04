@@ -104,7 +104,10 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
 
     sym::InitializerPtr initializer = nullptr;
     if (node.init_val != nullptr) {
-        initializer = visit_init_val(*node.init_val, *type, is_const);
+        // if is global, init value must be const as well, since we can't
+        // generate instructions for it
+        auto init_is_const = _is_global_context() || is_const;
+        initializer = visit_init_val(*node.init_val, *type, init_is_const);
     }
 
     auto symbol = std::make_shared<sym::VariableSymbol>(node.ident, type,
@@ -190,8 +193,8 @@ sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
                     array_type.get_total_elm_count());
                 for (auto &elm : node.items) {
                     // get initializer of each element
-                    auto elm_initializer =
-                        visit_init_val(*elm, *array_type.get_base_type(), is_const);
+                    auto elm_initializer = visit_init_val(
+                        *elm, *array_type.get_base_type(), is_const);
                     // then insert the initializer to the array initializer
                     initializer->insert(*elm_initializer);
                 }
@@ -497,7 +500,9 @@ void Visitor::visit_return_stmt(const ReturnStmt &node) {
 }
 
 ExpReturn Visitor::visit_const_exp(const Exp &node) {
+    _require_const_lval = true;
     auto [type, val] = visit_exp(node);
+    _require_const_lval = false;
 
     if (type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -569,21 +574,40 @@ ExpReturn Visitor::visit_binary_exp(const BinaryExp &node) {
 }
 
 ExpReturn Visitor::visit_lval_exp(const LValExp &node) {
-    auto [type, val] = visit_lval(*node.lval);
-    if (type->is_error()) {
-        return ExpReturn(sym::ErrorType::get(), nullptr);
+    if (_require_const_lval) {
+        auto [type, values] = visit_const_lval(*node.lval);
+        if (type->is_error()) {
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
+
+        auto [_, val] = values[0];
+        val = val ? val : ir::ConstBits::get(0);
+
+        if (auto const_val = std::dynamic_pointer_cast<ir::ConstBits>(val);
+            const_val) {
+            auto elm_ir_type = _symtype2irtype(*type);
+            return ExpReturn(type, _convert_const(elm_ir_type, *const_val));
+        } else {
+            error(-1, "not a const expression");
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
+    } else {
+        auto [type, val] = visit_lval(*node.lval);
+        if (type->is_error()) {
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
+
+        // still an array, the value is the address itself
+        if (type->is_array()) {
+            return ExpReturn(type, val);
+        }
+
+        // since lval is in an expression, we need to get the value from the
+        // lval address
+        auto exp_val = _builder.create_load(_symtype2irtype(*type), val);
+
+        return ExpReturn(type, exp_val);
     }
-
-    // still an array, the value is the address itself
-    if (type->is_array()) {
-        return ExpReturn(type, val);
-    }
-
-    // since lval is in an expression, we need to get the value from the
-    // lval address
-    auto exp_val = _builder.create_load(_symtype2irtype(*type), val);
-
-    return ExpReturn(type, exp_val);
 }
 
 ExpReturn Visitor::visit_lval(const LVal &node) {
@@ -635,6 +659,68 @@ ExpReturn Visitor::visit_lval(const LVal &node) {
                 // addr = base_addr + index * elm_size
                 return ExpReturn(lval_indirect_type->get_base_type(), val);
             }},
+        node);
+}
+
+ConstLValReturn Visitor::visit_const_lval(const LVal &node) {
+    return std::visit(
+        overloaded{
+            [this](const Ident &node) {
+                auto symbol = _current_scope->get_symbol(node);
+                if (!symbol) {
+                    error(-1, "undefined symbol " + node);
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                auto var_symbol =
+                    std::static_pointer_cast<sym::VariableSymbol>(symbol);
+
+                if (!var_symbol->is_constant) {
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                return ConstLValReturn(var_symbol->type,
+                                       var_symbol->initializer->get_values());
+            },
+            [this](const Index &node) {
+                auto [lval_type, lval_val] = visit_const_lval(*node.lval);
+                auto [exp_type, exp_val] = visit_const_exp(*node.exp);
+
+                if (lval_type->is_error() || exp_type->is_error()) {
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                if (!lval_type->is_array()) {
+                    error(-1, "index operator [] can only be used on "
+                              "array or pointer");
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                auto lval_array_type =
+                    std::static_pointer_cast<sym::ArrayType>(lval_type);
+
+                auto elm_size =
+                    lval_array_type->get_base_type()->get_size() / 4;
+
+                auto index = std::get<int>(
+                    std::static_pointer_cast<ir::ConstBits>(exp_val)->value);
+                index *= elm_size;
+
+                // get all values in the range [index, index + elm_size)
+                auto range_from = lval_val.lower_bound(index);
+                auto range_to =
+                    lval_val.lower_bound(index + elm_size); // this is not wrong
+
+                std::map<int, sym::Initializer::InitValue> values;
+                for (auto it = range_from; it != range_to; it++) {
+                    auto [no, val] = *it;
+                    values.insert({no - index, val});
+                }
+
+                return ConstLValReturn(lval_array_type->get_base_type(),
+                                       values);
+            },
+        },
         node);
 }
 
