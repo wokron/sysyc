@@ -959,3 +959,47 @@ CondReturn Visitor::visit_logical_exp(const LogicalExp &node) {
 
     return CondReturn(truelist, falselist);
 }
+
+void Visitor::_add_builtin_funcs() {
+    // add built-in functions declaration to the global scope
+    using Params = std::vector<sym::TypePtr>;
+    using FuncSym = sym::FunctionSymbol;
+
+    auto intty = sym::Int32Type::get();
+    auto floatty = sym::FloatType::get();
+    auto voidty = sym::VoidType::get();
+    auto intp = sym::TypeBuilder(intty).in_ptr().get_type();
+    auto floatp = sym::TypeBuilder(floatty).in_ptr().get_type();
+
+    auto getint = std::make_shared<FuncSym>("getint", Params{}, intty);
+    auto getchar = std::make_shared<FuncSym>("getchar", Params{}, intty);
+    auto getfloat = std::make_shared<FuncSym>("getfloat", Params{}, floatty);
+    auto getarray = std::make_shared<FuncSym>("getarray", Params{intp}, intty);
+    auto getfarray =
+        std::make_shared<FuncSym>("getfarray", Params{floatp}, floatty);
+    auto putint = std::make_shared<FuncSym>("putint", Params{intty}, voidty);
+    auto putch = std::make_shared<FuncSym>("putch", Params{intty}, voidty);
+    auto putfloat =
+        std::make_shared<FuncSym>("putfloat", Params{floatty}, voidty);
+    auto putarray =
+        std::make_shared<FuncSym>("putarray", Params{intty, intp}, voidty);
+    auto putfarray =
+        std::make_shared<FuncSym>("putfarray", Params{intty, floatp}, voidty);
+    auto starttime = std::make_shared<FuncSym>("starttime", Params{}, voidty);
+    starttime->value = ir::Address::get("_sysy_starttime");
+    auto stoptime = std::make_shared<FuncSym>("stoptime", Params{}, voidty);
+    stoptime->value = ir::Address::get("_sysy_stoptime");
+
+
+    auto builtin_funcs = std::vector<sym::SymbolPtr>{
+        getint, getchar,  getfloat, getarray,  getfarray, putint,
+        putch,  putfloat, putarray, putfarray, starttime, stoptime,
+    };
+
+    for (auto &func : builtin_funcs) {
+        if (func->value == nullptr) {
+            func->value = ir::Address::get(func->name);
+        }
+        _current_scope->add_symbol(func);
+    }
+}

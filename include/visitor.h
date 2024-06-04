@@ -36,7 +36,9 @@ class Visitor {
   public:
     Visitor(ir::Module &module)
         : _module(module),
-          _current_scope(std::make_shared<sym::SymbolTable>(nullptr)) {}
+          _current_scope(std::make_shared<sym::SymbolTable>(nullptr)) {
+        _add_builtin_funcs();
+    }
 
     // define methods for each AST node type
 
@@ -83,6 +85,11 @@ class Visitor {
 
   private:
     // some utility methods
+
+    /**
+     * @brief Add built-in functions to the global scope
+     */
+    void _add_builtin_funcs();
 
     /**
      * @brief Check if the current context is global
