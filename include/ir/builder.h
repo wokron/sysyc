@@ -57,10 +57,8 @@ class IRBuilder {
         if (_insert_point) {
             return _insert_point;
         }
-        if (_function) {
-            return _function->end;
-        }
-        throw std::runtime_error("no insert point");
+        assert(_function);
+        return _function->end;
     }
 
     std::shared_ptr<Block> create_label(std::string name) {
