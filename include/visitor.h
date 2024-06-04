@@ -43,7 +43,7 @@ class Visitor {
 
     void visit_decl(const Decl &node);
     void visit_var_def(const VarDef &node, ASTType btype, bool is_const);
-    sym::InitializerPtr visit_init_val(const InitVal &node, sym::Type &type);
+    sym::InitializerPtr visit_init_val(const InitVal &node, sym::Type &type, bool is_const);
     sym::TypePtr visit_dims(const Dims &node, ASTType btype);
 
     void visit_func_def(const FuncDef &node);

@@ -104,7 +104,7 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
 
     sym::InitializerPtr initializer = nullptr;
     if (node.init_val != nullptr) {
-        initializer = visit_init_val(*node.init_val, *type);
+        initializer = visit_init_val(*node.init_val, *type, is_const);
     }
 
     auto symbol = std::make_shared<sym::VariableSymbol>(node.ident, type,
@@ -163,12 +163,13 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
 }
 
 sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
-                                            sym::Type &type) {
+                                            sym::Type &type, bool is_const) {
     return std::visit(
         overloaded{
-            [this](const Exp &node) {
+            [this, is_const](const Exp &node) {
                 auto initializer = std::make_shared<sym::Initializer>();
-                auto [exp_type, exp_value] = visit_const_exp(node);
+                auto [exp_type, exp_value] =
+                    is_const ? visit_const_exp(node) : visit_exp(node);
                 if (exp_type->is_error()) {
                     return sym::InitializerPtr(nullptr);
                 }
@@ -176,7 +177,7 @@ sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
                     sym::Initializer::InitValue(exp_type, exp_value));
                 return initializer;
             },
-            [this, &type](const ArrayInitVal &node) {
+            [this, &type, is_const](const ArrayInitVal &node) {
                 if (!type.is_array()) {
                     error(-1, "cannot use array initializer on non-array type");
                     return sym::InitializerPtr(nullptr);
@@ -190,7 +191,7 @@ sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
                 for (auto &elm : node.items) {
                     // get initializer of each element
                     auto elm_initializer =
-                        visit_init_val(*elm, *array_type.get_base_type());
+                        visit_init_val(*elm, *array_type.get_base_type(), is_const);
                     // then insert the initializer to the array initializer
                     initializer->insert(*elm_initializer);
                 }
@@ -503,7 +504,7 @@ ExpReturn Visitor::visit_const_exp(const Exp &node) {
     }
 
     // check if the expression is constant
-    if (auto const_val = std::dynamic_pointer_cast<ir::Const>(val);
+    if (auto const_val = std::dynamic_pointer_cast<ir::ConstBits>(val);
         !const_val) {
         error(-1, "not a const expression");
         return ExpReturn(sym::ErrorType::get(), nullptr);
