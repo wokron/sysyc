@@ -972,7 +972,7 @@ void Visitor::_add_builtin_funcs() {
     auto floatp = sym::TypeBuilder(floatty).in_ptr().get_type();
 
     auto getint = std::make_shared<FuncSym>("getint", Params{}, intty);
-    auto getchar = std::make_shared<FuncSym>("getchar", Params{}, intty);
+    auto getch = std::make_shared<FuncSym>("getch", Params{}, intty);
     auto getfloat = std::make_shared<FuncSym>("getfloat", Params{}, floatty);
     auto getarray = std::make_shared<FuncSym>("getarray", Params{intp}, intty);
     auto getfarray =
@@ -991,7 +991,7 @@ void Visitor::_add_builtin_funcs() {
     stoptime->value = ir::Address::get("_sysy_stoptime");
 
     auto builtin_funcs = std::vector<sym::SymbolPtr>{
-        getint, getchar,  getfloat, getarray,  getfarray, putint,
+        getint, getch,  getfloat, getarray,  getfarray, putint,
         putch,  putfloat, putarray, putfarray, starttime, stoptime,
     };
 

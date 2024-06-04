@@ -963,14 +963,14 @@ case 16:
 YY_RULE_SETUP
 #line 109 "scanner.l"
 {
-    return TK_GE;
+    return TK_LE;
 }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
 #line 113 "scanner.l"
 {
-    return TK_LE;
+    return TK_GE;
 }
 	YY_BREAK
 case 18:
