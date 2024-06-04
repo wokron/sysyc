@@ -841,10 +841,10 @@ ExpReturn Visitor::visit_compare_exp(const CompareExp &node) {
                              _builder.create_csltw(left_val, right_val));
         case CompareExp::LE:
             return ExpReturn(sym::Int32Type::get(),
-                             _builder.create_cslew(right_val, left_val));
+                             _builder.create_cslew(left_val, right_val));
         case CompareExp::GT:
             return ExpReturn(sym::Int32Type::get(),
-                             _builder.create_csgtw(right_val, left_val));
+                             _builder.create_csgtw(left_val, right_val));
         case CompareExp::GE:
             return ExpReturn(sym::Int32Type::get(),
                              _builder.create_csgew(left_val, right_val));
@@ -870,7 +870,7 @@ ExpReturn Visitor::visit_compare_exp(const CompareExp &node) {
                              _builder.create_cgts(left_val, right_val));
         case CompareExp::GE:
             return ExpReturn(sym::Int32Type::get(),
-                             _builder.create_cges(right_val, left_val));
+                             _builder.create_cges(left_val, right_val));
         default:
             throw std::logic_error("unreachable");
         }
@@ -989,7 +989,6 @@ void Visitor::_add_builtin_funcs() {
     starttime->value = ir::Address::get("_sysy_starttime");
     auto stoptime = std::make_shared<FuncSym>("stoptime", Params{}, voidty);
     stoptime->value = ir::Address::get("_sysy_stoptime");
-
 
     auto builtin_funcs = std::vector<sym::SymbolPtr>{
         getint, getchar,  getfloat, getarray,  getfarray, putint,
