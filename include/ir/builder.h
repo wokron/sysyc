@@ -1,5 +1,6 @@
 #pragma once
 
+#include "folder.h"
 #include "ir.h"
 #include <cassert>
 
@@ -13,6 +14,11 @@ class IRBuilder {
   private:
     std::shared_ptr<Function> _function = nullptr;
     std::shared_ptr<Block> _insert_point = nullptr;
+    Folder _folder;
+
+    // require constant means that the result of the instruction must be a
+    // constant, in other words, instruction cannot be inserted.
+    bool _require_constant = false;
 
   public:
     IRBuilder() = default;
@@ -27,7 +33,17 @@ class IRBuilder {
         _insert_point = block;
     }
 
+    void set_require_constant(bool require_constant) {
+        _require_constant = require_constant;
+    }
+
     ValuePtr insert_inst(std::shared_ptr<Inst> inst) {
+        if (_require_constant) {
+            // shouldn't insert instruction if constant is required
+            return nullptr;
+        }
+
+        // if constant is not required, inst should be inserted into a block
         auto insert_point = get_insert_point();
 
         insert_point->insts.push_back(inst);
@@ -41,8 +57,10 @@ class IRBuilder {
         if (_insert_point) {
             return _insert_point;
         }
-        assert(_function->end);
-        return _function->end;
+        if (_function) {
+            return _function->end;
+        }
+        throw std::runtime_error("no insert point");
     }
 
     std::shared_ptr<Block> create_label(std::string name) {

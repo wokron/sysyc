@@ -19,6 +19,9 @@ using CondReturn = std::tuple<BlockPtrList, BlockPtrList>;
 // jump insts for while loop, first vector for continue, second vector for break
 using ContinueBreak = std::tuple<BlockPtrList, BlockPtrList>;
 
+using ConstLValReturn =
+    std::tuple<sym::TypePtr, std::map<int, sym::Initializer::InitValue>>;
+
 class Visitor {
   private:
     sym::SymbolTablePtr _current_scope;
@@ -28,10 +31,16 @@ class Visitor {
     sym::TypePtr _current_return_type = nullptr;
     std::stack<ContinueBreak> _while_stack;
 
+    // since visit_const_exp could be called multiple times, we need to
+    // record the count to make the func re-entrant
+    int _require_const_lval = 0;
+
   public:
     Visitor(ir::Module &module)
         : _module(module),
-          _current_scope(std::make_shared<sym::SymbolTable>(nullptr)) {}
+          _current_scope(std::make_shared<sym::SymbolTable>(nullptr)) {
+        _add_builtin_funcs();
+    }
 
     // define methods for each AST node type
 
@@ -43,7 +52,8 @@ class Visitor {
 
     void visit_decl(const Decl &node);
     void visit_var_def(const VarDef &node, ASTType btype, bool is_const);
-    sym::InitializerPtr visit_init_val(const InitVal &node, sym::Type &type);
+    sym::InitializerPtr visit_init_val(const InitVal &node, sym::Type &type,
+                                       bool is_const);
     sym::TypePtr visit_dims(const Dims &node, ASTType btype);
 
     void visit_func_def(const FuncDef &node);
@@ -70,12 +80,18 @@ class Visitor {
     ExpReturn visit_number(const Number &node);
     // TODO: support getting const value, which is important for competition
     ExpReturn visit_lval(const LVal &node);
+    ConstLValReturn visit_const_lval(const LVal &node);
 
     CondReturn visit_cond(const Cond &node);
     CondReturn visit_logical_exp(const LogicalExp &node);
 
   private:
     // some utility methods
+
+    /**
+     * @brief Add built-in functions to the global scope
+     */
+    void _add_builtin_funcs();
 
     /**
      * @brief Check if the current context is global

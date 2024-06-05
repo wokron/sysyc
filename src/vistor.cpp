@@ -104,7 +104,10 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
 
     sym::InitializerPtr initializer = nullptr;
     if (node.init_val != nullptr) {
-        initializer = visit_init_val(*node.init_val, *type);
+        // if is global, init value must be const as well, since we can't
+        // generate instructions for it
+        auto init_is_const = _is_global_context() || is_const;
+        initializer = visit_init_val(*node.init_val, *type, init_is_const);
     }
 
     auto symbol = std::make_shared<sym::VariableSymbol>(node.ident, type,
@@ -163,12 +166,13 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
 }
 
 sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
-                                            sym::Type &type) {
+                                            sym::Type &type, bool is_const) {
     return std::visit(
         overloaded{
-            [this](const Exp &node) {
+            [this, is_const](const Exp &node) {
                 auto initializer = std::make_shared<sym::Initializer>();
-                auto [exp_type, exp_value] = visit_const_exp(node);
+                auto [exp_type, exp_value] =
+                    is_const ? visit_const_exp(node) : visit_exp(node);
                 if (exp_type->is_error()) {
                     return sym::InitializerPtr(nullptr);
                 }
@@ -176,7 +180,7 @@ sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
                     sym::Initializer::InitValue(exp_type, exp_value));
                 return initializer;
             },
-            [this, &type](const ArrayInitVal &node) {
+            [this, &type, is_const](const ArrayInitVal &node) {
                 if (!type.is_array()) {
                     error(-1, "cannot use array initializer on non-array type");
                     return sym::InitializerPtr(nullptr);
@@ -189,10 +193,12 @@ sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
                     array_type.get_total_elm_count());
                 for (auto &elm : node.items) {
                     // get initializer of each element
-                    auto elm_initializer =
-                        visit_init_val(*elm, *array_type.get_base_type());
+                    auto elm_initializer = visit_init_val(
+                        *elm, *array_type.get_base_type(), is_const);
                     // then insert the initializer to the array initializer
-                    initializer->insert(*elm_initializer);
+                    if (elm_initializer) {
+                        initializer->insert(*elm_initializer);
+                    }
                 }
 
                 return initializer;
@@ -496,14 +502,16 @@ void Visitor::visit_return_stmt(const ReturnStmt &node) {
 }
 
 ExpReturn Visitor::visit_const_exp(const Exp &node) {
+    _require_const_lval++;
     auto [type, val] = visit_exp(node);
+    _require_const_lval--;
 
     if (type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
     }
 
     // check if the expression is constant
-    if (auto const_val = std::dynamic_pointer_cast<ir::Const>(val);
+    if (auto const_val = std::dynamic_pointer_cast<ir::ConstBits>(val);
         !const_val) {
         error(-1, "not a const expression");
         return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -560,6 +568,10 @@ ExpReturn Visitor::visit_binary_exp(const BinaryExp &node) {
         return ExpReturn(type,
                          _builder.create_div(ir_type, left_val, right_val));
     case BinaryExp::MOD:
+        if (!type->is_int32()) {
+            error(-1, "mod operator % can only be used on int");
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
         return ExpReturn(type,
                          _builder.create_rem(ir_type, left_val, right_val));
     default:
@@ -568,21 +580,40 @@ ExpReturn Visitor::visit_binary_exp(const BinaryExp &node) {
 }
 
 ExpReturn Visitor::visit_lval_exp(const LValExp &node) {
-    auto [type, val] = visit_lval(*node.lval);
-    if (type->is_error()) {
-        return ExpReturn(sym::ErrorType::get(), nullptr);
+    if (_require_const_lval) {
+        auto [type, values] = visit_const_lval(*node.lval);
+        if (type->is_error()) {
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
+
+        auto [_, val] = values[0];
+        val = val ? val : ir::ConstBits::get(0);
+
+        if (auto const_val = std::dynamic_pointer_cast<ir::ConstBits>(val);
+            const_val) {
+            auto elm_ir_type = _symtype2irtype(*type);
+            return ExpReturn(type, _convert_const(elm_ir_type, *const_val));
+        } else {
+            error(-1, "not a const expression");
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
+    } else {
+        auto [type, val] = visit_lval(*node.lval);
+        if (type->is_error()) {
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
+
+        // still an array, the value is the address itself
+        if (type->is_array()) {
+            return ExpReturn(type, val);
+        }
+
+        // since lval is in an expression, we need to get the value from the
+        // lval address
+        auto exp_val = _builder.create_load(_symtype2irtype(*type), val);
+
+        return ExpReturn(type, exp_val);
     }
-
-    // still an array, the value is the address itself
-    if (type->is_array()) {
-        return ExpReturn(type, val);
-    }
-
-    // since lval is in an expression, we need to get the value from the
-    // lval address
-    auto exp_val = _builder.create_load(_symtype2irtype(*type), val);
-
-    return ExpReturn(type, exp_val);
 }
 
 ExpReturn Visitor::visit_lval(const LVal &node) {
@@ -634,6 +665,68 @@ ExpReturn Visitor::visit_lval(const LVal &node) {
                 // addr = base_addr + index * elm_size
                 return ExpReturn(lval_indirect_type->get_base_type(), val);
             }},
+        node);
+}
+
+ConstLValReturn Visitor::visit_const_lval(const LVal &node) {
+    return std::visit(
+        overloaded{
+            [this](const Ident &node) {
+                auto symbol = _current_scope->get_symbol(node);
+                if (!symbol) {
+                    error(-1, "undefined symbol " + node);
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                auto var_symbol =
+                    std::static_pointer_cast<sym::VariableSymbol>(symbol);
+
+                if (!var_symbol->is_constant) {
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                return ConstLValReturn(var_symbol->type,
+                                       var_symbol->initializer->get_values());
+            },
+            [this](const Index &node) {
+                auto [lval_type, lval_val] = visit_const_lval(*node.lval);
+                auto [exp_type, exp_val] = visit_const_exp(*node.exp);
+
+                if (lval_type->is_error() || exp_type->is_error()) {
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                if (!lval_type->is_array()) {
+                    error(-1, "index operator [] can only be used on "
+                              "array or pointer");
+                    return ConstLValReturn(sym::ErrorType::get(), {});
+                }
+
+                auto lval_array_type =
+                    std::static_pointer_cast<sym::ArrayType>(lval_type);
+
+                auto elm_size =
+                    lval_array_type->get_base_type()->get_size() / 4;
+
+                auto index = std::get<int>(
+                    std::static_pointer_cast<ir::ConstBits>(exp_val)->value);
+                index *= elm_size;
+
+                // get all values in the range [index, index + elm_size)
+                auto range_from = lval_val.lower_bound(index);
+                auto range_to =
+                    lval_val.lower_bound(index + elm_size); // this is not wrong
+
+                std::map<int, sym::Initializer::InitValue> values;
+                for (auto it = range_from; it != range_to; it++) {
+                    auto [no, val] = *it;
+                    values.insert({no - index, val});
+                }
+
+                return ConstLValReturn(lval_array_type->get_base_type(),
+                                       values);
+            },
+        },
         node);
 }
 
@@ -754,10 +847,10 @@ ExpReturn Visitor::visit_compare_exp(const CompareExp &node) {
                              _builder.create_csltw(left_val, right_val));
         case CompareExp::LE:
             return ExpReturn(sym::Int32Type::get(),
-                             _builder.create_cslew(right_val, left_val));
+                             _builder.create_cslew(left_val, right_val));
         case CompareExp::GT:
             return ExpReturn(sym::Int32Type::get(),
-                             _builder.create_csgtw(right_val, left_val));
+                             _builder.create_csgtw(left_val, right_val));
         case CompareExp::GE:
             return ExpReturn(sym::Int32Type::get(),
                              _builder.create_csgew(left_val, right_val));
@@ -783,7 +876,7 @@ ExpReturn Visitor::visit_compare_exp(const CompareExp &node) {
                              _builder.create_cgts(left_val, right_val));
         case CompareExp::GE:
             return ExpReturn(sym::Int32Type::get(),
-                             _builder.create_cges(right_val, left_val));
+                             _builder.create_cges(left_val, right_val));
         default:
             throw std::logic_error("unreachable");
         }
@@ -871,4 +964,47 @@ CondReturn Visitor::visit_logical_exp(const LogicalExp &node) {
     // _builder.create_label("logic_join");
 
     return CondReturn(truelist, falselist);
+}
+
+void Visitor::_add_builtin_funcs() {
+    // add built-in functions declaration to the global scope
+    using Params = std::vector<sym::TypePtr>;
+    using FuncSym = sym::FunctionSymbol;
+
+    auto intty = sym::Int32Type::get();
+    auto floatty = sym::FloatType::get();
+    auto voidty = sym::VoidType::get();
+    auto intp = sym::TypeBuilder(intty).in_ptr().get_type();
+    auto floatp = sym::TypeBuilder(floatty).in_ptr().get_type();
+
+    auto getint = std::make_shared<FuncSym>("getint", Params{}, intty);
+    auto getch = std::make_shared<FuncSym>("getch", Params{}, intty);
+    auto getfloat = std::make_shared<FuncSym>("getfloat", Params{}, floatty);
+    auto getarray = std::make_shared<FuncSym>("getarray", Params{intp}, intty);
+    auto getfarray =
+        std::make_shared<FuncSym>("getfarray", Params{floatp}, floatty);
+    auto putint = std::make_shared<FuncSym>("putint", Params{intty}, voidty);
+    auto putch = std::make_shared<FuncSym>("putch", Params{intty}, voidty);
+    auto putfloat =
+        std::make_shared<FuncSym>("putfloat", Params{floatty}, voidty);
+    auto putarray =
+        std::make_shared<FuncSym>("putarray", Params{intty, intp}, voidty);
+    auto putfarray =
+        std::make_shared<FuncSym>("putfarray", Params{intty, floatp}, voidty);
+    auto starttime = std::make_shared<FuncSym>("starttime", Params{}, voidty);
+    starttime->value = ir::Address::get("_sysy_starttime");
+    auto stoptime = std::make_shared<FuncSym>("stoptime", Params{}, voidty);
+    stoptime->value = ir::Address::get("_sysy_stoptime");
+
+    auto builtin_funcs = std::vector<sym::SymbolPtr>{
+        getint, getch,    getfloat, getarray,  getfarray, putint,
+        putch,  putfloat, putarray, putfarray, starttime, stoptime,
+    };
+
+    for (auto &func : builtin_funcs) {
+        if (func->value == nullptr) {
+            func->value = ir::Address::get(func->name);
+        }
+        _current_scope->add_symbol(func);
+    }
 }

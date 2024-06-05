@@ -7,6 +7,9 @@ namespace ir {
  * format: %to =<ty> add <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_add(Type ty, ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_add(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::IADD, ty, lhs, rhs);
     return insert_inst(inst);
 }
@@ -16,6 +19,9 @@ ValuePtr IRBuilder::create_add(Type ty, ValuePtr lhs, ValuePtr rhs) {
  * format: %to =<ty> sub <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_sub(Type ty, ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_sub(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ISUB, ty, lhs, rhs);
     return insert_inst(inst);
 }
@@ -25,6 +31,9 @@ ValuePtr IRBuilder::create_sub(Type ty, ValuePtr lhs, ValuePtr rhs) {
  * format: %to =<ty> neg <operand>
  */
 ValuePtr IRBuilder::create_neg(Type ty, ValuePtr operand) {
+    if (auto const_val = _folder.fold_neg(operand); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::INEG, ty, operand, nullptr);
     return insert_inst(inst);
 }
@@ -34,6 +43,9 @@ ValuePtr IRBuilder::create_neg(Type ty, ValuePtr operand) {
  * format: %to =<ty> div <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_div(Type ty, ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_div(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::IDIV, ty, lhs, rhs);
     return insert_inst(inst);
 }
@@ -43,6 +55,9 @@ ValuePtr IRBuilder::create_div(Type ty, ValuePtr lhs, ValuePtr rhs) {
  * format: %to =<ty> mul <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_mul(Type ty, ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_mul(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::IMUL, ty, lhs, rhs);
     return insert_inst(inst);
 }
@@ -52,6 +67,9 @@ ValuePtr IRBuilder::create_mul(Type ty, ValuePtr lhs, ValuePtr rhs) {
  * format: %to =<ty> rem <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_rem(Type ty, ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_rem(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::IREM, ty, lhs, rhs);
     return insert_inst(inst);
 }
@@ -133,6 +151,9 @@ ValuePtr IRBuilder::create_alloc(Type ty, int bytes) {
  * format: %to =w ceqw <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_ceqw(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_eq(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICEQW, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -142,6 +163,9 @@ ValuePtr IRBuilder::create_ceqw(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w cnew <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_cnew(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_ne(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICNEW, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -151,6 +175,9 @@ ValuePtr IRBuilder::create_cnew(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w cslew <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_cslew(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_le(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICSLEW, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -160,6 +187,9 @@ ValuePtr IRBuilder::create_cslew(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w csltw <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_csltw(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_lt(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICSLTW, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -169,6 +199,9 @@ ValuePtr IRBuilder::create_csltw(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w csgew <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_csgew(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_ge(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICSGEW, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -178,6 +211,9 @@ ValuePtr IRBuilder::create_csgew(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w csgtw <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_csgtw(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_gt(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICSGTW, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -187,6 +223,9 @@ ValuePtr IRBuilder::create_csgtw(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w ceqs <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_ceqs(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_eq(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICEQS, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -196,6 +235,9 @@ ValuePtr IRBuilder::create_ceqs(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w cnes <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_cnes(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_ne(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICNES, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -205,6 +247,9 @@ ValuePtr IRBuilder::create_cnes(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w cles <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_cles(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_le(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICLES, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -214,6 +259,9 @@ ValuePtr IRBuilder::create_cles(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w clts <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_clts(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_lt(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICLTS, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -223,6 +271,9 @@ ValuePtr IRBuilder::create_clts(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w cges <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_cges(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_ge(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICGES, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -232,6 +283,9 @@ ValuePtr IRBuilder::create_cges(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w cgts <lhs>, <rhs>
  */
 ValuePtr IRBuilder::create_cgts(ValuePtr lhs, ValuePtr rhs) {
+    if (auto const_val = _folder.fold_gt(lhs, rhs); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ICGTS, Type::W, lhs, rhs);
     return insert_inst(inst);
 }
@@ -250,6 +304,9 @@ ValuePtr IRBuilder::create_extsw(ValuePtr value) {
  * format: %to =w stosi <value>
  */
 ValuePtr IRBuilder::create_stosi(ValuePtr value) {
+    if (auto const_val = _folder.fold_stosi(value); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ISTOSI, Type::W, value, nullptr);
     return insert_inst(inst);
 }
@@ -259,6 +316,9 @@ ValuePtr IRBuilder::create_stosi(ValuePtr value) {
  * format: %to =s stof <value>
  */
 ValuePtr IRBuilder::create_swtof(ValuePtr value) {
+    if (auto const_val = _folder.fold_swtof(value); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::ISWTOF, Type::S, value, nullptr);
     return insert_inst(inst);
 }

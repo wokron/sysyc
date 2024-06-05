@@ -72,28 +72,22 @@ function w $main() {
     %.5 =l alloc4 4
     %.6 =l alloc4 8
     %.7 =l alloc4 4
+    %.8 =l alloc4 4
     %.9 =l alloc4 4
-    %.11 =l alloc4 4
-    %.13 =l alloc4 4
-    %.15 =l alloc4 8
-    %.18 =l alloc4 8
+    %.10 =l alloc4 4
+    %.11 =l alloc4 8
+    %.13 =l alloc4 8
 @body.2
-    %.8 =l add %.7, 0
-    storew 1, %.8
-    %.10 =l add %.9, 0
+    storew 1, %.7
+    stores s_1, %.8
+    storew 1, %.9
     stores s_1, %.10
-    %.12 =l add %.11, 0
-    storew 1, %.12
-    %.14 =l add %.13, 0
-    stores s_1, %.14
-    %.16 =l add %.15, 0
-    storew 1, %.16
-    %.17 =l add %.15, 4
-    storew 2, %.17
-    %.19 =l add %.18, 0
-    stores s_1, %.19
-    %.20 =l add %.18, 4
-    stores s_2, %.20
+    storew 1, %.11
+    %.12 =l add %.11, 4
+    storew 2, %.12
+    stores s_1, %.13
+    %.14 =l add %.13, 4
+    stores s_2, %.14
     ret 0
 }
 )";
@@ -934,31 +928,26 @@ export
 function w $main() {
 @start.3
     %.1 =l alloc4 4
-    %.4 =l alloc4 4
+    %.2 =l alloc4 4
 @body.4
-    %.2 =l add %.1, 0
-    %.3 =w stosi s_1
-    storew %.3, %.2
-    %.5 =l add %.4, 0
-    %.6 =s swtof 1
-    stores %.6, %.5
-    %.7 =s loads %.4
-    %.8 =s swtof 1
-    %.9 =s add %.7, %.8
-    %.10 =w stosi %.9
-    storew %.10, %.1
-    %.11 =w loadw %.1
-    %.12 =s swtof %.11
-    %.13 =s add %.12, s_1
-    stores %.13, %.4
-    %.14 =w loadw %.1
-    %.15 =s loads %.4
-    call $func(w %.14, s %.15, )
-    %.16 =s loads %.4
-    %.17 =w stosi %.16
-    %.18 =w loadw %.1
-    %.19 =s swtof %.18
-    call $func(w %.17, s %.19, )
+    storew 1, %.1
+    stores s_1, %.2
+    %.3 =s loads %.2
+    %.4 =s add %.3, s_1
+    %.5 =w stosi %.4
+    storew %.5, %.1
+    %.6 =w loadw %.1
+    %.7 =s swtof %.6
+    %.8 =s add %.7, s_1
+    stores %.8, %.2
+    %.9 =w loadw %.1
+    %.10 =s loads %.2
+    call $func(w %.9, s %.10, )
+    %.11 =s loads %.2
+    %.12 =w stosi %.11
+    %.13 =w loadw %.1
+    %.14 =s swtof %.13
+    call $func(w %.12, s %.14, )
     ret 0
 }
 )";
@@ -1019,142 +1008,135 @@ static constexpr char EXPECTED7[] =
 function $testinit() {
 @start.3
     %.1 =l alloc4 32
-    %.10 =l alloc4 32
-    %.19 =l alloc4 32
-    %.28 =l alloc4 32
-    %.37 =l alloc4 32
+    %.9 =l alloc4 32
+    %.17 =l alloc4 32
+    %.25 =l alloc4 32
+    %.33 =l alloc4 32
 @body.4
-    %.2 =l add %.1, 0
+    storew 0, %.1
+    %.2 =l add %.1, 4
     storew 0, %.2
-    %.3 =l add %.1, 4
+    %.3 =l add %.1, 8
     storew 0, %.3
-    %.4 =l add %.1, 8
+    %.4 =l add %.1, 12
     storew 0, %.4
-    %.5 =l add %.1, 12
+    %.5 =l add %.1, 16
     storew 0, %.5
-    %.6 =l add %.1, 16
+    %.6 =l add %.1, 20
     storew 0, %.6
-    %.7 =l add %.1, 20
+    %.7 =l add %.1, 24
     storew 0, %.7
-    %.8 =l add %.1, 24
+    %.8 =l add %.1, 28
     storew 0, %.8
-    %.9 =l add %.1, 28
-    storew 0, %.9
-    %.11 =l add %.10, 0
-    storew 1, %.11
-    %.12 =l add %.10, 4
-    storew 2, %.12
-    %.13 =l add %.10, 8
-    storew 3, %.13
-    %.14 =l add %.10, 12
-    storew 4, %.14
-    %.15 =l add %.10, 16
-    storew 5, %.15
-    %.16 =l add %.10, 20
-    storew 6, %.16
-    %.17 =l add %.10, 24
-    storew 7, %.17
-    %.18 =l add %.10, 28
-    storew 8, %.18
-    %.20 =l add %.19, 0
-    storew 1, %.20
-    %.21 =l add %.19, 4
-    storew 2, %.21
-    %.22 =l add %.19, 8
-    storew 3, %.22
-    %.23 =l add %.19, 12
-    storew 4, %.23
-    %.24 =l add %.19, 16
-    storew 5, %.24
-    %.25 =l add %.19, 20
-    storew 6, %.25
-    %.26 =l add %.19, 24
-    storew 7, %.26
-    %.27 =l add %.19, 28
-    storew 8, %.27
-    %.29 =l add %.28, 0
-    storew 1, %.29
-    %.30 =l add %.28, 4
-    storew 2, %.30
-    %.31 =l add %.28, 8
-    storew 3, %.31
-    %.32 =l add %.28, 12
-    storew 0, %.32
-    %.33 =l add %.28, 16
-    storew 5, %.33
-    %.34 =l add %.28, 20
-    storew 0, %.34
-    %.35 =l add %.28, 24
-    storew 7, %.35
-    %.36 =l add %.28, 28
-    storew 8, %.36
-    %.38 =l add %.37, 0
-    storew 1, %.38
-    %.39 =l add %.37, 4
-    storew 2, %.39
-    %.40 =l add %.37, 8
-    storew 3, %.40
-    %.41 =l add %.37, 12
-    storew 4, %.41
-    %.42 =l add %.37, 16
-    storew 5, %.42
-    %.43 =l add %.37, 20
-    storew 6, %.43
-    %.44 =l add %.37, 24
-    storew 7, %.44
-    %.45 =l add %.37, 28
-    storew 8, %.45
+    storew 1, %.9
+    %.10 =l add %.9, 4
+    storew 2, %.10
+    %.11 =l add %.9, 8
+    storew 3, %.11
+    %.12 =l add %.9, 12
+    storew 4, %.12
+    %.13 =l add %.9, 16
+    storew 5, %.13
+    %.14 =l add %.9, 20
+    storew 6, %.14
+    %.15 =l add %.9, 24
+    storew 7, %.15
+    %.16 =l add %.9, 28
+    storew 8, %.16
+    storew 1, %.17
+    %.18 =l add %.17, 4
+    storew 2, %.18
+    %.19 =l add %.17, 8
+    storew 3, %.19
+    %.20 =l add %.17, 12
+    storew 4, %.20
+    %.21 =l add %.17, 16
+    storew 5, %.21
+    %.22 =l add %.17, 20
+    storew 6, %.22
+    %.23 =l add %.17, 24
+    storew 7, %.23
+    %.24 =l add %.17, 28
+    storew 8, %.24
+    storew 1, %.25
+    %.26 =l add %.25, 4
+    storew 2, %.26
+    %.27 =l add %.25, 8
+    storew 3, %.27
+    %.28 =l add %.25, 12
+    storew 0, %.28
+    %.29 =l add %.25, 16
+    storew 5, %.29
+    %.30 =l add %.25, 20
+    storew 0, %.30
+    %.31 =l add %.25, 24
+    storew 7, %.31
+    %.32 =l add %.25, 28
+    storew 8, %.32
+    storew 1, %.33
+    %.34 =l add %.33, 4
+    storew 2, %.34
+    %.35 =l add %.33, 8
+    storew 3, %.35
+    %.36 =l add %.33, 12
+    storew 4, %.36
+    %.37 =l add %.33, 16
+    storew 5, %.37
+    %.38 =l add %.33, 20
+    storew 6, %.38
+    %.39 =l add %.33, 24
+    storew 7, %.39
+    %.40 =l add %.33, 28
+    storew 8, %.40
     ret
 }
 export
 function w $main() {
 @start.5
     %.1 =l alloc4 36
-    %.11 =l alloc4 36
+    %.10 =l alloc4 36
 @body.6
-    %.2 =l add %.1, 0
-    storew 1, %.2
-    %.3 =l add %.1, 4
-    storew 2, %.3
-    %.4 =l add %.1, 8
-    storew 3, %.4
-    %.5 =l add %.1, 12
-    storew 4, %.5
-    %.6 =l add %.1, 16
+    storew 1, %.1
+    %.2 =l add %.1, 4
+    storew 2, %.2
+    %.3 =l add %.1, 8
+    storew 3, %.3
+    %.4 =l add %.1, 12
+    storew 4, %.4
+    %.5 =l add %.1, 16
+    storew 0, %.5
+    %.6 =l add %.1, 20
     storew 0, %.6
-    %.7 =l add %.1, 20
-    storew 0, %.7
-    %.8 =l add %.1, 24
-    storew 7, %.8
-    %.9 =l add %.1, 28
-    storew 8, %.9
-    %.10 =l add %.1, 32
-    storew 9, %.10
-    %.12 =l add %.11, 0
-    stores s_1, %.12
-    %.13 =l add %.11, 4
-    stores s_2, %.13
-    %.14 =l add %.11, 8
-    stores s_3, %.14
-    %.15 =l add %.11, 12
-    stores s_4, %.15
-    %.16 =l add %.11, 16
-    stores s_5, %.16
-    %.17 =l add %.11, 20
-    stores s_6, %.17
-    %.18 =l add %.11, 24
-    stores s_7, %.18
-    %.19 =l add %.11, 28
-    stores s_8, %.19
-    %.20 =l add %.11, 32
-    stores s_9, %.20
-    %.21 =l extsw 0
-    %.22 =l mul %.21, 12
-    %.23 =l add %.1, %.22
-    %.24 =l extsw 0
-    %.25 =l mul %.24, 12
-    %.26 =l add %.11, %.25
-    call $testparam(l %.23, l %.26, l %.1, l %.11, )
+    %.7 =l add %.1, 24
+    storew 7, %.7
+    %.8 =l add %.1, 28
+    storew 8, %.8
+    %.9 =l add %.1, 32
+    storew 9, %.9
+    stores s_1, %.10
+    %.11 =l add %.10, 4
+    stores s_2, %.11
+    %.12 =l add %.10, 8
+    stores s_3, %.12
+    %.13 =l add %.10, 12
+    stores s_4, %.13
+    %.14 =l add %.10, 16
+    stores s_5, %.14
+    %.15 =l add %.10, 20
+    stores s_6, %.15
+    %.16 =l add %.10, 24
+    stores s_7, %.16
+    %.17 =l add %.10, 28
+    stores s_8, %.17
+    %.18 =l add %.10, 32
+    stores s_9, %.18
+    %.19 =l extsw 0
+    %.20 =l mul %.19, 12
+    %.21 =l add %.1, %.20
+    %.22 =l extsw 0
+    %.23 =l mul %.22, 12
+    %.24 =l add %.10, %.23
+    call $testparam(l %.21, l %.24, l %.1, l %.10, )
     ret 0
 }
 )";
@@ -1175,4 +1157,89 @@ TEST_CASE("testing array") {
     module.emit(ss);
 
     CHECK_EQ(ss.str(), EXPECTED7);
+}
+
+static constexpr char CONTENT8[] = R"(
+const int a = 1;
+const float b = 1.0;
+int c[a + 2] = {1 + 0 - 0, 2 * 1 / 1, 3 % 4};
+float d[b + 2] = {1.0 + 0.0 - 0.0, 2.0 * 1.0 / 1.0, 3.0};
+const int e[2][2][2] = {{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}};
+int f = e[0][0][0] + e[0][0][1] + e[0][1][0] + e[0][1][1] + e[1][0][0] + e[1][0][1] + e[1][1][0] + e[1][1][1];
+
+int main() {
+    const int a2 = 1;
+    const float b2 = 1.0;
+    const int c2[a2 + 2] = {1 + 0 - 0, 2 * 1 / 1, 3 % 4};
+    const float d2[b2 + 2] = {1.0 + 0.0 - 0.0, 2.0 * 1.0 / 1.0, 3.0};
+    const int e2[2][2][2] = {{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}};
+    const int f2 = e2[0][0][0] + e2[0][0][1] + e2[0][1][0] + e2[0][1][1] + e2[1][0][0] + e2[1][0][1] + e2[1][1][0] + e2[1][1][1];
+    return 0;
+}
+)";
+
+static constexpr char EXPECTED8[] = R"(data $a = align 4 { w 1, }
+data $b = align 4 { s s_1, }
+data $c = align 4 { w 1, w 2, w 3, }
+data $d = align 4 { s s_1, s s_2, s s_3, }
+data $e = align 4 { w 1, w 2, w 3, w 4, w 5, w 6, w 7, w 8, }
+data $f = align 4 { w 36, }
+export
+function w $main() {
+@start.1
+    %.1 =l alloc4 4
+    %.2 =l alloc4 4
+    %.3 =l alloc4 12
+    %.6 =l alloc4 12
+    %.9 =l alloc4 32
+    %.17 =l alloc4 4
+@body.2
+    storew 1, %.1
+    stores s_1, %.2
+    storew 1, %.3
+    %.4 =l add %.3, 4
+    storew 2, %.4
+    %.5 =l add %.3, 8
+    storew 3, %.5
+    stores s_1, %.6
+    %.7 =l add %.6, 4
+    stores s_2, %.7
+    %.8 =l add %.6, 8
+    stores s_3, %.8
+    storew 1, %.9
+    %.10 =l add %.9, 4
+    storew 2, %.10
+    %.11 =l add %.9, 8
+    storew 3, %.11
+    %.12 =l add %.9, 12
+    storew 4, %.12
+    %.13 =l add %.9, 16
+    storew 5, %.13
+    %.14 =l add %.9, 20
+    storew 6, %.14
+    %.15 =l add %.9, 24
+    storew 7, %.15
+    %.16 =l add %.9, 28
+    storew 8, %.16
+    storew 36, %.17
+    ret 0
+}
+)";
+
+TEST_CASE("testing constant folding") {
+    auto root = parse(CONTENT8);
+
+    ir::Module module;
+
+    Visitor visitor(module);
+
+    visitor.visit(*root);
+
+    CHECK_FALSE(has_error());
+
+    std::ostringstream ss;
+
+    module.emit(ss);
+
+    CHECK_EQ(ss.str(), EXPECTED8);
 }
