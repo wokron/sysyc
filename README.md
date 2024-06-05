@@ -7,14 +7,14 @@ Sysyc is a compiler for the SysY language. It utilizes QBE IR as its intermediat
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Todo List
-- [ ] Phase One: Compiler Frontend
+- [X] Phase One: Compiler Frontend
   - [x] Syntax tree data structure
-  - [ ] Intermediate code data structure
-  - [ ] Intermediate code construction interface
+  - [X] Intermediate code data structure
+  - [X] Intermediate code construction interface
   - [x] Lexical analysis + Syntax analysis
-  - [ ] Intermediate code print
+  - [X] Intermediate code print
   - [x] Symbol table + Type system
-  - [ ] Semantic analysis
+  - [X] Semantic analysis
 
 - [ ] Phase Two: Compiler Backend
   - [ ] Register allocation algorithm
