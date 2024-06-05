@@ -1158,3 +1158,88 @@ TEST_CASE("testing array") {
 
     CHECK_EQ(ss.str(), EXPECTED7);
 }
+
+static constexpr char CONTENT8[] = R"(
+const int a = 1;
+const float b = 1.0;
+int c[a + 2] = {1 + 0 - 0, 2 * 1 / 1, 3 % 4};
+float d[b + 2] = {1.0 + 0.0 - 0.0, 2.0 * 1.0 / 1.0, 3.0};
+const int e[2][2][2] = {{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}};
+int f = e[0][0][0] + e[0][0][1] + e[0][1][0] + e[0][1][1] + e[1][0][0] + e[1][0][1] + e[1][1][0] + e[1][1][1];
+
+int main() {
+    const int a2 = 1;
+    const float b2 = 1.0;
+    const int c2[a2 + 2] = {1 + 0 - 0, 2 * 1 / 1, 3 % 4};
+    const float d2[b2 + 2] = {1.0 + 0.0 - 0.0, 2.0 * 1.0 / 1.0, 3.0};
+    const int e2[2][2][2] = {{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}};
+    const int f2 = e2[0][0][0] + e2[0][0][1] + e2[0][1][0] + e2[0][1][1] + e2[1][0][0] + e2[1][0][1] + e2[1][1][0] + e2[1][1][1];
+    return 0;
+}
+)";
+
+static constexpr char EXPECTED8[] = R"(data $a = align 4 { w 1, }
+data $b = align 4 { s s_1, }
+data $c = align 4 { w 1, w 2, w 3, }
+data $d = align 4 { s s_1, s s_2, s s_3, }
+data $e = align 4 { w 1, w 2, w 3, w 4, w 5, w 6, w 7, w 8, }
+data $f = align 4 { w 36, }
+export
+function w $main() {
+@start.1
+    %.1 =l alloc4 4
+    %.2 =l alloc4 4
+    %.3 =l alloc4 12
+    %.6 =l alloc4 12
+    %.9 =l alloc4 32
+    %.17 =l alloc4 4
+@body.2
+    storew 1, %.1
+    stores s_1, %.2
+    storew 1, %.3
+    %.4 =l add %.3, 4
+    storew 2, %.4
+    %.5 =l add %.3, 8
+    storew 3, %.5
+    stores s_1, %.6
+    %.7 =l add %.6, 4
+    stores s_2, %.7
+    %.8 =l add %.6, 8
+    stores s_3, %.8
+    storew 1, %.9
+    %.10 =l add %.9, 4
+    storew 2, %.10
+    %.11 =l add %.9, 8
+    storew 3, %.11
+    %.12 =l add %.9, 12
+    storew 4, %.12
+    %.13 =l add %.9, 16
+    storew 5, %.13
+    %.14 =l add %.9, 20
+    storew 6, %.14
+    %.15 =l add %.9, 24
+    storew 7, %.15
+    %.16 =l add %.9, 28
+    storew 8, %.16
+    storew 36, %.17
+    ret 0
+}
+)";
+
+TEST_CASE("testing constant folding") {
+    auto root = parse(CONTENT8);
+
+    ir::Module module;
+
+    Visitor visitor(module);
+
+    visitor.visit(*root);
+
+    CHECK_FALSE(has_error());
+
+    std::ostringstream ss;
+
+    module.emit(ss);
+
+    CHECK_EQ(ss.str(), EXPECTED8);
+}

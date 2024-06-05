@@ -31,7 +31,9 @@ class Visitor {
     sym::TypePtr _current_return_type = nullptr;
     std::stack<ContinueBreak> _while_stack;
 
-    bool _require_const_lval = false;
+    // since visit_const_exp could be called multiple times, we need to
+    // record the count to make the func re-entrant
+    int _require_const_lval = 0;
 
   public:
     Visitor(ir::Module &module)

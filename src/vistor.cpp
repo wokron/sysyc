@@ -196,7 +196,9 @@ sym::InitializerPtr Visitor::visit_init_val(const InitVal &node,
                     auto elm_initializer = visit_init_val(
                         *elm, *array_type.get_base_type(), is_const);
                     // then insert the initializer to the array initializer
-                    initializer->insert(*elm_initializer);
+                    if (elm_initializer) {
+                        initializer->insert(*elm_initializer);
+                    }
                 }
 
                 return initializer;
@@ -500,9 +502,9 @@ void Visitor::visit_return_stmt(const ReturnStmt &node) {
 }
 
 ExpReturn Visitor::visit_const_exp(const Exp &node) {
-    _require_const_lval = true;
+    _require_const_lval++;
     auto [type, val] = visit_exp(node);
-    _require_const_lval = false;
+    _require_const_lval--;
 
     if (type->is_error()) {
         return ExpReturn(sym::ErrorType::get(), nullptr);
@@ -566,6 +568,10 @@ ExpReturn Visitor::visit_binary_exp(const BinaryExp &node) {
         return ExpReturn(type,
                          _builder.create_div(ir_type, left_val, right_val));
     case BinaryExp::MOD:
+        if (!type->is_int32()) {
+            error(-1, "mod operator % can only be used on int");
+            return ExpReturn(sym::ErrorType::get(), nullptr);
+        }
         return ExpReturn(type,
                          _builder.create_rem(ir_type, left_val, right_val));
     default:
@@ -991,7 +997,7 @@ void Visitor::_add_builtin_funcs() {
     stoptime->value = ir::Address::get("_sysy_stoptime");
 
     auto builtin_funcs = std::vector<sym::SymbolPtr>{
-        getint, getch,  getfloat, getarray,  getfarray, putint,
+        getint, getch,    getfloat, getarray,  getfarray, putint,
         putch,  putfloat, putarray, putfarray, starttime, stoptime,
     };
 
