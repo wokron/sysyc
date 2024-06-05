@@ -36,3 +36,6 @@ build/
 .idea/
 .env
 .deploy
+.test_cache/
+testfiles/
+.qbe
