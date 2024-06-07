@@ -300,9 +300,6 @@ void Visitor::visit_func_def(const FuncDef &node) {
     visit_block_items(*node.block);
 
     if (ir_func->end->jump.type == ir::Jump::NONE) {
-        if (!_current_return_type->is_void()) {
-            error(-1, "function missing return statement");
-        }
         ir_func->end->jump.type = ir::Jump::RET;
     }
 
@@ -797,13 +794,20 @@ ExpReturn Visitor::visit_unary_exp(const UnaryExp &node) {
         return ExpReturn(
             exp_type, _builder.create_neg(_symtype2irtype(*exp_type), exp_val));
     case UnaryExp::NOT:
-        if (!exp_type->is_int32()) {
-            error(-1, "not operator ! can only be used on int");
+        if (exp_type->is_int32()) {
+            // !a equal to (a == 0)
+            return ExpReturn(
+                exp_type, _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
+        } else if (exp_type->is_float()) {
+            // !a equal to (a == 0)
+            auto cmp_val =
+                _builder.create_ceqs(exp_val, ir::ConstBits::get(0.0f));
+            // int to float
+            return ExpReturn(exp_type, _builder.create_swtof(cmp_val));
+        } else {
+            error(-1, "not operator ! can only be used on int or float");
             return ExpReturn(sym::ErrorType::get(), nullptr);
         }
-        // !a equal to (a == 0)
-        return ExpReturn(exp_type,
-                         _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
     default:
         throw std::logic_error("unreachable");
     }
@@ -902,7 +906,14 @@ CondReturn Visitor::visit_cond(const Cond &node) {
         overloaded{
             [this](const Exp &node) {
                 auto [type, val] = visit_exp(node);
-                if (type->is_error() || !type->is_int32()) {
+                if (type->is_error()) {
+                    return CondReturn(BlockPtrList{}, BlockPtrList{});
+                }
+
+                if (type->is_float()) {
+                    val = _builder.create_cnes(val, ir::ConstBits::get(0.0f));
+                } else if (!type->is_int32()) {
+                    error(-1, "condition must be int or float");
                     return CondReturn(BlockPtrList{}, BlockPtrList{});
                 }
 
@@ -982,7 +993,7 @@ void Visitor::_add_builtin_funcs() {
     auto getfloat = std::make_shared<FuncSym>("getfloat", Params{}, floatty);
     auto getarray = std::make_shared<FuncSym>("getarray", Params{intp}, intty);
     auto getfarray =
-        std::make_shared<FuncSym>("getfarray", Params{floatp}, floatty);
+        std::make_shared<FuncSym>("getfarray", Params{floatp}, intty);
     auto putint = std::make_shared<FuncSym>("putint", Params{intty}, voidty);
     auto putch = std::make_shared<FuncSym>("putch", Params{intty}, voidty);
     auto putfloat =
