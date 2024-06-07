@@ -34,8 +34,9 @@
 build/
 .vscode/
 .idea/
+
 .env
-.deploy
-.test_cache/
+.deploy/
+
+.qbe/
 testfiles/
-.qbe
