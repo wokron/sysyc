@@ -432,6 +432,7 @@ void Visitor::visit_if_stmt(const IfStmt &node) {
 }
 
 void Visitor::visit_while_stmt(const WhileStmt &node) {
+    // TODO: loop rotation optimization
     auto cond_block = _builder.create_label("while_cond");
 
     auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);

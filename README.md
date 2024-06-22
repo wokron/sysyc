@@ -25,6 +25,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
   - [ ] Other optimization algorithms
      - [ ] Peephole Optimization
      - [ ] Constant Folding and Constant Propagation
-     - [ ] Function inlining
+     - [ ] Function Inlining
      - [ ] GCM and GVN
-     - [ ] ...
+     - [ ] Loop Rotation
+     - [ ] CFG Simplifying
+     - [ ] Deadcode Elimination
+     - [ ] Strength Reduction
+     - [ ] Tail Recursion Optimization
