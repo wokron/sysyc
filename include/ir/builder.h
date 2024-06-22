@@ -8,10 +8,8 @@ namespace ir {
 
 using ValuePtr = std::shared_ptr<Value>;
 
-// TODO: support constant folding
-
 class IRBuilder {
-  private:
+private:
     std::shared_ptr<Function> _function = nullptr;
     std::shared_ptr<Block> _insert_point = nullptr;
     Folder _folder;
@@ -20,7 +18,7 @@ class IRBuilder {
     // constant, in other words, instruction cannot be inserted.
     bool _require_constant = false;
 
-  public:
+public:
     IRBuilder() = default;
     IRBuilder(std::shared_ptr<Function> function) : _function(function) {}
 
@@ -62,7 +60,14 @@ class IRBuilder {
     }
 
     std::shared_ptr<Block> create_label(std::string name) {
+        auto prev = _function->end;
         auto block = Block::create(name, *_function);
+        if (prev && prev->jump.type == Jump::NONE) {
+            prev->jump = {
+                .type = Jump::JMP,
+                .blk = {block},
+            };
+        }
         return block;
     }
 

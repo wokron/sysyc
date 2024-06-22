@@ -77,6 +77,7 @@ function w $main() {
     %.10 =l alloc4 4
     %.11 =l alloc4 8
     %.13 =l alloc4 8
+    jmp @body.2
 @body.2
     storew 1, %.7
     stores s_1, %.8
@@ -126,6 +127,7 @@ void func3(int a, float b, int c[], float d[], int e[][2], float f[][2]) {
 
 static constexpr char EXPECTED2[] = R"(function w $func1() {
 @start.1
+    jmp @body.2
 @body.2
     %.1 =w call $func1()
     ret %.1
@@ -136,6 +138,7 @@ function $func2(w %.1, w %.2, ) {
     storew %.1, %.3
     %.4 =l alloc4 4
     storew %.2, %.4
+    jmp @body.4
 @body.4
     %.5 =w loadw %.4
     %.6 =w loadw %.3
@@ -156,6 +159,7 @@ function $func3(w %.1, s %.2, l %.3, l %.4, l %.5, l %.6, ) {
     storel %.5, %.11
     %.12 =l alloc8 8
     storel %.6, %.12
+    jmp @body.6
 @body.6
     %.13 =w loadw %.7
     %.14 =s loads %.8
@@ -284,11 +288,13 @@ function $case1(w %.1, ) {
 @start.1
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.2
 @body.2
     %.3 =w loadw %.2
     jnz %.3, @if_true.3, @if_false.4
 @if_true.3
     stores s_1, $b
+    jmp @if_false.4
 @if_false.4
     ret
 }
@@ -296,6 +302,7 @@ function $case2(w %.1, ) {
 @start.5
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.6
 @body.6
     %.3 =w loadw %.2
     jnz %.3, @if_true.7, @if_false.8
@@ -304,6 +311,7 @@ function $case2(w %.1, ) {
     jmp @if_join.9
 @if_false.8
     stores s_2, $b
+    jmp @if_join.9
 @if_join.9
     ret
 }
@@ -311,6 +319,7 @@ function $case3(w %.1, ) {
 @start.10
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.11
 @body.11
     %.3 =w loadw %.2
     jnz %.3, @if_true.12, @if_false.13
@@ -326,7 +335,9 @@ function $case3(w %.1, ) {
     jmp @if_join.16
 @if_false.15
     stores s_3, $b
+    jmp @if_join.16
 @if_join.16
+    jmp @if_join.17
 @if_join.17
     ret
 }
@@ -334,6 +345,7 @@ function $case4(w %.1, ) {
 @start.18
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.19
 @body.19
     %.3 =w loadw %.2
     jnz %.3, @if_true.20, @if_false.23
@@ -343,7 +355,9 @@ function $case4(w %.1, ) {
     jnz %.5, @if_true.21, @if_false.22
 @if_true.21
     stores s_1, $b
+    jmp @if_false.22
 @if_false.22
+    jmp @if_false.23
 @if_false.23
     ret
 }
@@ -351,6 +365,7 @@ function $case5(w %.1, ) {
 @start.24
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.25
 @body.25
     %.3 =w loadw %.2
     jnz %.3, @if_true.26, @if_false.30
@@ -363,7 +378,9 @@ function $case5(w %.1, ) {
     jmp @if_join.29
 @if_false.28
     stores s_2, $b
+    jmp @if_join.29
 @if_join.29
+    jmp @if_false.30
 @if_false.30
     ret
 }
@@ -371,6 +388,7 @@ function $case6(w %.1, ) {
 @start.31
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.32
 @body.32
     %.3 =w loadw %.2
     jnz %.3, @if_true.33, @if_false.40
@@ -390,8 +408,11 @@ function $case6(w %.1, ) {
     jmp @if_join.38
 @if_false.37
     stores s_3, $b
+    jmp @if_join.38
 @if_join.38
+    jmp @if_join.39
 @if_join.39
+    jmp @if_false.40
 @if_false.40
     ret
 }
@@ -399,6 +420,7 @@ function $case7(w %.1, ) {
 @start.41
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.42
 @body.42
     %.3 =w loadw %.2
     jnz %.3, @if_true.43, @if_false.50
@@ -418,11 +440,14 @@ function $case7(w %.1, ) {
     jmp @if_join.48
 @if_false.47
     stores s_3, $b
+    jmp @if_join.48
 @if_join.48
+    jmp @if_join.49
 @if_join.49
     jmp @if_join.51
 @if_false.50
     stores s_4, $b
+    jmp @if_join.51
 @if_join.51
     ret
 }
@@ -430,6 +455,7 @@ function $case8(w %.1, ) {
 @start.52
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.53
 @body.53
     %.3 =w loadw %.2
     jnz %.3, @if_true.54, @if_false.55
@@ -442,7 +468,9 @@ function $case8(w %.1, ) {
     jnz %.5, @if_true.56, @if_false.57
 @if_true.56
     stores s_2, $b
+    jmp @if_false.57
 @if_false.57
+    jmp @if_join.58
 @if_join.58
     ret
 }
@@ -450,6 +478,7 @@ function $case9(w %.1, ) {
 @start.59
     %.2 =l alloc4 4
     storew %.1, %.2
+    jmp @body.60
 @body.60
     %.3 =w loadw %.2
     jnz %.3, @if_true.61, @if_false.62
@@ -465,7 +494,9 @@ function $case9(w %.1, ) {
     jmp @if_join.65
 @if_false.64
     stores s_3, $b
+    jmp @if_join.65
 @if_join.65
+    jmp @if_join.66
 @if_join.66
     ret
 }
@@ -569,7 +600,9 @@ void case10() {
 
 static constexpr char EXPECTED4[] = R"(function $case1() {
 @start.1
+    jmp @body.2
 @body.2
+    jmp @while_cond.3
 @while_cond.3
     jnz 1, @while_body.4, @while_join.5
 @while_body.4
@@ -579,7 +612,9 @@ static constexpr char EXPECTED4[] = R"(function $case1() {
 }
 function $case2() {
 @start.6
+    jmp @body.7
 @body.7
+    jmp @while_cond.8
 @while_cond.8
     jnz 1, @while_body.9, @while_join.10
 @while_body.9
@@ -589,7 +624,9 @@ function $case2() {
 }
 function $case3() {
 @start.11
+    jmp @body.12
 @body.12
+    jmp @while_cond.13
 @while_cond.13
     jnz 1, @while_body.14, @while_join.15
 @while_body.14
@@ -599,7 +636,9 @@ function $case3() {
 }
 function $case4() {
 @start.16
+    jmp @body.17
 @body.17
+    jmp @while_cond.18
 @while_cond.18
     jnz 1, @while_body.19, @while_join.22
 @while_body.19
@@ -613,7 +652,9 @@ function $case4() {
 }
 function $case5() {
 @start.23
+    jmp @body.24
 @body.24
+    jmp @while_cond.25
 @while_cond.25
     jnz 1, @while_body.26, @while_join.29
 @while_body.26
@@ -627,7 +668,9 @@ function $case5() {
 }
 function $case6() {
 @start.30
+    jmp @body.31
 @body.31
+    jmp @while_cond.32
 @while_cond.32
     jnz 1, @while_body.33, @while_join.36
 @while_body.33
@@ -641,7 +684,9 @@ function $case6() {
 }
 function $case7() {
 @start.37
+    jmp @body.38
 @body.38
+    jmp @while_cond.39
 @while_cond.39
     jnz 1, @while_body.40, @while_join.44
 @while_body.40
@@ -657,10 +702,13 @@ function $case7() {
 }
 function $case8() {
 @start.45
+    jmp @body.46
 @body.46
+    jmp @while_cond.47
 @while_cond.47
     jnz 1, @while_body.48, @while_join.52
 @while_body.48
+    jmp @while_cond.49
 @while_cond.49
     jnz 1, @while_body.50, @while_join.51
 @while_body.50
@@ -672,10 +720,13 @@ function $case8() {
 }
 function $case9() {
 @start.53
+    jmp @body.54
 @body.54
+    jmp @while_cond.55
 @while_cond.55
     jnz 1, @while_body.56, @while_join.60
 @while_body.56
+    jmp @while_cond.57
 @while_cond.57
     jnz 1, @while_body.58, @while_join.59
 @while_body.58
@@ -687,10 +738,13 @@ function $case9() {
 }
 function $case10() {
 @start.61
+    jmp @body.62
 @body.62
+    jmp @while_cond.63
 @while_cond.63
     jnz 1, @while_body.64, @while_join.68
 @while_body.64
+    jmp @while_cond.65
 @while_cond.65
     jnz 1, @while_body.66, @while_join.67
 @while_body.66
@@ -772,6 +826,7 @@ void case8() {
 
 static constexpr char EXPECTED5[] = R"(function $case1() {
 @start.1
+    jmp @body.2
 @body.2
     jnz 1, @if_true.4, @logic_right.3
 @logic_right.3
@@ -783,6 +838,7 @@ static constexpr char EXPECTED5[] = R"(function $case1() {
 }
 function $case2() {
 @start.6
+    jmp @body.7
 @body.7
     jnz 1, @logic_right.8, @if_false.10
 @logic_right.8
@@ -794,6 +850,7 @@ function $case2() {
 }
 function $case3() {
 @start.11
+    jmp @body.12
 @body.12
     jnz 1, @logic_right.13, @if_false.16
 @logic_right.13
@@ -807,6 +864,7 @@ function $case3() {
 }
 function $case4() {
 @start.17
+    jmp @body.18
 @body.18
     jnz 1, @if_true.21, @logic_right.19
 @logic_right.19
@@ -820,6 +878,7 @@ function $case4() {
 }
 function $case5() {
 @start.23
+    jmp @body.24
 @body.24
     jnz 1, @if_true.27, @logic_right.25
 @logic_right.25
@@ -833,6 +892,7 @@ function $case5() {
 }
 function $case6() {
 @start.29
+    jmp @body.30
 @body.30
     jnz 1, @logic_right.31, @logic_right.32
 @logic_right.31
@@ -846,6 +906,7 @@ function $case6() {
 }
 function $case7() {
 @start.35
+    jmp @body.36
 @body.36
     jnz 1, @logic_right.37, @logic_right.38
 @logic_right.37
@@ -861,6 +922,7 @@ function $case7() {
 }
 function $case8() {
 @start.42
+    jmp @body.43
 @body.43
     jnz 1, @if_true.47, @logic_right.44
 @logic_right.44
@@ -921,6 +983,7 @@ function $func(w %.1, s %.2, ) {
     storew %.1, %.3
     %.4 =l alloc4 4
     stores %.2, %.4
+    jmp @body.2
 @body.2
     ret
 }
@@ -929,6 +992,7 @@ function w $main() {
 @start.3
     %.1 =l alloc4 4
     %.2 =l alloc4 4
+    jmp @body.4
 @body.4
     storew 1, %.1
     stores s_1, %.2
@@ -1002,6 +1066,7 @@ static constexpr char EXPECTED7[] =
     storel %.3, %.7
     %.8 =l alloc8 8
     storel %.4, %.8
+    jmp @body.2
 @body.2
     ret
 }
@@ -1012,6 +1077,7 @@ function $testinit() {
     %.17 =l alloc4 32
     %.25 =l alloc4 32
     %.33 =l alloc4 32
+    jmp @body.4
 @body.4
     storew 0, %.1
     %.2 =l add %.1, 4
@@ -1095,6 +1161,7 @@ function w $main() {
 @start.5
     %.1 =l alloc4 36
     %.10 =l alloc4 36
+    jmp @body.6
 @body.6
     storew 1, %.1
     %.2 =l add %.1, 4
@@ -1193,6 +1260,7 @@ function w $main() {
     %.6 =l alloc4 12
     %.9 =l alloc4 32
     %.17 =l alloc4 4
+    jmp @body.2
 @body.2
     storew 1, %.1
     stores s_1, %.2
