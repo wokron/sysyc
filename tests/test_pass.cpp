@@ -6,7 +6,7 @@ static std::vector<std::string> calls_record;
 
 TEST_CASE("testing pass base") {
 
-    class TestBasicBlockPass : public BasicBlockPass {
+    class TestBasicBlockPass : public opt::BasicBlockPass {
     public:
         bool run_on_basic_block(ir::Block &bb) override {
             calls_record.push_back("run_on_basic_block");
@@ -14,7 +14,7 @@ TEST_CASE("testing pass base") {
         }
     };
 
-    class TestFunctionPass : public FunctionPass {
+    class TestFunctionPass : public opt::FunctionPass {
     public:
         bool run_on_function(ir::Function &func) override {
             calls_record.push_back("run_on_function");
@@ -22,7 +22,7 @@ TEST_CASE("testing pass base") {
         }
     };
 
-    class TestModulePass : public ModulePass {
+    class TestModulePass : public opt::ModulePass {
     public:
         bool run_on_module(ir::Module &module) override {
             calls_record.push_back("run_on_module");
@@ -60,7 +60,7 @@ TEST_CASE("testing pass base") {
 
     // an example of using PassPipeline
     using CompletePass =
-        PassPipeline<TestBasicBlockPass, TestFunctionPass, TestModulePass>;
+        opt::PassPipeline<TestBasicBlockPass, TestFunctionPass, TestModulePass>;
     CompletePass pass;
     pass.run(module);
     CHECK_EQ(calls_record.size(), 4);

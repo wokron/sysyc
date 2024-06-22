@@ -5,6 +5,8 @@
 #include "ir/ir.h"
 #include <memory>
 
+namespace opt {
+
 /**
  * @brief Base class for all optimization passes.
  * @param module The module to optimize.
@@ -114,3 +116,5 @@ private:
     // I failed to use unique_ptr here, so I use raw pointers instead
     std::vector<Pass *> _passes;
 };
+
+} // namespace opt

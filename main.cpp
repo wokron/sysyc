@@ -1,10 +1,13 @@
 #include "ast.h"
 #include "error.h"
 #include "ir/ir.h"
+#include "opt/pass/pass.h"
 #include "parser.h"
 #include "visitor.h"
 #include <fstream>
 #include <getopt.h>
+
+using Pass = opt::PassPipeline<opt::SimplifyCFGPass>;
 
 struct Options {
     bool optimize = false;
@@ -63,6 +66,11 @@ void compile(const char *name, const Options &options,
         cmd_error(name, "compilation failed");
     }
 
+    if (options.optimize) {
+        Pass pass;
+        pass.run(module);
+    }
+
     if (options.emit_ir) {
         if (output.length() == 0) {
             output = "out.ssa";
@@ -70,11 +78,6 @@ void compile(const char *name, const Options &options,
         outfile.open(output, std::ios::out);
         module.emit(outfile);
         return;
-    }
-
-    if (options.optimize) {
-        // TODO: apply optimizations
-        cmd_error(name, "optimization not implemented");
     }
 
     // TODO: ir to asm
