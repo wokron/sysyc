@@ -107,7 +107,7 @@ for testfile in $testfiles; do
 
         # compare the content of output_file with expected_output_file
         if [ -f $expect_file ]; then
-            diff $expect_file $output_file
+            diff -Z $expect_file $output_file
             if [ $? -eq 0 ]; then
                 echo "($test_no/$total_tests) $testfile passed ✓"
                 pass_count=$((pass_count + 1))
