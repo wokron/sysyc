@@ -45,8 +45,7 @@ if [ ! -f $QBE ]; then
     # copy qbe to cache directory
     cp $TEMP_DIR/qbe $QBE || ! echo "error: failed to copy qbe" || exit 1
 
-    echo "qbe installed, re-run the script to continue..."
-    exit 0
+    echo "qbe installed"
 fi
 
 # compile the ir file
@@ -186,8 +185,7 @@ EOF
     # compile the runtime library
     $CC -c $lib_src_file -o $lib_file || ! echo "error: failed to compile runtime library" || exit 1
 
-    echo "runtime library compiled, re-run the script to continue..."
-    exit 0
+    echo "runtime library compiled"
 fi
 
 # link the object file with the runtime library
