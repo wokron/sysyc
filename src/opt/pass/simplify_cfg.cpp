@@ -50,100 +50,6 @@ ir::BlockPtr EmptyBlockRemovalPass::_get_replacement(ir::BlockPtr block) {
     }
 }
 
-bool BlockMergingPass::run_on_function(ir::Function &func) {
-    _init_all_predecessors(func);
-
-    return _merge_blocks(func);
-}
-
-void BlockMergingPass::_init_all_predecessors(ir::Function &func) {
-    for (auto block = func.start; block; block = block->next) {
-        _insert_predecessor(block);
-    }
-}
-
-void BlockMergingPass::erase_by_kv(
-    std::unordered_multimap<ir::BlockPtr, ir::BlockPtr> &map, ir::BlockPtr key,
-    ir::BlockPtr value) {
-    auto [from, to] = map.equal_range(key);
-    auto it = std::find_if(
-        from, to, [value](const auto &kv) { return kv.second == value; });
-    if (it != map.end()) {
-        map.erase(it);
-    }
-}
-
-void BlockMergingPass::_remove_predecessor(ir::BlockPtr block) {
-    switch (block->jump.type) {
-    case ir::Jump::JNZ:
-        erase_by_kv(_predecessors, block->jump.blk[1], block);
-        // fall through
-    case ir::Jump::JMP:
-        erase_by_kv(_predecessors, block->jump.blk[0], block);
-        break;
-    case ir::Jump::RET:
-        break;
-    default:
-        throw std::logic_error("invalid jump type");
-    }
-}
-
-void BlockMergingPass::_insert_predecessor(ir::BlockPtr block) {
-    switch (block->jump.type) {
-    case ir::Jump::JNZ:
-        _predecessors.insert({block->jump.blk[1], block});
-        // fall through
-    case ir::Jump::JMP:
-        _predecessors.insert({block->jump.blk[0], block});
-        break;
-    case ir::Jump::RET:
-        break;
-    default:
-        throw std::logic_error("invalid jump type");
-    }
-}
-
-bool BlockMergingPass::_merge_blocks(ir::Function &func) {
-    bool changed = false;
-
-    for (auto block = func.start; block; block = block->next) {
-        // get predecessors, only one predecessor is allowed
-        auto range = _predecessors.equal_range(block);
-        if (std::distance(range.first, range.second) != 1) {
-            continue;
-        }
-        auto pred = range.first->second;
-        if (pred->jump.type == ir::Jump::JNZ) {
-            continue;
-        } else if (pred->jump.type == ir::Jump::RET) {
-            throw std::logic_error(
-                "block with return jump type should not have successors");
-        }
-
-        // remove block from predecessors
-        _predecessors.erase(range.first);
-
-        if (block->phis.size() != 0) {
-            throw std::logic_error("block with phi should not be merged");
-        }
-
-        // merge instructions
-        pred->insts.insert(pred->insts.end(), block->insts.begin(),
-                           block->insts.end());
-
-        // merge jump
-        pred->jump = block->jump;
-
-        // then update predecessors of successors
-        _remove_predecessor(block);
-        _insert_predecessor(pred);
-
-        changed = true;
-    }
-
-    return changed;
-}
-
 bool UnreachableBlockRemovalPass::run_on_function(ir::Function &func) {
     bool changed = false;
 
@@ -192,6 +98,68 @@ void UnreachableBlockRemovalPass::_find_reachable_blocks(
             _find_reachable_blocks(*next, reachable);
         }
     }
+}
+
+bool BlockMergingPass::run_on_function(ir::Function &func) {
+    bool changed = false;
+
+    for (auto block = func.start; block; block = block->next) {
+        // if the block has only one predecessor
+        if (block->preds.size() != 1) {
+            continue;
+        }
+
+        // and the predecessor has the block as its only successor
+        auto pred = block->preds[0];
+        if (pred->jump.type == ir::Jump::JNZ) {
+            continue;
+        } else if (pred->jump.type == ir::Jump::RET) {
+            throw std::logic_error(
+                "block with return jump type should not have successors");
+        }
+
+        if (block->phis.size() != 0) {
+            throw std::logic_error("block with phi should not be merged");
+        }
+
+        // we can merge the block into its predecessor
+
+        changed = true;
+
+        // merge instructions
+        pred->insts.insert(pred->insts.end(), block->insts.begin(),
+                           block->insts.end());
+
+        // merge jump
+        pred->jump = block->jump;
+
+        // then update predecessors
+        switch (block->jump.type) {
+        case ir::Jump::JMP: {
+            auto it = std::find(block->jump.blk[0]->preds.begin(),
+                                block->jump.blk[0]->preds.end(), block);
+            *it = pred;
+        } break;
+        case ir::Jump::JNZ: {
+            auto it = std::find(block->jump.blk[0]->preds.begin(),
+                                block->jump.blk[0]->preds.end(), block);
+            *it = pred;
+            if (block->jump.blk[0] != block->jump.blk[1]) {
+                it = std::find(block->jump.blk[1]->preds.begin(),
+                               block->jump.blk[1]->preds.end(), block);
+                *it = pred;
+            }
+        } break;
+        default:
+            break;
+        }
+        block->preds.clear();
+        block->jump = {
+            .type = ir::Jump::RET,
+        };
+    }
+
+    return changed;
 }
 
 } // namespace opt

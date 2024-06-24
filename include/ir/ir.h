@@ -41,7 +41,7 @@ struct Address : public Const {
 
     Type get_type() const override { return Type::L; }
 
-  private:
+private:
     static std::unordered_map<std::string, std::shared_ptr<Address>>
         addrcon_cache;
 };
@@ -77,7 +77,7 @@ struct ConstBits : public Const {
         }
     }
 
-  private:
+private:
     static std::unordered_map<float, std::shared_ptr<ConstBits>> floatcon_cache;
     static std::unordered_map<int, std::shared_ptr<ConstBits>> intcon_cache;
 };
@@ -158,6 +158,8 @@ struct Block {
 
     std::shared_ptr<Block> next;
 
+    std::vector<std::shared_ptr<Block>> preds; // predecessors
+
     static std::shared_ptr<Block> create(std::string name, Function &func);
 
     void emit(std::ostream &out) const;
@@ -211,14 +213,25 @@ struct JmpUse {
 
 using Use = std::variant<PhiUse, InstUse, JmpUse>;
 
+struct PhiDef {
+    std::shared_ptr<Phi> phi;
+    std::shared_ptr<Block> blk;
+};
+
+struct InstDef {
+    std::shared_ptr<Inst> ins;
+};
+
+using Def = std::variant<PhiDef, InstDef>;
+
 struct Temp : public Value {
     uint id = 0;
     std::string name;
     Type type;
-    std::shared_ptr<Inst> def;
+    Def def;
     std::vector<Use> uses;
 
-    Temp(std::string name, Type type, std::shared_ptr<Inst> def)
+    Temp(std::string name, Type type, Def def)
         : name(name), type(type), def(def) {}
 
     void emit(std::ostream &out) const override {

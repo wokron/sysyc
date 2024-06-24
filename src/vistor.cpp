@@ -419,6 +419,7 @@ void Visitor::visit_if_stmt(const IfStmt &node) {
         _current_scope = _current_scope->pop_scope();
 
         auto join_block = _builder.create_label("if_join");
+        // TODO: here is a bug, the type of jump could be RET
         jmp_to_join->jump.blk[0] = join_block;
     }
 

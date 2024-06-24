@@ -1,6 +1,7 @@
 #pragma once
 
 #include "opt/pass/base.h"
+#include "opt/pass/cfg.h"
 #include <unordered_set>
 
 namespace opt {
@@ -10,6 +11,7 @@ namespace opt {
  * @note Empty blocks are blocks without any instructions or phi nodes.
  * @note This pass will make empty block unreachable, so they can be removed
  * later by UnreachableBlockRemovalPass.
+ * @warning This pass will break predecessor relationship.
  */
 class EmptyBlockRemovalPass : public FunctionPass {
 public:
@@ -32,27 +34,13 @@ private:
 class BlockMergingPass : public FunctionPass {
 public:
     bool run_on_function(ir::Function &func) override;
-
-private:
-    void _remove_predecessor(ir::BlockPtr block);
-
-    void _insert_predecessor(ir::BlockPtr block);
-
-    void _init_all_predecessors(ir::Function &func);
-
-    static void
-    erase_by_kv(std::unordered_multimap<ir::BlockPtr, ir::BlockPtr> &map,
-                ir::BlockPtr key, ir::BlockPtr value);
-
-    bool _merge_blocks(ir::Function &func);
-
-    std::unordered_multimap<ir::BlockPtr, ir::BlockPtr> _predecessors;
 };
 
 /**
  * @brief Pass to remove unreachable blocks.
  * @note This pass will remove blocks that are not reachable
  * from the entry block.
+ * @warning This pass will break predecessor relationship.
  */
 class UnreachableBlockRemovalPass : public FunctionPass {
 public:
@@ -73,8 +61,11 @@ private:
  * and UnreachableBlockRemovalPass.
  * @note This pass will remove empty blocks, merge blocks, and remove
  * unreachable blocks.
+ * @note Since EmptyBlockRemovalPass and BlockMergingPass will break
+ * predecessor relationship, this pass will also run FillPredsPass to fix it.
  */
-using SimplifyCFGPass = PassPipeline<EmptyBlockRemovalPass, BlockMergingPass,
-                                     UnreachableBlockRemovalPass>;
+using SimplifyCFGPass =
+    PassPipeline<BlockMergingPass, EmptyBlockRemovalPass,
+                 UnreachableBlockRemovalPass, FillPredsPass>;
 
 } // namespace opt

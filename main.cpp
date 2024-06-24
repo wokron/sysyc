@@ -7,7 +7,7 @@
 #include <fstream>
 #include <getopt.h>
 
-using Pass = opt::PassPipeline<opt::SimplifyCFGPass>;
+using Pass = opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass>;
 
 struct Options {
     bool optimize = false;
