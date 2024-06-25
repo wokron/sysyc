@@ -181,6 +181,8 @@ struct Function {
     uint temp_counter = 1;
     uint *block_counter_ptr;
 
+    std::vector<std::shared_ptr<Block>> rpo; // reverse post order
+
     using TempPtrList = std::vector<std::shared_ptr<Temp>>;
     using FunctionPtr = std::shared_ptr<Function>;
 
