@@ -31,10 +31,12 @@ bool FillPredsPass::run_on_function(ir::Function &func) {
 bool FillUsesPass::run_on_function(ir::Function &func) {
     for (auto block = func.start; block; block = block->next) {
         for (auto &phi : block->phis) {
+            phi->to->defs.clear();
             phi->to->uses.clear();
         }
         for (auto &inst : block->insts) {
             if (inst->to) {
+                inst->to->defs.clear();
                 inst->to->uses.clear();
             }
         }
@@ -43,9 +45,9 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
     for (auto block = func.start; block; block = block->next) {
         // phi
         for (auto &phi : block->phis) {
-            phi->to->def = ir::PhiDef{phi};
+            phi->to->defs.push_back(ir::PhiDef{phi});
             for (auto [blk, arg] : phi->args) {
-                if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg)) {
+                if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg); temp) {
                     temp->uses.push_back(ir::PhiUse{phi, block});
                 }
             }
@@ -53,17 +55,17 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
         // inst
         for (auto &inst : block->insts) {
             if (inst->to) {
-                inst->to->def = ir::InstDef{inst};
+                inst->to->defs.push_back(ir::InstDef{inst});
             }
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0])) {
+            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]); temp) {
                 temp->uses.push_back(ir::InstUse{inst});
             }
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[1])) {
+            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[1]); temp) {
                 temp->uses.push_back(ir::InstUse{inst});
             }
         }
         // jump
-        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block->jump.arg)) {
+        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block->jump.arg); temp) {
             temp->uses.push_back(ir::JmpUse{block});
         }
     }

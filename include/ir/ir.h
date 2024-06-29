@@ -230,11 +230,11 @@ struct Temp : public Value {
     uint id = 0;
     std::string name;
     Type type;
-    Def def;
+    std::vector<Def> defs;
     std::vector<Use> uses;
 
-    Temp(std::string name, Type type, Def def)
-        : name(name), type(type), def(def) {}
+    Temp(std::string name, Type type, std::vector<Def> defs)
+        : name(name), type(type), defs(defs) {}
 
     void emit(std::ostream &out) const override {
         out << "%" << name;
