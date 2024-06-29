@@ -78,7 +78,6 @@ class Visitor {
     ExpReturn visit_unary_exp(const UnaryExp &node);
     ExpReturn visit_compare_exp(const CompareExp &node);
     ExpReturn visit_number(const Number &node);
-    // TODO: support getting const value, which is important for competition
     ExpReturn visit_lval(const LVal &node);
     ConstLValReturn visit_const_lval(const LVal &node);
 

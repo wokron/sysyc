@@ -89,7 +89,11 @@ for testfile in $testfiles; do
 
     if [ $stage == "ir" ] || [ $stage == "ir-opt" ]; then
         ir_file=${filename}.ssa
-        $SYSYC --emit-ir -o $ir_file $testfile || ! echo "$testfile failed to generate ir file x" || continue
+        opt=""
+        if [ $stage == "ir-opt" ]; then
+            opt="-O1"
+        fi
+        $SYSYC --emit-ir -o $ir_file $testfile $opt || ! echo "$testfile failed to generate ir file x" || continue
 
         output_file=${filename}.out
 

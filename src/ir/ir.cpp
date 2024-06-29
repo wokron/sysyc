@@ -48,7 +48,7 @@ std::shared_ptr<Inst> Inst::create(InstType insttype, Type ty,
     auto inst =
         std::shared_ptr<Inst>(new Inst{insttype, nullptr, {arg0, arg1}});
     if (ty != Type::X) {
-        inst->to = std::make_shared<Temp>("", ty, inst);
+        inst->to = std::make_shared<Temp>("", ty, std::vector<Def>{InstDef{inst}});
     }
 
     if (arg0)

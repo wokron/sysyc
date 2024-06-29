@@ -58,6 +58,7 @@ static constexpr char EXPECTED2[] = R"(function $func() {
 
 static constexpr char EXPECTED3[] = R"(function $func() {
 @start.1
+    jmp @body.2
 @body.2
     jnz 1, @if_true.3, @if_false.4
 @if_true.3
@@ -107,6 +108,7 @@ static constexpr char EXPECTED4[] = R"(function $func(w %.1, s %.2, l %.3, ) {
     stores %.2, %.5
     %.6 =l alloc8 8
     storel %.3, %.6
+    jmp @body.2
 @body.2
     %.7 =w loadw %.4
     %.8 =w add %.7, %.7
@@ -147,6 +149,7 @@ TEST_CASE("testing load and store") {
 
 static constexpr char EXPECTED5[] = R"(function w $func(w %.1, w %.2, ) {
 @start.1
+    jmp @body.2
 @body.2
     %.3 =w call $func(w %.2, w %.1, )
     ret %.3
