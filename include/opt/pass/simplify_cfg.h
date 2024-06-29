@@ -61,11 +61,10 @@ private:
  * and UnreachableBlockRemovalPass.
  * @note This pass will remove empty blocks, merge blocks, and remove
  * unreachable blocks.
- * @note Since EmptyBlockRemovalPass and BlockMergingPass will break
- * predecessor relationship, this pass will also run FillPredsPass to fix it.
+ * @warning This pass will break predecessor relationship
  */
 using SimplifyCFGPass =
     PassPipeline<BlockMergingPass, EmptyBlockRemovalPass,
-                 UnreachableBlockRemovalPass, FillPredsPass>;
+                 UnreachableBlockRemovalPass>;
 
 } // namespace opt
