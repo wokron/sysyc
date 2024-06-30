@@ -22,7 +22,10 @@ public:
     void allocate_registers(ir::Function &func) override;
 
 private:
-    using Interval = std::pair<int, int>;
+    struct Interval {
+        int start;
+        int end;
+    };
     using TempInterval = std::pair<ir::TempPtr, Interval>;
 
     void _find_global_temps(ir::Function &func);

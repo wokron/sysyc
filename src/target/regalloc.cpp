@@ -1,6 +1,6 @@
 #include "target/regalloc.h"
 #include <algorithm>
-#include <deque>
+#include <set>
 
 namespace target {
 
@@ -126,86 +126,92 @@ void LinearScanAllocator::_allocate_global_temps(
               [](const TempInterval &a, const TempInterval &b) {
                   auto a_interval = a.second;
                   auto b_interval = b.second;
-                  return a_interval.first < b_interval.first;
+                  return a_interval.start < b_interval.start;
               });
 
-    // create active intervals by copying intervals
-    std::deque<TempInterval> active_intervals(intervals.begin(),
-                                              intervals.end());
+    struct ActiveInfo {
+        ir::TempPtr temp;
+        int reg;
+        int end;
+    };
+    auto asc_end = [](const ActiveInfo &a, const ActiveInfo &b) {
+        return a.end < b.end;
+    };
+    // create active list (ordered set as a double-ended priority queue)
+    std::set<ActiveInfo, decltype(asc_end)> active(asc_end);
 
-    // then sort active intervals by end point
-    std::sort(active_intervals.begin(), active_intervals.end(),
-              [](const TempInterval &a, const TempInterval &b) {
-                  auto a_interval = a.second;
-                  auto b_interval = b.second;
-                  return a_interval.second < b_interval.second;
-              });
+    for (auto [temp, interval] : intervals) {
+        while (active.size() > 0 && (*active.begin()).end <= interval.start) {
+            auto front_active = *active.begin();
+            active.erase(active.begin());
 
-    for (auto interval : intervals) {
-        while (active_intervals.front().second.second <=
-               interval.second.first) {
-            auto front_active = active_intervals.front();
-            active_intervals.pop_front();
-            if (_register_map.find(front_active.first) != _register_map.end()) {
-                reg_set.insert(_register_map[front_active.first]);
-            }
-        }
-
-        if (_register_map.find(interval.first) != _register_map.end()) {
-            continue;
+            _register_map[front_active.temp] = front_active.reg;
+            reg_set.insert(front_active.reg);
         }
 
         if (reg_set.empty()) {
-            // spill
-            // TODO: implement spill
-            throw std::logic_error("not implemented");
+            auto back_active = (*--active.end());
+            if (back_active.end >= interval.end) { // spill other temp
+                active.erase(--active.end());
+                _register_map[back_active.temp] = -1; // in memory
+
+                auto reg = back_active.reg;
+                active.insert({temp, reg, interval.end});
+            } else {                      // spill current temp
+                _register_map[temp] = -1; // in memory
+            }
         } else {
             // allocate register
             auto reg = *(reg_set.begin());
             reg_set.erase(reg);
-            _register_map[interval.first] = reg;
+            _register_map[temp] = reg;
+            active.insert({temp, reg, interval.end});
         }
     }
 }
 
 void LinearScanAllocator::_allocate_local_temps(ir::Function &func) {
-    for (auto block = func.start; block; block = block->next) {
-        // t registers (x5-x7, x28-x31)
-        std::unordered_set<int> free_regs = {1, 2, 3, 4, 5, 6, 7, 8};
-        // ft registers (f0-f7, f28-f31)
-        std::unordered_set<int> f_free_regs = {32 + 0, 32 + 1, 32 + 2, 32 + 3,
-                                               32 + 4, 32 + 5, 32 + 6, 32 + 7};
+    // TODO: implement
+    throw std::logic_error("not implemented");
+    // for (auto block = func.start; block; block = block->next) {
+    //     // t registers (x5-x7, x28-x31)
+    //     std::unordered_set<int> free_regs = {5, 6, 7, 28, 29, 30, 31};
+    //     // ft registers (f0-f7, f28-f31)
+    //     std::unordered_set<int> f_free_regs = {
+    //         32 + 0, 32 + 1, 32 + 2,  32 + 3,  32 + 4,  32 + 5,
+    //         32 + 6, 32 + 7, 32 + 28, 32 + 29, 32 + 30, 32 + 31};
 
-        for (auto it = block->insts.rbegin(); it != block->insts.rend(); it++) {
-            auto inst = *it;
-            if (inst->to) { // def, live range end
-                auto free_regs_ptr = inst->to->get_type() == ir::Type::S
-                                         ? &f_free_regs
-                                         : &free_regs;
-                free_regs_ptr->insert(_register_map[inst->to]);
-            }
+    //     for (auto it = block->insts.rbegin(); it != block->insts.rend();
+    //     it++) {
+    //         auto inst = *it;
+    //         if (inst->to) { // def, live range end
+    //             auto free_regs_ptr = inst->to->get_type() == ir::Type::S
+    //                                      ? &f_free_regs
+    //                                      : &free_regs;
+    //             free_regs_ptr->insert(_register_map[inst->to]);
+    //         }
 
-            for (int i = 0; i < 2; i++)
-                if (auto temp =
-                        std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
-                    temp) {
-                    if (_register_map.find(temp) ==
-                        _register_map.end()) { // last use, live range start
-                        // allocate register
-                        auto free_regs_ptr = temp->get_type() == ir::Type::S
-                                                 ? &f_free_regs
-                                                 : &free_regs;
-                        if (!free_regs_ptr->empty()) {
-                            auto reg = *(free_regs_ptr->begin());
-                            free_regs_ptr->erase(reg);
-                            _register_map[temp] = reg;
-                        } else {
-                            // spill
-                        }
-                    }
-                }
-        }
-    }
+    //         for (int i = 0; i < 2; i++)
+    //             if (auto temp =
+    //                     std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
+    //                 temp) {
+    //                 if (_register_map.find(temp) ==
+    //                     _register_map.end()) { // last use, live range start
+    //                     // allocate register
+    //                     auto free_regs_ptr = temp->get_type() == ir::Type::S
+    //                                              ? &f_free_regs
+    //                                              : &free_regs;
+    //                     if (!free_regs_ptr->empty()) {
+    //                         auto reg = *(free_regs_ptr->begin());
+    //                         free_regs_ptr->erase(reg);
+    //                         _register_map[temp] = reg;
+    //                     } else {
+    //                         // spill
+    //                     }
+    //                 }
+    //             }
+    //     }
+    // }
 }
 
 void LinearScanAllocator::_find_intervals(
