@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -158,7 +159,9 @@ struct Block {
 
     std::shared_ptr<Block> next;
 
+    // fields below are used for optimization
     std::vector<std::shared_ptr<Block>> preds; // predecessors
+    std::unordered_set<std::shared_ptr<Temp>> live_def, live_in, live_out; // liveness
 
     static std::shared_ptr<Block> create(std::string name, Function &func);
 

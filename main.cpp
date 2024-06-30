@@ -7,7 +7,9 @@
 #include <fstream>
 #include <getopt.h>
 
-using Pass = opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass>;
+using Passes =
+    opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
+                      opt::FillReversePostOrderPass, opt::LivenessAnalysisPass>;
 
 struct Options {
     bool optimize = false;
@@ -67,7 +69,7 @@ void compile(const char *name, const Options &options,
     }
 
     if (options.optimize) {
-        Pass pass;
+        Passes pass;
         pass.run(module);
     }
 
