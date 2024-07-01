@@ -93,7 +93,7 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
 
                 auto reg = back_active.reg;
                 active.insert({temp, reg, interval.end});
-            } else {                      // spill current temp
+            } else {                         // spill current temp
                 _register_map[temp] = SPILL; // in memory
             }
         } else {
@@ -112,102 +112,19 @@ void LinearScanAllocator::_find_intervals(
     std::vector<TempInterval> &local_intervals,
     std::vector<TempInterval> &f_local_intervals) {
 
-    std::unordered_map<ir::TempPtr, Interval> intervals_map;
-    std::unordered_map<ir::TempPtr, Interval> f_intervals_map;
-    std::unordered_map<ir::TempPtr, Interval> local_intervals_map;
-    std::unordered_map<ir::TempPtr, Interval> f_local_intervals_map;
+    std::vector<TempInterval> *intervals_ptrs[2][2] = {
+        {&intervals, &f_intervals}, {&local_intervals, &f_local_intervals}};
 
-    std::unordered_map<ir::TempPtr, Interval> *intervals_map_ptrs[2][2] = {
-        {&intervals_map, &f_intervals_map},
-        {&local_intervals_map, &f_local_intervals_map}};
-
-    int number = 0;
     for (auto block : func.rpo) {
-        std::unordered_set<ir::TempPtr> temps_in_block;
-        std::unordered_map<ir::TempPtr, int> first_def;
-        std::unordered_map<ir::TempPtr, int> last_use;
-        int first_number = number;
-        _find_intervals_in_block(*block, first_def, last_use, temps_in_block,
-                                 number);
-        int last_number = number - 1;
-
-        for (auto temp : temps_in_block) {
+        for (auto temp : block->temps_in_block) {
             auto is_float = temp->get_type() == ir::Type::S;
-            auto is_local = block->live_in.find(temp) == block->live_in.end() &&
-                            block->live_out.find(temp) == block->live_out.end();
-            auto &intervals_map_ref = *intervals_map_ptrs[is_local][is_float];
+            auto is_local = temp->is_local;
+            auto &intervals_ref = *intervals_ptrs[is_local][is_float];
 
-            if (intervals_map_ref.find(temp) == intervals_map_ref.end()) {
-                intervals_map_ref[temp] = {std::numeric_limits<int>::max(), -1};
-            }
-            if (block->live_in.find(temp) ==
-                block->live_in.end()) { // if temp is not in the live_in set
-                // live interval extended to the first def
-                intervals_map_ref[temp].start =
-                    std::min(intervals_map_ref[temp].start, first_def[temp]);
-            } else {
-                // first number of block is in the live interval
-                intervals_map_ref[temp].start =
-                    std::min(intervals_map_ref[temp].start, first_number);
-            }
-            if (block->live_out.find(temp) ==
-                block->live_out.end()) { // if temp is not in the live_out set
-                // live interval extended to the last use
-                intervals_map_ref[temp].end =
-                    std::max(intervals_map_ref[temp].end, last_use[temp]);
-            } else {
-                // last number of block is in the live interval
-                intervals_map_ref[temp].end =
-                    std::max(intervals_map_ref[temp].end, last_number);
-            }
+            intervals_ref.push_back(
+                {temp, {temp->interval.start, temp->interval.end}});
         }
     }
-
-    for (auto [temp, interval] : intervals_map) {
-        intervals.push_back({temp, interval});
-    }
-    for (auto [temp, interval] : f_intervals_map) {
-        f_intervals.push_back({temp, interval});
-    }
-    for (auto [temp, interval] : local_intervals_map) {
-        local_intervals.push_back({temp, interval});
-    }
-    for (auto [temp, interval] : f_local_intervals_map) {
-        f_local_intervals.push_back({temp, interval});
-    }
-}
-
-void LinearScanAllocator::_find_intervals_in_block(
-    const ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
-    std::unordered_map<ir::TempPtr, int> &last_use,
-    std::unordered_set<ir::TempPtr> &temps_in_block, int &number) {
-    // insts
-    for (auto inst : block.insts) {
-        for (int i = 0; i < 2; i++)
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
-                temp) {
-                temps_in_block.insert(temp);
-                last_use[temp] = number;
-            }
-
-        if (inst->to) {
-            auto temp = inst->to;
-            temps_in_block.insert(temp);
-            if (first_def.find(temp) == first_def.end()) {
-                first_def[temp] = number;
-            }
-        }
-        number++;
-    }
-    // jump
-    if (block.jump.type == ir::Jump::RET || block.jump.type == ir::Jump::JNZ) {
-        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block.jump.arg);
-            temp) {
-            temps_in_block.insert(temp);
-            last_use[temp] = number;
-        }
-    }
-    number++;
 }
 
 } // namespace target

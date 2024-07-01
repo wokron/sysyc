@@ -10,7 +10,8 @@
 
 using Passes =
     opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
-                      opt::FillReversePostOrderPass, opt::LivenessAnalysisPass>;
+                      opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+                      opt::FillIntervalPass>;
 
 struct Options {
     bool optimize = false;

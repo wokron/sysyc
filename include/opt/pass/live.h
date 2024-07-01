@@ -28,8 +28,7 @@ public:
 private:
     void _find_intervals_in_block(
         ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
-        std::unordered_map<ir::TempPtr, int> &last_use,
-        std::unordered_set<ir::TempPtr> &temps_in_block, int &number);
+        std::unordered_map<ir::TempPtr, int> &last_use, int &number);
 };
 
 } // namespace opt

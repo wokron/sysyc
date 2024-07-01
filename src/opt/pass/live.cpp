@@ -114,8 +114,7 @@ bool FillIntervalPass::run_on_function(ir::Function &func) {
         std::unordered_map<ir::TempPtr, int> first_def;
         std::unordered_map<ir::TempPtr, int> last_use;
         int first_number = number;
-        _find_intervals_in_block(*block, first_def, last_use,
-                                 block->temps_in_block, number);
+        _find_intervals_in_block(*block, first_def, last_use, number);
         int last_number = number - 1;
 
         for (auto temp : block->temps_in_block) {
@@ -155,20 +154,22 @@ bool FillIntervalPass::run_on_function(ir::Function &func) {
 
 void FillIntervalPass::_find_intervals_in_block(
     ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
-    std::unordered_map<ir::TempPtr, int> &last_use,
-    std::unordered_set<ir::TempPtr> &temps_in_block, int &number) {
+    std::unordered_map<ir::TempPtr, int> &last_use, int &number) {
+
+    block.temps_in_block.clear();
+
     // insts
     for (auto inst : block.insts) {
         for (int i = 0; i < 2; i++)
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
                 temp) {
-                temps_in_block.insert(temp);
+                block.temps_in_block.insert(temp);
                 last_use[temp] = number;
             }
 
         if (inst->to) {
             auto temp = inst->to;
-            temps_in_block.insert(temp);
+            block.temps_in_block.insert(temp);
             if (first_def.find(temp) == first_def.end()) {
                 first_def[temp] = number;
             }
@@ -179,7 +180,7 @@ void FillIntervalPass::_find_intervals_in_block(
     if (block.jump.type == ir::Jump::RET || block.jump.type == ir::Jump::JNZ) {
         if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block.jump.arg);
             temp) {
-            temps_in_block.insert(temp);
+            block.temps_in_block.insert(temp);
             last_use[temp] = number;
         }
     }
