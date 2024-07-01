@@ -7,119 +7,44 @@ namespace target {
 
 void LinearScanAllocator::allocate_registers(ir::Function &func) {
     _register_map.clear();
-    _find_global_temps(func);
-    _pre_allocate_temps(func);
-    _allocate_global_temps(func);
-    // _allocate_local_temps(func);
+    _allocate_temps(func);
 }
 
-void LinearScanAllocator::_find_global_temps(ir::Function &func) {
-    _global_temps.clear();
-    std::unordered_multimap<ir::TempPtr, ir::BlockPtr> temp_block_map;
-    std::vector<ir::TempPtr> temps;
-
-    for (auto block = func.start; block; block = block->next) {
-        for (auto inst : block->insts) {
-            if (inst->to) {
-                temps.push_back(inst->to);
-                temp_block_map.insert({inst->to, block});
-            }
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
-                temp) {
-                temp_block_map.insert({temp, block});
-            }
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[1]);
-                temp) {
-                temp_block_map.insert({temp, block});
-            }
-        }
-    }
-
-    for (auto temp : temps) {
-        auto range = temp_block_map.equal_range(temp);
-        auto blocks_count = std::distance(range.first, range.second);
-        if (blocks_count > 1) {
-            _global_temps.insert(temp);
-        }
-    }
-}
-
-void LinearScanAllocator::_pre_allocate_temps(ir::Function &func) {
-    // allocate a registers for function parameters
-    int arg_index = 0;
-    for (auto inst : func.start->insts) {
-        if (inst->insttype != ir::InstType::IPAR) {
-            continue;
-        }
-        if (arg_index >= 8) {
-            break;
-        }
-        if (_global_temps.find(inst->to) != _global_temps.end()) {
-            // use s registers for global temps
-            continue;
-        }
-        if (inst->to->get_type() == ir::Type::S) {
-            // f10-f17
-            _register_map[inst->to] = 32 + 10 + arg_index;
-        } else {
-            // x10-x17
-            _register_map[inst->to] = 10 + arg_index;
-        }
-        arg_index++;
-    }
-
-    // allocate a registers for call arguments
-    arg_index = 0;
-    for (auto block = func.start; block; block = block->next) {
-        for (auto inst : block->insts) {
-            if (inst->insttype != ir::InstType::IARG) {
-                arg_index = 0;
-                continue;
-            }
-            if (arg_index >= 8) {
-                break;
-            }
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
-                temp) {
-                if (_global_temps.find(temp) != _global_temps.end() ||
-                    temp->uses.size() > 1) {
-                    continue;
-                }
-                if (temp->get_type() == ir::Type::S) {
-                    // f10-f17
-                    _register_map[temp] = 32 + 10 + arg_index;
-                } else {
-                    // x10-x17
-                    _register_map[temp] = 10 + arg_index;
-                }
-                arg_index++;
-            }
-        }
-    }
-}
-
-void LinearScanAllocator::_allocate_global_temps(ir::Function &func) {
+void LinearScanAllocator::_allocate_temps(ir::Function &func) {
     std::vector<TempInterval> intervals;
     std::vector<TempInterval> f_intervals;
-    _find_intervals(func, intervals, f_intervals);
+    std::vector<TempInterval> local_intervals;
+    std::vector<TempInterval> f_local_intervals;
+    _find_intervals(func, intervals, f_intervals, local_intervals,
+                    f_local_intervals);
 
     // s registers (x9, x18-x27)
-    std::unordered_set<int> reg_set = {9,  18, 19, 20, 21, 22,
-                                       23, 24, 25, 26, 27};
+    std::unordered_set<int> s_reg_set = {9,  18, 19, 20, 21, 22,
+                                         23, 24, 25, 26, 27};
+    // allocate s registers
+    _allocate_temps_with_intervals(func, intervals, s_reg_set);
 
     // fs registers (f8-f9, f18-f27)
-    std::unordered_set<int> f_reg_set = {32 + 8,  32 + 9,  32 + 18, 32 + 19,
-                                         32 + 20, 32 + 21, 32 + 22, 32 + 23,
-                                         32 + 24, 32 + 25, 32 + 26, 32 + 27};
-
-    //  allocate s registers
-    _allocate_global_temps(func, intervals, reg_set);
-
+    std::unordered_set<int> fs_reg_set = {32 + 8,  32 + 9,  32 + 18, 32 + 19,
+                                          32 + 20, 32 + 21, 32 + 22, 32 + 23,
+                                          32 + 24, 32 + 25, 32 + 26, 32 + 27};
     // allocate fs registers
-    _allocate_global_temps(func, f_intervals, f_reg_set);
+    _allocate_temps_with_intervals(func, f_intervals, fs_reg_set);
+
+    // t registers (x5-x7, x28-x31)
+    std::unordered_set<int> t_reg_set = {5, 6, 7, 28, 29, 30, 31};
+    // allocate t registers
+    _allocate_temps_with_intervals(func, local_intervals, t_reg_set);
+
+    // ft registers (f0-f7, f28-f31)
+    std::unordered_set<int> ft_reg_set = {32 + 0,  32 + 1,  32 + 2,  32 + 3,
+                                          32 + 4,  32 + 5,  32 + 6,  32 + 7,
+                                          32 + 28, 32 + 29, 32 + 30, 32 + 31};
+    // allocate ft registers
+    _allocate_temps_with_intervals(func, f_local_intervals, ft_reg_set);
 }
 
-void LinearScanAllocator::_allocate_global_temps(
+void LinearScanAllocator::_allocate_temps_with_intervals(
     ir::Function &func, std::vector<TempInterval> &intervals,
     std::unordered_set<int> &reg_set) {
     // sort intervals by start point
@@ -171,56 +96,20 @@ void LinearScanAllocator::_allocate_global_temps(
     }
 }
 
-void LinearScanAllocator::_allocate_local_temps(ir::Function &func) {
-    // TODO: implement
-    throw std::logic_error("not implemented");
-    // for (auto block = func.start; block; block = block->next) {
-    //     // t registers (x5-x7, x28-x31)
-    //     std::unordered_set<int> free_regs = {5, 6, 7, 28, 29, 30, 31};
-    //     // ft registers (f0-f7, f28-f31)
-    //     std::unordered_set<int> f_free_regs = {
-    //         32 + 0, 32 + 1, 32 + 2,  32 + 3,  32 + 4,  32 + 5,
-    //         32 + 6, 32 + 7, 32 + 28, 32 + 29, 32 + 30, 32 + 31};
-
-    //     for (auto it = block->insts.rbegin(); it != block->insts.rend();
-    //     it++) {
-    //         auto inst = *it;
-    //         if (inst->to) { // def, live range end
-    //             auto free_regs_ptr = inst->to->get_type() == ir::Type::S
-    //                                      ? &f_free_regs
-    //                                      : &free_regs;
-    //             free_regs_ptr->insert(_register_map[inst->to]);
-    //         }
-
-    //         for (int i = 0; i < 2; i++)
-    //             if (auto temp =
-    //                     std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
-    //                 temp) {
-    //                 if (_register_map.find(temp) ==
-    //                     _register_map.end()) { // last use, live range start
-    //                     // allocate register
-    //                     auto free_regs_ptr = temp->get_type() == ir::Type::S
-    //                                              ? &f_free_regs
-    //                                              : &free_regs;
-    //                     if (!free_regs_ptr->empty()) {
-    //                         auto reg = *(free_regs_ptr->begin());
-    //                         free_regs_ptr->erase(reg);
-    //                         _register_map[temp] = reg;
-    //                     } else {
-    //                         // spill
-    //                     }
-    //                 }
-    //             }
-    //     }
-    // }
-}
-
 void LinearScanAllocator::_find_intervals(
     const ir::Function &func, std::vector<TempInterval> &intervals,
-    std::vector<TempInterval> &f_intervals) {
+    std::vector<TempInterval> &f_intervals,
+    std::vector<TempInterval> &local_intervals,
+    std::vector<TempInterval> &f_local_intervals) {
 
-    std::unordered_map<ir::TempPtr, Interval> temp_intervals;
-    std::unordered_map<ir::TempPtr, Interval> f_temp_intervals;
+    std::unordered_map<ir::TempPtr, Interval> intervals_map;
+    std::unordered_map<ir::TempPtr, Interval> f_intervals_map;
+    std::unordered_map<ir::TempPtr, Interval> local_intervals_map;
+    std::unordered_map<ir::TempPtr, Interval> f_local_intervals_map;
+
+    std::unordered_map<ir::TempPtr, Interval> *intervals_map_ptrs[2][2] = {
+        {&intervals_map, &f_intervals_map},
+        {&local_intervals_map, &f_local_intervals_map}};
 
     int number = 0;
     for (auto block : func.rpo) {
@@ -233,42 +122,48 @@ void LinearScanAllocator::_find_intervals(
         int last_number = number - 1;
 
         for (auto temp : temps_in_block) {
-            auto &temp_intervals_ref = temp->get_type() == ir::Type::S
-                                           ? f_temp_intervals
-                                           : temp_intervals;
+            auto is_float = temp->get_type() == ir::Type::S;
+            auto is_local = block->live_in.find(temp) == block->live_in.end() &&
+                            block->live_out.find(temp) == block->live_out.end();
+            auto &intervals_map_ref = *intervals_map_ptrs[is_float][is_local];
 
-            if (temp_intervals_ref.find(temp) == temp_intervals_ref.end()) {
-                temp_intervals_ref[temp] = {std::numeric_limits<int>::max(),
-                                            -1};
+            if (intervals_map_ref.find(temp) == intervals_map_ref.end()) {
+                intervals_map_ref[temp] = {std::numeric_limits<int>::max(), -1};
             }
             if (block->live_in.find(temp) ==
                 block->live_in.end()) { // if temp is not in the live_in set
                 // live interval extended to the first def
-                temp_intervals_ref[temp].start =
-                    std::min(temp_intervals_ref[temp].start, first_def[temp]);
+                intervals_map_ref[temp].start =
+                    std::min(intervals_map_ref[temp].start, first_def[temp]);
             } else {
                 // first number of block is in the live interval
-                temp_intervals_ref[temp].start =
-                    std::min(temp_intervals_ref[temp].start, first_number);
+                intervals_map_ref[temp].start =
+                    std::min(intervals_map_ref[temp].start, first_number);
             }
             if (block->live_out.find(temp) ==
                 block->live_out.end()) { // if temp is not in the live_out set
                 // live interval extended to the last use
-                temp_intervals_ref[temp].end =
-                    std::max(temp_intervals_ref[temp].end, last_use[temp]);
+                intervals_map_ref[temp].end =
+                    std::max(intervals_map_ref[temp].end, last_use[temp]);
             } else {
                 // last number of block is in the live interval
-                temp_intervals_ref[temp].end =
-                    std::max(temp_intervals_ref[temp].end, last_number);
+                intervals_map_ref[temp].end =
+                    std::max(intervals_map_ref[temp].end, last_number);
             }
         }
     }
 
-    for (auto [temp, interval] : temp_intervals) {
+    for (auto [temp, interval] : intervals_map) {
         intervals.push_back({temp, interval});
     }
-    for (auto [temp, interval] : f_temp_intervals) {
+    for (auto [temp, interval] : f_intervals_map) {
         f_intervals.push_back({temp, interval});
+    }
+    for (auto [temp, interval] : local_intervals_map) {
+        local_intervals.push_back({temp, interval});
+    }
+    for (auto [temp, interval] : f_local_intervals_map) {
+        f_local_intervals.push_back({temp, interval});
     }
 }
 

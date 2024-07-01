@@ -28,21 +28,17 @@ private:
     };
     using TempInterval = std::pair<ir::TempPtr, Interval>;
 
-    void _find_global_temps(ir::Function &func);
+    void _allocate_temps(ir::Function &func);
 
-    void _pre_allocate_temps(ir::Function &func);
-
-    void _allocate_local_temps(ir::Function &func);
-
-    void _allocate_global_temps(ir::Function &func);
-
-    void _allocate_global_temps(ir::Function &func,
+    void _allocate_temps_with_intervals(ir::Function &func,
                                 std::vector<TempInterval> &intervals,
                                 std::unordered_set<int> &reg_set);
 
     void _find_intervals(const ir::Function &func,
                          std::vector<TempInterval> &intervals,
-                         std::vector<TempInterval> &f_intervals);
+                         std::vector<TempInterval> &f_intervals,
+                         std::vector<TempInterval> &local_intervals,
+                         std::vector<TempInterval> &f_local_intervals);
 
     void _find_intervals_in_block(
         const ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
