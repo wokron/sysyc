@@ -49,6 +49,7 @@ private:
     std::unordered_map<int, int> _callee_saved_regs_offset;
     std::unordered_map<ir::TempPtr, int> _local_var_offset;
     std::unordered_map<ir::TempPtr, int> _spilled_temps_offset;
+    std::unordered_map<int, int> _caller_saved_regs_offset;
 
     // function infos below
     std::unordered_set<int> _callee_saved_regs;
@@ -58,11 +59,16 @@ private:
     };
     std::unordered_map<ir::TempPtr, LocalVar> _local_vars;
     std::unordered_set<ir::TempPtr> _spilled_temps;
+    std::unordered_set<int> _caller_saved_regs;
     int _max_func_call_args = 0;
 
     void _collect_function_info(
         ir::Function &func,
         const std::unordered_map<ir::TempPtr, int> &registers);
+
+    void
+    _collect_block_info(const ir::Block &block,
+                        const std::unordered_map<ir::TempPtr, int> &registers);
 };
 
 } // namespace target

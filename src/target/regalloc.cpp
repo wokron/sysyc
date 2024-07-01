@@ -61,7 +61,10 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
         int end;
     };
     auto asc_end = [](const ActiveInfo &a, const ActiveInfo &b) {
-        return a.end < b.end;
+        // "a and b are considered equivalent (not unique) if neither compares
+        // less than the other", so we need to use <= instead of < to make sure
+        // the set can store multiple elements with the same end
+        return a.end <= b.end;
     };
     // create active list (ordered set as a double-ended priority queue)
     std::set<ActiveInfo, decltype(asc_end)> active(asc_end);
@@ -75,6 +78,8 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
             reg_set.insert(front_active.reg);
         }
 
+        int c = active.size();
+
         // if is stack slot, just spill
         if (temp->defs.size() == 1)
             if (auto inst_def = std::get_if<ir::InstDef>(&temp->defs[0]);
@@ -86,9 +91,10 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
             }
 
         if (reg_set.empty()) {
-            auto back_active = (*--active.end());
-            if (back_active.end >= interval.end) { // spill other temp
-                active.erase(--active.end());
+            if (active.size() > 0 && (*std::prev(active.end())).end >=
+                                         interval.end) { // spill other temp
+                auto back_active = *std::prev(active.end());
+                active.erase(std::prev(active.end()));
                 _register_map[back_active.temp] = SPILL; // in memory
 
                 auto reg = back_active.reg;
@@ -100,9 +106,15 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
             // allocate register
             auto reg = *(reg_set.begin());
             reg_set.erase(reg);
-            _register_map[temp] = reg;
-            active.insert({temp, reg, interval.end});
+            if (!active.insert({temp, reg, interval.end}).second) {
+                throw std::runtime_error("Failed to insert into active list");
+            }
         }
+    }
+
+    // clear active list
+    for (auto elm : active) {
+        _register_map[elm.temp] = elm.reg;
     }
 }
 

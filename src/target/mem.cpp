@@ -1,5 +1,6 @@
 #include "target/mem.h"
 #include "target/regalloc.h"
+#include <set>
 
 namespace target {
 
@@ -31,6 +32,12 @@ void StackManager::run(ir::Function &func,
     for (auto temp : _spilled_temps) {
         _frame_size += 8;
         _spilled_temps_offset[temp] = -_frame_size;
+    }
+
+    // size of caller saved registers
+    for (auto reg : _caller_saved_regs) {
+        _frame_size += 8;
+        _caller_saved_regs_offset[reg] = -_frame_size;
     }
 
     // size of outgoing arguments
@@ -87,14 +94,51 @@ void StackManager::_collect_function_info(
 
     // find the maximum number of arguments passed to a function
     for (auto block = func.start; block; block = block->next) {
-        int arg_count = 0;
-        for (auto inst : block->insts) {
-            if (inst->insttype == ir::InstType::IPAR) {
-                arg_count++;
-            } else if (inst->insttype == ir::InstType::ICALL) {
-                _max_func_call_args = std::max(_max_func_call_args, arg_count);
-                arg_count = 0;
+        _collect_block_info(*block, registers);
+    }
+}
+
+void StackManager::_collect_block_info(
+    const ir::Block &block,
+    const std::unordered_map<ir::TempPtr, int> &registers) {
+
+    // get the maximum number of arguments passed to a function
+    int arg_count = 0;
+    for (auto inst : block.insts) {
+        if (inst->insttype == ir::InstType::IPAR) {
+            arg_count++;
+        } else if (inst->insttype == ir::InstType::ICALL) {
+            _max_func_call_args = std::max(_max_func_call_args, arg_count);
+            arg_count = 0;
+        }
+    }
+
+    // get caller saved registers when there is a call
+    struct RegReach {
+        int reg;
+        int end;
+    };
+    auto asc_end = [](const RegReach &a, const RegReach &b) {
+        return a.end < b.end;
+    };
+    std::set<RegReach, decltype(asc_end)> reg_reach(asc_end);
+    for (auto inst : block.insts) {
+        if (inst->insttype == ir::InstType::ICALL) {
+            // remove registers that end before the call
+            while (reg_reach.size() > 0 &&
+                   (*reg_reach.begin()).end <= inst->number) {
+                auto front_active = *reg_reach.begin();
+                reg_reach.erase(reg_reach.begin());
             }
+
+            // the reset of the registers are caller saved
+            for (auto [temp, reg] : registers) {
+                _caller_saved_regs.insert(reg);
+            }
+        }
+
+        if (inst->to && inst->to->is_local && registers.at(inst->to) > 0) {
+            reg_reach.insert({registers.at(inst->to), inst->to->interval.end});
         }
     }
 }
