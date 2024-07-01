@@ -1,5 +1,6 @@
 #include "target/regalloc.h"
 #include <algorithm>
+#include <limits>
 #include <set>
 
 namespace target {
@@ -9,7 +10,7 @@ void LinearScanAllocator::allocate_registers(ir::Function &func) {
     _find_global_temps(func);
     _pre_allocate_temps(func);
     _allocate_global_temps(func);
-    _allocate_local_temps(func);
+    // _allocate_local_temps(func);
 }
 
 void LinearScanAllocator::_find_global_temps(ir::Function &func) {
@@ -217,28 +218,49 @@ void LinearScanAllocator::_allocate_local_temps(ir::Function &func) {
 void LinearScanAllocator::_find_intervals(
     const ir::Function &func, std::vector<TempInterval> &intervals,
     std::vector<TempInterval> &f_intervals) {
-    std::unordered_map<ir::InstPtr, int> inst_number;
-    _inst_numbering(func, inst_number);
 
     std::unordered_map<ir::TempPtr, Interval> temp_intervals;
     std::unordered_map<ir::TempPtr, Interval> f_temp_intervals;
 
+    int number = 0;
     for (auto block : func.rpo) {
-        for (auto inst : block->insts) {
-            if (inst->to &&
-                _global_temps.find(inst->to) != _global_temps.end()) {
-                auto temp_intervals_ptr = inst->to->get_type() == ir::Type::S
-                                              ? &f_temp_intervals
-                                              : &temp_intervals;
-                if (temp_intervals_ptr->find(inst->to) ==
-                    temp_intervals_ptr->end()) {
-                    temp_intervals_ptr->insert(
-                        {inst->to, {inst_number[inst], -1}});
-                }
-            }
+        std::unordered_set<ir::TempPtr> temps_in_block;
+        std::unordered_map<ir::TempPtr, int> first_def;
+        std::unordered_map<ir::TempPtr, int> last_use;
+        int first_number = number;
+        _find_intervals_in_block(*block, first_def, last_use, temps_in_block,
+                                 number);
+        int last_number = number - 1;
 
-            // TODO: update interval end point
-            throw std::logic_error("not implemented");
+        for (auto temp : temps_in_block) {
+            auto &temp_intervals_ref = temp->get_type() == ir::Type::S
+                                           ? f_temp_intervals
+                                           : temp_intervals;
+
+            if (temp_intervals_ref.find(temp) == temp_intervals_ref.end()) {
+                temp_intervals_ref[temp] = {std::numeric_limits<int>::max(),
+                                            -1};
+            }
+            if (block->live_in.find(temp) ==
+                block->live_in.end()) { // if temp is not in the live_in set
+                // live interval extended to the first def
+                temp_intervals_ref[temp].start =
+                    std::min(temp_intervals_ref[temp].start, first_def[temp]);
+            } else {
+                // first number of block is in the live interval
+                temp_intervals_ref[temp].start =
+                    std::min(temp_intervals_ref[temp].start, first_number);
+            }
+            if (block->live_out.find(temp) ==
+                block->live_out.end()) { // if temp is not in the live_out set
+                // live interval extended to the last use
+                temp_intervals_ref[temp].end =
+                    std::max(temp_intervals_ref[temp].end, last_use[temp]);
+            } else {
+                // last number of block is in the live interval
+                temp_intervals_ref[temp].end =
+                    std::max(temp_intervals_ref[temp].end, last_number);
+            }
         }
     }
 
@@ -250,15 +272,37 @@ void LinearScanAllocator::_find_intervals(
     }
 }
 
-void LinearScanAllocator::_inst_numbering(
-    const ir::Function &func,
-    std::unordered_map<ir::InstPtr, int> &inst_number) {
-    int number = 0;
-    for (auto block : func.rpo) {
-        for (auto inst : block->insts) {
-            inst_number[inst] = number++;
+void LinearScanAllocator::_find_intervals_in_block(
+    const ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
+    std::unordered_map<ir::TempPtr, int> &last_use,
+    std::unordered_set<ir::TempPtr> &temps_in_block, int &number) {
+    // insts
+    for (auto inst : block.insts) {
+        for (int i = 0; i < 2; i++)
+            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
+                temp) {
+                temps_in_block.insert(temp);
+                last_use[temp] = number;
+            }
+
+        if (inst->to) {
+            auto temp = inst->to;
+            temps_in_block.insert(temp);
+            if (first_def.find(temp) == first_def.end()) {
+                first_def[temp] = number;
+            }
+        }
+        number++;
+    }
+    // jump
+    if (block.jump.type == ir::Jump::RET || block.jump.type == ir::Jump::JNZ) {
+        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block.jump.arg);
+            temp) {
+            temps_in_block.insert(temp);
+            last_use[temp] = number;
         }
     }
+    number++;
 }
 
 } // namespace target

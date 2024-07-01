@@ -44,8 +44,10 @@ private:
                          std::vector<TempInterval> &intervals,
                          std::vector<TempInterval> &f_intervals);
 
-    void _inst_numbering(const ir::Function &func,
-                         std::unordered_map<ir::InstPtr, int> &inst_number);
+    void _find_intervals_in_block(
+        const ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
+        std::unordered_map<ir::TempPtr, int> &last_use,
+        std::unordered_set<ir::TempPtr> &temps_in_block, int &number);
 
     std::unordered_set<ir::TempPtr> _global_temps;
 };
