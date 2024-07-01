@@ -3,6 +3,8 @@
 #include "ir/ir.h"
 #include "opt/pass/pass.h"
 #include "parser.h"
+#include "target/regalloc.h"
+#include "target/utils.h"
 #include "visitor.h"
 #include <fstream>
 #include <getopt.h>
@@ -83,6 +85,18 @@ void compile(const char *name, const Options &options,
     }
 
     // TODO: ir to asm
+
+    std::cerr << "Register allocation:" << std::endl;
+    for (auto &func : module.functions) {
+        std::cerr << "Function: " << func->name << std::endl;
+        target::LinearScanAllocator regalloc;
+        regalloc.allocate_registers(*func);
+        for (auto [temp, reg] : regalloc.get_register_map()) {
+            temp->emit(std::cerr);
+            std::cerr << " -> " << target::regno2string(reg) << std::endl;
+        }
+    }
+
     cmd_error(name, "ir to asm not implemented");
 
     if (options.emit_asm) {

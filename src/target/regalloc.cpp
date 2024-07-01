@@ -75,6 +75,16 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
             reg_set.insert(front_active.reg);
         }
 
+        // if is stack slot, just spill
+        if (temp->defs.size() == 1)
+            if (auto inst_def = std::get_if<ir::InstDef>(&temp->defs[0]);
+                inst_def &&
+                (inst_def->ins->insttype == ir::InstType::IALLOC4 ||
+                 inst_def->ins->insttype == ir::InstType::IALLOC8)) {
+                _register_map[temp] = -1;
+                continue;
+            }
+
         if (reg_set.empty()) {
             auto back_active = (*--active.end());
             if (back_active.end >= interval.end) { // spill other temp
@@ -125,7 +135,7 @@ void LinearScanAllocator::_find_intervals(
             auto is_float = temp->get_type() == ir::Type::S;
             auto is_local = block->live_in.find(temp) == block->live_in.end() &&
                             block->live_out.find(temp) == block->live_out.end();
-            auto &intervals_map_ref = *intervals_map_ptrs[is_float][is_local];
+            auto &intervals_map_ref = *intervals_map_ptrs[is_local][is_float];
 
             if (intervals_map_ref.find(temp) == intervals_map_ref.end()) {
                 intervals_map_ref[temp] = {std::numeric_limits<int>::max(), -1};
