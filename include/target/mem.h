@@ -30,6 +30,20 @@ public:
     void run(ir::Function &func,
              const std::unordered_map<ir::TempPtr, int> &registers);
 
+    int get_frame_size() const { return _frame_size; }
+
+    std::unordered_map<int, int> get_callee_saved_regs_offset() const {
+        return _callee_saved_regs_offset;
+    }
+
+    std::unordered_map<ir::TempPtr, int> get_local_var_offset() const {
+        return _local_var_offset;
+    }
+
+    std::unordered_map<ir::TempPtr, int> get_spilled_temps_offset() const {
+        return _spilled_temps_offset;
+    }
+
 private:
     int _frame_size = 0;
     std::unordered_map<int, int> _callee_saved_regs_offset;

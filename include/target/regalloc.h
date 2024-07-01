@@ -5,6 +5,9 @@
 
 namespace target {
 
+#define STACK -2
+#define SPILL -1
+
 class RegisterAllocator {
 public:
     virtual void allocate_registers(ir::Function &func) = 0;
@@ -31,8 +34,8 @@ private:
     void _allocate_temps(ir::Function &func);
 
     void _allocate_temps_with_intervals(ir::Function &func,
-                                std::vector<TempInterval> &intervals,
-                                std::unordered_set<int> &reg_set);
+                                        std::vector<TempInterval> &intervals,
+                                        std::unordered_set<int> &reg_set);
 
     void _find_intervals(const ir::Function &func,
                          std::vector<TempInterval> &intervals,

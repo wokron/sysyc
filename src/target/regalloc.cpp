@@ -81,7 +81,7 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
                 inst_def &&
                 (inst_def->ins->insttype == ir::InstType::IALLOC4 ||
                  inst_def->ins->insttype == ir::InstType::IALLOC8)) {
-                _register_map[temp] = -1;
+                _register_map[temp] = STACK;
                 continue;
             }
 
@@ -89,12 +89,12 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
             auto back_active = (*--active.end());
             if (back_active.end >= interval.end) { // spill other temp
                 active.erase(--active.end());
-                _register_map[back_active.temp] = -1; // in memory
+                _register_map[back_active.temp] = SPILL; // in memory
 
                 auto reg = back_active.reg;
                 active.insert({temp, reg, interval.end});
             } else {                      // spill current temp
-                _register_map[temp] = -1; // in memory
+                _register_map[temp] = SPILL; // in memory
             }
         } else {
             // allocate register

@@ -1,4 +1,5 @@
 #include "target/mem.h"
+#include "target/regalloc.h"
 
 namespace target {
 
@@ -62,11 +63,11 @@ void StackManager::_collect_function_info(
 
     for (auto [temp, reg] : registers) {
         // if spilled
-        if (reg < 0) {
+        if (reg == SPILL) {
             _spilled_temps.insert(temp);
             continue;
         }
-        // if is s and fs registers
+        // if is s or fs registers
         if (callee_saved_regs.find(reg) != callee_saved_regs.end()) {
             _callee_saved_regs.insert(reg);
         }
