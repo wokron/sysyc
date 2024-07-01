@@ -17,4 +17,19 @@ private:
     bool _update_live(ir::Block &block);
 };
 
+/**
+ * @brief A pass that finds the live intervals of each temp in a function.
+ * @note Requires `LivenessAnalysisPass` to be run before.
+ */
+class FillIntervalPass : public FunctionPass {
+public:
+    bool run_on_function(ir::Function &func) override;
+
+private:
+    void _find_intervals_in_block(
+        ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
+        std::unordered_map<ir::TempPtr, int> &last_use,
+        std::unordered_set<ir::TempPtr> &temps_in_block, int &number);
+};
+
 } // namespace opt

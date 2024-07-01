@@ -1,5 +1,6 @@
 #include "opt/pass/live.h"
 #include <algorithm>
+#include <limits>
 
 namespace opt {
 
@@ -31,7 +32,8 @@ void LivenessAnalysisPass::_init_use_def(ir::Block &block) {
     for (auto phi : block.phis) {
         for (auto [_, value] : phi->args) {
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(value)) {
-                if (block.live_def.find(temp) == block.live_def.end()) { // if not def, then use
+                if (block.live_def.find(temp) ==
+                    block.live_def.end()) { // if not def, then use
                     live_use.insert(temp);
                 }
             }
@@ -44,17 +46,20 @@ void LivenessAnalysisPass::_init_use_def(ir::Block &block) {
     // insts
     for (auto inst : block.insts) {
         if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0])) {
-            if (block.live_def.find(temp) == block.live_def.end()) { // if not def, then use
+            if (block.live_def.find(temp) ==
+                block.live_def.end()) { // if not def, then use
                 live_use.insert(temp);
             }
         }
-        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[1])) { // if not def, then use
+        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(
+                inst->arg[1])) { // if not def, then use
             if (block.live_def.find(temp) == block.live_def.end()) {
                 live_use.insert(temp);
             }
         }
         if (inst->to) {
-            if (live_use.find(inst->to) == live_use.end()) { // if not use, then def
+            if (live_use.find(inst->to) ==
+                live_use.end()) { // if not use, then def
                 block.live_def.insert(inst->to);
             }
         }
@@ -63,7 +68,8 @@ void LivenessAnalysisPass::_init_use_def(ir::Block &block) {
     // jump
     if (block.jump.type == ir::Jump::JNZ || block.jump.type == ir::Jump::RET) {
         if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block.jump.arg)) {
-            if (block.live_def.find(temp) == block.live_def.end()) { // if not def, then use
+            if (block.live_def.find(temp) ==
+                block.live_def.end()) { // if not def, then use
                 live_use.insert(temp);
             }
         }
@@ -100,6 +106,84 @@ bool LivenessAnalysisPass::_update_live(ir::Block &block) {
 
     auto improved = old_in.size() != block.live_in.size();
     return improved;
+}
+
+bool FillIntervalPass::run_on_function(ir::Function &func) {
+    int number = 0;
+    for (auto block : func.rpo) {
+        std::unordered_map<ir::TempPtr, int> first_def;
+        std::unordered_map<ir::TempPtr, int> last_use;
+        int first_number = number;
+        _find_intervals_in_block(*block, first_def, last_use,
+                                 block->temps_in_block, number);
+        int last_number = number - 1;
+
+        for (auto temp : block->temps_in_block) {
+            auto is_local = block->live_in.find(temp) == block->live_in.end() &&
+                            block->live_out.find(temp) == block->live_out.end();
+            temp->is_local = is_local;
+
+            temp->interval = {
+                .start = std::numeric_limits<int>::max(),
+                .end = -1,
+            };
+
+            if (block->live_in.find(temp) ==
+                block->live_in.end()) { // if temp is not in the live_in set
+                // live interval extended to the first def
+                temp->interval.start =
+                    std::min(temp->interval.start, first_def[temp]);
+            } else {
+                // first number of block is in the live interval
+                temp->interval.start =
+                    std::min(temp->interval.start, first_number);
+            }
+            if (block->live_out.find(temp) ==
+                block->live_out.end()) { // if temp is not in the live_out set
+                // live interval extended to the last use
+                temp->interval.end =
+                    std::max(temp->interval.end, last_use[temp]);
+            } else {
+                // last number of block is in the live interval
+                temp->interval.end = std::max(temp->interval.end, last_number);
+            }
+        }
+    }
+
+    return false;
+}
+
+void FillIntervalPass::_find_intervals_in_block(
+    ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
+    std::unordered_map<ir::TempPtr, int> &last_use,
+    std::unordered_set<ir::TempPtr> &temps_in_block, int &number) {
+    // insts
+    for (auto inst : block.insts) {
+        for (int i = 0; i < 2; i++)
+            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
+                temp) {
+                temps_in_block.insert(temp);
+                last_use[temp] = number;
+            }
+
+        if (inst->to) {
+            auto temp = inst->to;
+            temps_in_block.insert(temp);
+            if (first_def.find(temp) == first_def.end()) {
+                first_def[temp] = number;
+            }
+        }
+        inst->number = number++;
+    }
+    // jump
+    if (block.jump.type == ir::Jump::RET || block.jump.type == ir::Jump::JNZ) {
+        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block.jump.arg);
+            temp) {
+            temps_in_block.insert(temp);
+            last_use[temp] = number;
+        }
+    }
+    block.jump.number = number++;
 }
 
 } // namespace opt

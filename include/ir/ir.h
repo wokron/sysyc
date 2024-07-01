@@ -115,6 +115,9 @@ struct Inst {
     std::shared_ptr<Temp> to;
     std::shared_ptr<Value> arg[2];
 
+    // fields below are used for optimization
+    int number; // for linear scan register allocation
+
     static std::shared_ptr<Inst> create(InstType insttype, Type ty,
                                         std::shared_ptr<Value> arg0,
                                         std::shared_ptr<Value> arg1);
@@ -145,6 +148,9 @@ struct Jump {
 
     std::shared_ptr<Value> arg;
     std::shared_ptr<Block> blk[2];
+
+    // fields below are used for optimization
+    int number; // for linear scan register allocation
 };
 
 struct Function;
@@ -161,7 +167,9 @@ struct Block {
 
     // fields below are used for optimization
     std::vector<std::shared_ptr<Block>> preds; // predecessors
-    std::unordered_set<std::shared_ptr<Temp>> live_def, live_in, live_out; // liveness
+    std::unordered_set<std::shared_ptr<Temp>> live_def, live_in,
+        live_out; // liveness
+    std::unordered_set<std::shared_ptr<Temp>> temps_in_block;
 
     static std::shared_ptr<Block> create(std::string name, Function &func);
 
@@ -235,6 +243,13 @@ struct Temp : public Value {
     Type type;
     std::vector<Def> defs;
     std::vector<Use> uses;
+
+    // fields below are used for optimization
+    struct {
+        int start;
+        int end;
+    } interval;    // live interval
+    bool is_local; // whether the temp is local
 
     Temp(std::string name, Type type, std::vector<Def> defs)
         : name(name), type(type), defs(defs) {}
