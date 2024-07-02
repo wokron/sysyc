@@ -90,12 +90,16 @@ void Generator::generate_func(const ir::Function &func) {
     for (auto block = func.start; block; block = block->next) {
         _out << ".L" << block->id << ":" << std::endl;
 
+        std::vector<ir::InstPtr> call_params;
         for (const auto &inst : block->insts) {
-            _out << INDENT;
-
-            _generate_inst(*inst);
-
-            _out << std::endl;
+            if (inst->insttype == ir::InstType::IPAR) {
+                call_params.push_back(inst);
+            } else if (inst->insttype == ir::InstType::ICALL) {
+                _generate_call_inst(*inst, call_params);
+                call_params.clear();
+            } else {
+                _generate_inst(*inst);
+            }
         }
     }
 
@@ -105,5 +109,8 @@ void Generator::generate_func(const ir::Function &func) {
 }
 
 void Generator::_generate_inst(const ir::Inst &inst) { _out << "nop"; }
+
+void Generator::_generate_call_inst(const ir::Inst &call_inst,
+                                    std::vector<ir::InstPtr> params) {}
 
 } // namespace target

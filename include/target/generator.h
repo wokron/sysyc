@@ -16,6 +16,7 @@ public:
 
 private:
     void _generate_inst(const ir::Inst &inst);
+    void _generate_call_inst(const ir::Inst &call_inst, std::vector<ir::InstPtr> params);
 
     std::ostream &_out = std::cout;
 };
