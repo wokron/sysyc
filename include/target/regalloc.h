@@ -26,12 +26,6 @@ public:
     void allocate_registers(ir::Function &func) override;
 
 private:
-    struct Interval {
-        int start;
-        int end;
-    };
-    using TempInterval = std::pair<ir::TempPtr, Interval>;
-
     void _allocate_temps(ir::Function &func);
 
     void _allocate_temps_with_intervals(ir::Function &func,
