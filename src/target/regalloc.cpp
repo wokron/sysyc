@@ -44,10 +44,11 @@ void LinearScanAllocator::_allocate_temps(ir::Function &func) {
     _allocate_temps_with_intervals(func, f_local_intervals, ft_reg_set);
 
     // just for debug
-    for (auto block = func.start; block; block = block->next) {
-        for (auto temp : block->temps_in_block) {
-            _register_map[temp] = temp->reg;
+    for (auto temp : func.temps_in_func) {
+        if (temp->reg == NO_REGISTER) {
+            throw std::runtime_error("no register allocated");
         }
+        _register_map[temp] = temp->reg;
     }
 }
 
