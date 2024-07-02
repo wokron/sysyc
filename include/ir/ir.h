@@ -250,6 +250,7 @@ struct Temp : public Value {
         int end;
     } interval;    // live interval
     bool is_local; // whether the temp is local
+    int reg = -3;  // register number
 
     Temp(std::string name, Type type, std::vector<Def> defs)
         : name(name), type(type), defs(defs) {}

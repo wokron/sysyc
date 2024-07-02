@@ -7,6 +7,7 @@ namespace target {
 
 #define STACK -2
 #define SPILL -1
+#define NO_REGISTER -3
 
 class RegisterAllocator {
 public:
@@ -34,19 +35,14 @@ private:
     void _allocate_temps(ir::Function &func);
 
     void _allocate_temps_with_intervals(ir::Function &func,
-                                        std::vector<TempInterval> &intervals,
+                                        std::vector<ir::TempPtr> &intervals,
                                         std::unordered_set<int> &reg_set);
 
     void _find_intervals(const ir::Function &func,
-                         std::vector<TempInterval> &intervals,
-                         std::vector<TempInterval> &f_intervals,
-                         std::vector<TempInterval> &local_intervals,
-                         std::vector<TempInterval> &f_local_intervals);
-
-    void _find_intervals_in_block(
-        const ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
-        std::unordered_map<ir::TempPtr, int> &last_use,
-        std::unordered_set<ir::TempPtr> &temps_in_block, int &number);
+                         std::vector<ir::TempPtr> &intervals,
+                         std::vector<ir::TempPtr> &f_intervals,
+                         std::vector<ir::TempPtr> &local_intervals,
+                         std::vector<ir::TempPtr> &f_local_intervals);
 
     std::unordered_set<ir::TempPtr> _global_temps;
 };

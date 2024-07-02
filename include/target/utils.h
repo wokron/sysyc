@@ -15,7 +15,13 @@ inline std::string regno2string(int number) {
         "fa6",  "fa7", "fs2",  "fs3",  "fs4", "fs5", "fs6",  "fs7",
         "fs8",  "fs9", "fs10", "fs11", "ft8", "ft9", "ft10", "ft11",
     };
-    if (number < 0 || number >= 64) {
+    if (number == -1) {
+        return "spill";
+    } else if (number == -2) {
+        return "stack";
+    } else if (number == -3) {
+        return "no_register";
+    } else if (number < 0 || number >= 64) {
         return "unknown";
     }
     return regnames[number];
