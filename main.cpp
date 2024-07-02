@@ -118,15 +118,14 @@ void compile(const char *name, const Options &options,
         }
     }
 
-    cmd_error(name, "ir to asm not implemented");
-
     if (options.emit_asm) {
         if (output.length() == 0) {
             output = "out.s";
         }
         outfile.open(output, std::ios::out);
-        // TODO: emit assembly
-        cmd_error(name, "emit assembly not implemented");
+        target::Generator generator(outfile);
+
+        generator.generate(module);
     }
 
     cmd_error(name, "nothing to do");

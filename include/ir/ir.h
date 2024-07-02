@@ -3,6 +3,7 @@
 #include "utils.h"
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -29,7 +30,9 @@ struct Value {
     virtual Type get_type() const = 0;
 };
 
-struct Const : public Value {};
+struct Const : public Value {
+    virtual std::string get_asm_value() = 0;
+};
 
 struct Address : public Const {
     std::string name;
@@ -41,6 +44,8 @@ struct Address : public Const {
     void emit(std::ostream &out) const override { out << "$" << name; }
 
     Type get_type() const override { return Type::L; }
+
+    std::string get_asm_value() override { return name; }
 
 private:
     static std::unordered_map<std::string, std::shared_ptr<Address>>
@@ -73,6 +78,19 @@ struct ConstBits : public Const {
             return ConstBits::get((float)*int_val);
         } else if (auto float_val = std::get_if<float>(&value); float_val) {
             return ConstBits::get(*float_val);
+        } else {
+            throw std::logic_error("variant empty");
+        }
+    }
+
+    std::string get_asm_value() override {
+        if (auto int_val = std::get_if<int>(&value); int_val) {
+            return std::to_string(*int_val);
+        } else if (auto float_val = std::get_if<float>(&value); float_val) {
+            // float data in hex
+            std::stringstream ss;
+            ss << "0x" << std::hex << *(reinterpret_cast<int *>(float_val));
+            return ss.str();
         } else {
             throw std::logic_error("variant empty");
         }
