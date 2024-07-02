@@ -27,7 +27,7 @@ namespace target {
 
 class StackManager {
 public:
-    void run(ir::Function &func);
+    void run(const ir::Function &func);
 
     int get_frame_size() const { return _frame_size; }
 
@@ -61,7 +61,7 @@ private:
     std::unordered_set<int> _caller_saved_regs;
     int _max_func_call_args = 0;
 
-    void _collect_function_info(ir::Function &func);
+    void _collect_function_info(const ir::Function &func);
 
     void _collect_block_info(const ir::Block &block);
 };

@@ -6,7 +6,7 @@ namespace target {
 
 #define ROUND(a, n) (((((int)(a)) + (n) - 1)) & ~((n) - 1))
 
-void StackManager::run(ir::Function &func) {
+void StackManager::run(const ir::Function &func) {
     _collect_function_info(func);
 
     _frame_size = 0;
@@ -59,7 +59,7 @@ void StackManager::run(ir::Function &func) {
     }
 }
 
-void StackManager::_collect_function_info(ir::Function &func) {
+void StackManager::_collect_function_info(const ir::Function &func) {
     // x8-9, x18-27, f8-9, f18-27
     const std::unordered_set<int> callee_saved_regs = {
         8,       9,       18,      19,      20,      21,      22,      23,

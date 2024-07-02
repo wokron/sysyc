@@ -1,4 +1,6 @@
 #include "target/generator.h"
+#include "target/mem.h"
+#include "target/utils.h"
 
 #define INDENT "    "
 
@@ -67,6 +69,9 @@ void Generator::generate_data(const ir::Data &data) {
 }
 
 void Generator::generate_func(const ir::Function &func) {
+    StackManager stack_manager;
+    stack_manager.run(func);
+
     _out << ".text" << std::endl;
 
     if (func.is_export) {
@@ -75,14 +80,20 @@ void Generator::generate_func(const ir::Function &func) {
 
     _out << func.name << ":" << std::endl;
 
+    _out << INDENT << "addi sp, sp, -" << stack_manager.get_frame_size()
+         << std::endl;
+    for (auto [reg, offset] : stack_manager.get_callee_saved_regs_offset()) {
+        _out << INDENT << "sd " << regno2string(reg) << ", " << offset << "(sp)"
+             << std::endl;
+    }
+
     for (auto block = func.start; block; block = block->next) {
         _out << ".L" << block->id << ":" << std::endl;
 
         for (const auto &inst : block->insts) {
             _out << INDENT;
 
-            // TODO: generate instructions
-            _out << "nop";
+            _generate_inst(*inst);
 
             _out << std::endl;
         }
@@ -92,5 +103,7 @@ void Generator::generate_func(const ir::Function &func) {
     _out << ".size " << func.name << ", .-" << func.name << std::endl;
     _out << "/* end function " << func.name << " */" << std::endl << std::endl;
 }
+
+void Generator::_generate_inst(const ir::Inst &inst) { _out << "nop"; }
 
 } // namespace target

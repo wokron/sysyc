@@ -15,6 +15,8 @@ public:
     void generate_func(const ir::Function &func);
 
 private:
+    void _generate_inst(const ir::Inst &inst);
+
     std::ostream &_out = std::cout;
 };
 
