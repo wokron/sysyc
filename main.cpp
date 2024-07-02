@@ -97,28 +97,26 @@ void compile(const char *name, const Options &options,
         }
     }
 
-    // std::cerr << "Stack layout:" << std::endl;
-    // for (auto &func : module.functions) {
-    //     std::cerr << "Function: " << func->name << std::endl;
-    //     target::LinearScanAllocator regalloc;
-    //     regalloc.allocate_registers(*func);
-    //     target::StackManager stack_manager;
-    //     stack_manager.run(*func, regalloc.get_register_map());
+    std::cerr << "Stack layout:" << std::endl;
+    for (auto &func : module.functions) {
+        std::cerr << "Function: " << func->name << std::endl;
+        target::StackManager stack_manager;
+        stack_manager.run(*func);
 
-    //     for (auto [reg, offset] :
-    //          stack_manager.get_callee_saved_regs_offset()) {
-    //         std::cerr << target::regno2string(reg) << " -> sp(" << offset << ")"
-    //                   << std::endl;
-    //     }
-    //     for (auto [temp, offset] : stack_manager.get_local_var_offset()) {
-    //         temp->emit(std::cerr);
-    //         std::cerr << " -> sp(" << offset << ")" << std::endl;
-    //     }
-    //     for (auto [temp, offset] : stack_manager.get_spilled_temps_offset()) {
-    //         temp->emit(std::cerr);
-    //         std::cerr << " -> sp(" << offset << ")" << std::endl;
-    //     }
-    // }
+        for (auto [reg, offset] :
+             stack_manager.get_callee_saved_regs_offset()) {
+            std::cerr << target::regno2string(reg) << " -> sp(" << offset << ")"
+                      << std::endl;
+        }
+        for (auto [temp, offset] : stack_manager.get_local_var_offset()) {
+            temp->emit(std::cerr);
+            std::cerr << " -> sp(" << offset << ")" << std::endl;
+        }
+        for (auto [temp, offset] : stack_manager.get_spilled_temps_offset()) {
+            temp->emit(std::cerr);
+            std::cerr << " -> sp(" << offset << ")" << std::endl;
+        }
+    }
 
     cmd_error(name, "ir to asm not implemented");
 

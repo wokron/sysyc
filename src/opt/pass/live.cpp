@@ -109,6 +109,7 @@ bool LivenessAnalysisPass::_update_live(ir::Block &block) {
 }
 
 bool FillIntervalPass::run_on_function(ir::Function &func) {
+    func.temps_in_func.clear();
     int number = 0;
     for (auto block : func.rpo) {
         std::unordered_map<ir::TempPtr, int> first_def;
@@ -116,6 +117,9 @@ bool FillIntervalPass::run_on_function(ir::Function &func) {
         int first_number = number;
         _find_intervals_in_block(*block, first_def, last_use, number);
         int last_number = number - 1;
+
+        func.temps_in_func.insert(block->temps_in_block.begin(),
+                                 block->temps_in_block.end());
 
         for (auto temp : block->temps_in_block) {
             auto is_local = block->live_in.find(temp) == block->live_in.end() &&

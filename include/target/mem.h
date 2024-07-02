@@ -27,8 +27,7 @@ namespace target {
 
 class StackManager {
 public:
-    void run(ir::Function &func,
-             const std::unordered_map<ir::TempPtr, int> &registers);
+    void run(ir::Function &func);
 
     int get_frame_size() const { return _frame_size; }
 
@@ -62,13 +61,9 @@ private:
     std::unordered_set<int> _caller_saved_regs;
     int _max_func_call_args = 0;
 
-    void _collect_function_info(
-        ir::Function &func,
-        const std::unordered_map<ir::TempPtr, int> &registers);
+    void _collect_function_info(ir::Function &func);
 
-    void
-    _collect_block_info(const ir::Block &block,
-                        const std::unordered_map<ir::TempPtr, int> &registers);
+    void _collect_block_info(const ir::Block &block);
 };
 
 } // namespace target

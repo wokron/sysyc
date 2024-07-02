@@ -192,7 +192,9 @@ struct Function {
     uint temp_counter = 1;
     uint *block_counter_ptr;
 
+    // fields below are used for optimization
     std::vector<std::shared_ptr<Block>> rpo; // reverse post order
+    std::unordered_set<std::shared_ptr<Temp>> temps_in_func;
 
     using TempPtrList = std::vector<std::shared_ptr<Temp>>;
     using FunctionPtr = std::shared_ptr<Function>;

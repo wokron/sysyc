@@ -6,9 +6,8 @@ namespace target {
 
 #define ROUND(a, n) (((((int)(a)) + (n) - 1)) & ~((n) - 1))
 
-void StackManager::run(ir::Function &func,
-                       const std::unordered_map<ir::TempPtr, int> &registers) {
-    _collect_function_info(func, registers);
+void StackManager::run(ir::Function &func) {
+    _collect_function_info(func);
 
     _frame_size = 0;
 
@@ -60,15 +59,19 @@ void StackManager::run(ir::Function &func,
     }
 }
 
-void StackManager::_collect_function_info(
-    ir::Function &func, const std::unordered_map<ir::TempPtr, int> &registers) {
+void StackManager::_collect_function_info(ir::Function &func) {
     // x8-9, x18-27, f8-9, f18-27
     const std::unordered_set<int> callee_saved_regs = {
         8,       9,       18,      19,      20,      21,      22,      23,
         24,      25,      26,      27,      8 + 32,  9 + 32,  18 + 32, 19 + 32,
         20 + 32, 21 + 32, 22 + 32, 23 + 32, 24 + 32, 25 + 32, 26 + 32, 27 + 32};
 
-    for (auto [temp, reg] : registers) {
+    for (auto temp : func.temps_in_func) {
+        int reg = temp->reg;
+        if (reg == NO_REGISTER) {
+            throw std::runtime_error("no register allocated");
+        }
+
         // if spilled
         if (reg == SPILL) {
             _spilled_temps.insert(temp);
@@ -94,13 +97,11 @@ void StackManager::_collect_function_info(
 
     // find the maximum number of arguments passed to a function
     for (auto block = func.start; block; block = block->next) {
-        _collect_block_info(*block, registers);
+        _collect_block_info(*block);
     }
 }
 
-void StackManager::_collect_block_info(
-    const ir::Block &block,
-    const std::unordered_map<ir::TempPtr, int> &registers) {
+void StackManager::_collect_block_info(const ir::Block &block) {
 
     // get the maximum number of arguments passed to a function
     int arg_count = 0;
@@ -132,13 +133,17 @@ void StackManager::_collect_block_info(
             }
 
             // the reset of the registers are caller saved
-            for (auto [temp, reg] : registers) {
-                _caller_saved_regs.insert(reg);
+            for (auto elm : reg_reach) {
+                _caller_saved_regs.insert(elm.reg);
             }
         }
 
-        if (inst->to && inst->to->is_local && registers.at(inst->to) > 0) {
-            reg_reach.insert({registers.at(inst->to), inst->to->interval.end});
+        if (inst->to && inst->to->is_local) {
+            if (inst->to->reg == NO_REGISTER) {
+                throw std::runtime_error("no register allocated");
+            } else if (inst->to->reg > 0) {
+                reg_reach.insert({inst->to->reg, inst->to->interval.end});
+            }
         }
     }
 }
