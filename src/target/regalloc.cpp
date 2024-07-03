@@ -1,0 +1,136 @@
+#include "target/regalloc.h"
+#include <algorithm>
+#include <limits>
+#include <set>
+
+namespace target {
+
+void LinearScanAllocator::allocate_registers(ir::Function &func) {
+    _register_map.clear();
+    _allocate_temps(func);
+}
+
+void LinearScanAllocator::_allocate_temps(ir::Function &func) {
+    std::vector<ir::TempPtr> intervals;
+    std::vector<ir::TempPtr> f_intervals;
+    std::vector<ir::TempPtr> local_intervals;
+    std::vector<ir::TempPtr> f_local_intervals;
+    _find_intervals(func, intervals, f_intervals, local_intervals,
+                    f_local_intervals);
+
+    // s registers (x9, x18-x27)
+    std::unordered_set<int> s_reg_set = {9,  18, 19, 20, 21, 22,
+                                         23, 24, 25, 26, 27};
+    // allocate s registers
+    _allocate_temps_with_intervals(func, intervals, s_reg_set);
+
+    // fs registers (f8-f9, f18-f27)
+    std::unordered_set<int> fs_reg_set = {32 + 8,  32 + 9,  32 + 18, 32 + 19,
+                                          32 + 20, 32 + 21, 32 + 22, 32 + 23,
+                                          32 + 24, 32 + 25, 32 + 26, 32 + 27};
+    // allocate fs registers
+    _allocate_temps_with_intervals(func, f_intervals, fs_reg_set);
+
+    // t registers (x5-x7, x28-x31)
+    std::unordered_set<int> t_reg_set = {5, 6, 7, 28, 29, 30, 31};
+    // allocate t registers
+    _allocate_temps_with_intervals(func, local_intervals, t_reg_set);
+
+    // ft registers (f0-f7, f28-f31)
+    std::unordered_set<int> ft_reg_set = {32 + 0,  32 + 1,  32 + 2,  32 + 3,
+                                          32 + 4,  32 + 5,  32 + 6,  32 + 7,
+                                          32 + 28, 32 + 29, 32 + 30, 32 + 31};
+    // allocate ft registers
+    _allocate_temps_with_intervals(func, f_local_intervals, ft_reg_set);
+
+    // just for debug
+    for (auto temp : func.temps_in_func) {
+        if (temp->reg == NO_REGISTER) {
+            throw std::runtime_error("no register allocated");
+        }
+        _register_map[temp] = temp->reg;
+    }
+}
+
+void LinearScanAllocator::_allocate_temps_with_intervals(
+    ir::Function &func, std::vector<ir::TempPtr> &intervals,
+    std::unordered_set<int> &reg_set) {
+    // sort intervals by start point
+    std::sort(intervals.begin(), intervals.end(),
+              [](const ir::TempPtr &a, const ir::TempPtr &b) {
+                  return a->interval.start < b->interval.start;
+              });
+
+    auto asc_end = [](const ir::TempPtr &a, const ir::TempPtr &b) {
+        // "a and b are considered equivalent (not unique) if neither compares
+        // less than the other", so we need to use <= instead of < to make sure
+        // the set can store multiple elements with the same end
+        return a->interval.end <= b->interval.end;
+    };
+    // create active list (ordered set as a double-ended priority queue)
+    std::set<ir::TempPtr, decltype(asc_end)> active(asc_end);
+
+    for (auto temp : intervals) {
+        auto interval = temp->interval;
+        while (active.size() > 0 &&
+               (*active.begin())->interval.end <= interval.start) {
+            auto front_active = *active.begin();
+            active.erase(active.begin());
+            reg_set.insert(front_active->reg);
+        }
+
+        // if is stack slot, just spill
+        if (temp->defs.size() == 1)
+            if (auto inst_def = std::get_if<ir::InstDef>(&temp->defs[0]);
+                inst_def &&
+                (inst_def->ins->insttype == ir::InstType::IALLOC4 ||
+                 inst_def->ins->insttype == ir::InstType::IALLOC8)) {
+                temp->reg = STACK;
+                continue;
+            }
+
+        if (reg_set.empty()) {
+            if (active.size() > 0 && (*std::prev(active.end()))->interval.end >=
+                                         interval.end) { // spill other temp
+                auto back_active = *std::prev(active.end());
+                active.erase(std::prev(active.end()));
+
+                temp->reg = back_active->reg;
+                back_active->reg = SPILL; // in memory
+                active.insert(temp);
+            } else {               // spill current temp
+                temp->reg = SPILL; // in memory
+            }
+        } else {
+            // allocate register
+            auto reg = *(reg_set.begin());
+            reg_set.erase(reg);
+            temp->reg = reg;
+            if (!active.insert(temp).second) {
+                throw std::runtime_error("Failed to insert into active list");
+            }
+        }
+    }
+}
+
+void LinearScanAllocator::_find_intervals(
+    const ir::Function &func, std::vector<ir::TempPtr> &intervals,
+    std::vector<ir::TempPtr> &f_intervals,
+    std::vector<ir::TempPtr> &local_intervals,
+    std::vector<ir::TempPtr> &f_local_intervals) {
+
+    std::vector<ir::TempPtr> *intervals_ptrs[2][2] = {
+        {&intervals, &f_intervals}, {&local_intervals, &f_local_intervals}};
+
+    for (auto block : func.rpo) {
+        for (auto temp : block->temps_in_block) {
+            auto is_float = temp->get_type() == ir::Type::S;
+            auto is_local = temp->is_local;
+            auto &intervals_ref = *intervals_ptrs[is_local][is_float];
+
+            intervals_ref.push_back(temp);
+        }
+    }
+}
+
+} // namespace target

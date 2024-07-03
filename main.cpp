@@ -3,11 +3,15 @@
 #include "ir/ir.h"
 #include "opt/pass/pass.h"
 #include "parser.h"
+#include "target/target.h"
 #include "visitor.h"
 #include <fstream>
 #include <getopt.h>
 
-using Pass = opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass>;
+using Passes =
+    opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
+                      opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+                      opt::FillIntervalPass>;
 
 struct Options {
     bool optimize = false;
@@ -67,7 +71,7 @@ void compile(const char *name, const Options &options,
     }
 
     if (options.optimize) {
-        Pass pass;
+        Passes pass;
         pass.run(module);
     }
 
@@ -81,15 +85,47 @@ void compile(const char *name, const Options &options,
     }
 
     // TODO: ir to asm
-    cmd_error(name, "ir to asm not implemented");
+
+    std::cerr << "Register allocation:" << std::endl;
+    for (auto &func : module.functions) {
+        std::cerr << "Function: " << func->name << std::endl;
+        target::LinearScanAllocator regalloc;
+        regalloc.allocate_registers(*func);
+        for (auto [temp, reg] : regalloc.get_register_map()) {
+            temp->emit(std::cerr);
+            std::cerr << " -> " << target::regno2string(reg) << std::endl;
+        }
+    }
+
+    std::cerr << "Stack layout:" << std::endl;
+    for (auto &func : module.functions) {
+        std::cerr << "Function: " << func->name << std::endl;
+        target::StackManager stack_manager;
+        stack_manager.run(*func);
+
+        for (auto [reg, offset] :
+             stack_manager.get_callee_saved_regs_offset()) {
+            std::cerr << target::regno2string(reg) << " -> sp(" << offset << ")"
+                      << std::endl;
+        }
+        for (auto [temp, offset] : stack_manager.get_local_var_offset()) {
+            temp->emit(std::cerr);
+            std::cerr << " -> sp(" << offset << ")" << std::endl;
+        }
+        for (auto [temp, offset] : stack_manager.get_spilled_temps_offset()) {
+            temp->emit(std::cerr);
+            std::cerr << " -> sp(" << offset << ")" << std::endl;
+        }
+    }
 
     if (options.emit_asm) {
         if (output.length() == 0) {
             output = "out.s";
         }
         outfile.open(output, std::ios::out);
-        // TODO: emit assembly
-        cmd_error(name, "emit assembly not implemented");
+        target::Generator generator(outfile);
+
+        generator.generate(module);
     }
 
     cmd_error(name, "nothing to do");
