@@ -27,4 +27,17 @@ inline std::string regno2string(int number) {
     return regnames[number];
 }
 
+inline std::string build(std::string op, std::string rd, std::string rs1,
+                         std::string rs2) {
+    return op + " " + rd + ", " + rs1 + ", " + rs2;
+}
+
+inline std::string build(std::string op, std::string rd, std::string rs1) {
+    return op + " " + rd + ", " + rs1;
+}
+
+inline std::string build(std::string op, std::string rd) {
+    return op + " " + rd;
+}
+
 } // namespace target

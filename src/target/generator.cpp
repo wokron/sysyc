@@ -80,20 +80,23 @@ void Generator::generate_func(const ir::Function &func) {
 
     _out << func.name << ":" << std::endl;
 
-    _out << INDENT << "addi sp, sp, -" << stack_manager.get_frame_size()
+    _out << INDENT
+         << build("addi", "sp", "sp",
+                  "-" + std::to_string(stack_manager.get_frame_size()))
          << std::endl;
     for (auto [reg, offset] : stack_manager.get_callee_saved_regs_offset()) {
-        _out << INDENT << "sd " << regno2string(reg) << ", " << offset << "(sp)"
+        _out << INDENT
+             << build("sd", regno2string(reg), std::to_string(offset) + "(sp)")
              << std::endl;
     }
 
     for (auto block = func.start; block; block = block->next) {
         _out << ".L" << block->id << ":" << std::endl;
 
-        std::vector<ir::InstPtr> call_params;
+        std::vector<ir::ValuePtr> call_params;
         for (const auto &inst : block->insts) {
             if (inst->insttype == ir::InstType::IPAR) {
-                call_params.push_back(inst);
+                call_params.push_back(inst->arg[0]);
             } else if (inst->insttype == ir::InstType::ICALL) {
                 _generate_call_inst(*inst, call_params);
                 call_params.clear();
@@ -108,9 +111,78 @@ void Generator::generate_func(const ir::Function &func) {
     _out << "/* end function " << func.name << " */" << std::endl << std::endl;
 }
 
-void Generator::_generate_inst(const ir::Inst &inst) { _out << "nop"; }
+void Generator::_generate_inst(const ir::Inst &inst) {
+    _out << INDENT << "nop" << std::endl;
+}
 
 void Generator::_generate_call_inst(const ir::Inst &call_inst,
-                                    std::vector<ir::InstPtr> params) {}
+                                    std::vector<ir::ValuePtr> params) {}
+
+std::string get_const_asm_value(ir::ValuePtr value) {
+    if (auto const_value = std::dynamic_pointer_cast<ir::Const>(value)) {
+        return const_value->get_asm_value();
+    } else {
+        throw std::logic_error("unsupported value type");
+    }
+}
+
+// void Generator::_generate_add_inst(const ir::Inst &inst) {
+//     std::string add;
+//     std::string addi;
+//     auto temp_arg0 = std::dynamic_pointer_cast<ir::Temp>(inst.arg[0]);
+//     auto temp_arg1 = std::dynamic_pointer_cast<ir::Temp>(inst.arg[1]);
+
+//     switch (inst.to->get_type()) {
+//     case ir::Type::W:
+//     case ir::Type::L: {
+//         std::string add = inst.to->get_type() == ir::Type::W ? "addw" : "add";
+//         std::string addi =
+//             inst.to->get_type() == ir::Type::W ? "addiw" : "addi";
+//         if (temp_arg0 && temp_arg1) {
+//             _out << INDENT
+//                  << build(add, regno2string(inst.to->reg),
+//                           regno2string(temp_arg0->reg),
+//                           regno2string(temp_arg1->reg))
+//                  << std::endl;
+//         } else if (temp_arg0) {
+//             _out << INDENT
+//                  << build(addi, regno2string(inst.to->reg),
+//                           regno2string(temp_arg0->reg),
+//                           get_const_asm_value(inst.arg[0]))
+//                  << std::endl;
+//         } else if (temp_arg1) {
+//             _out << INDENT
+//                  << build(addi, regno2string(inst.to->reg),
+//                           regno2string(temp_arg1->reg),
+//                           get_const_asm_value(inst.arg[0]))
+//                  << std::endl;
+//         } else {
+//             _out << INDENT
+//                  << build("li", regno2string(inst.to->reg),
+//                           get_const_asm_value(inst.arg[0]))
+//                  << std::endl;
+//             _out << INDENT
+//                  << build(addi, regno2string(inst.to->reg),
+//                           regno2string(inst.to->reg),
+//                           get_const_asm_value(inst.arg[1]))
+//                  << std::endl;
+//         }
+//     } break;
+//     case ir::Type::S: {
+//         std::string reg0, reg1;
+//         if (temp_arg0) {
+//             reg0 = regno2string(temp_arg0->reg);
+//         } else {
+
+//             _out << INDENT
+//                  << build("li", "a0", get_const_asm_value(inst.arg[0]))
+//                  << std::endl;
+//             reg0 = "a0";
+//         }
+//     } break;
+//     default:
+//         throw std::logic_error("unsupported type");
+//     }
+// }
 
 } // namespace target

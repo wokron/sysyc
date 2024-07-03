@@ -4,6 +4,7 @@
 #include "ostream"
 
 namespace target {
+    
 class Generator {
 public:
     Generator() = default;
@@ -16,7 +17,9 @@ public:
 
 private:
     void _generate_inst(const ir::Inst &inst);
-    void _generate_call_inst(const ir::Inst &call_inst, std::vector<ir::InstPtr> params);
+    void _generate_call_inst(const ir::Inst &call_inst, std::vector<ir::ValuePtr> params);
+
+    // void _generate_add_inst(const ir::Inst &inst);
 
     std::ostream &_out = std::cout;
 };
