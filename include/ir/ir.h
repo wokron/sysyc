@@ -185,6 +185,11 @@ struct Block {
 
     // fields below are used for optimization
     std::vector<std::shared_ptr<Block>> preds; // predecessors
+    std::vector<std::shared_ptr<Block>> succs; // successors
+    std::unordered_set<std::shared_ptr<Block>> dom_list; // dom list
+    std::unordered_set<std::shared_ptr<Block>> dom_children; // dom children
+    std::shared_ptr<Block> dom_parent; //dom parent
+    std::unordered_set<std::shared_ptr<Block>> df_list; // df list
     std::unordered_set<std::shared_ptr<Temp>> live_def, live_in,
         live_out; // liveness
     std::unordered_set<std::shared_ptr<Temp>> temps_in_block;

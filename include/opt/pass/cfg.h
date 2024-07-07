@@ -6,23 +6,38 @@
 namespace opt {
 
 class FillPredsPass : public FunctionPass {
-public:
+  public:
     bool run_on_function(ir::Function &func) override;
 };
 
 class FillUsesPass : public FunctionPass {
-public:
+  public:
     bool run_on_function(ir::Function &func) override;
 };
 
 class FillReversePostOrderPass : public FunctionPass {
-public:
+  public:
     bool run_on_function(ir::Function &func) override;
 
-private:
+  private:
     static void _post_order_traverse(ir::BlockPtr block,
                                      std::unordered_set<ir::BlockPtr> &visited,
                                      std::vector<ir::BlockPtr> &post_order);
+};
+
+class DomListPass : public FunctionPass {
+  public:
+    bool run_on_function(ir::Function &func) override;
+};
+
+class DomTreePass : public FunctionPass {
+  public:
+    bool run_on_function(ir::Function &func) override;
+};
+
+class DFPass : public FunctionPass {
+  public:
+    bool run_on_function(ir::Function &func) override;
 };
 
 } // namespace opt
