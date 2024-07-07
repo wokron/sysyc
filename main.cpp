@@ -63,7 +63,7 @@ void compile(const char *name, const Options &options,
     }
 
     ir::Module module;
-    Visitor visitor(module);
+    Visitor visitor(module, options.optimize);
     visitor.visit(*root);
 
     if (has_error()) {
