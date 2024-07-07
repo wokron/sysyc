@@ -217,6 +217,7 @@ struct Function {
     // fields below are used for optimization
     std::vector<std::shared_ptr<Block>> rpo; // reverse post order
     std::unordered_set<std::shared_ptr<Temp>> temps_in_func;
+    bool is_leaf = false; // whether the function is a leaf function
 
     using TempPtrList = std::vector<std::shared_ptr<Temp>>;
     using FunctionPtr = std::shared_ptr<Function>;
