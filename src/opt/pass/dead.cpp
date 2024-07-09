@@ -47,7 +47,7 @@ void opt::SimpleDeadCodeEliminationPass::_mark_all_alive(ir::Function &func) {
                     _insert_if_temp(new_frontier, instdef->ins->arg[0]);
                     _insert_if_temp(new_frontier, instdef->ins->arg[1]);
                 } else if (auto phidef = std::get_if<ir::PhiDef>(&def)) {
-                    if (instdef->ins->marked) {
+                    if (phidef->phi->marked) {
                         continue;
                     }
                     phidef->phi->marked = true;
