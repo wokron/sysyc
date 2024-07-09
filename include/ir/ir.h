@@ -135,6 +135,7 @@ struct Inst {
 
     // fields below are used for optimization
     int number; // for linear scan register allocation
+    bool marked = false; // for dead code elimination
 
     static std::shared_ptr<Inst> create(InstType insttype, Type ty,
                                         std::shared_ptr<Value> arg0,
@@ -149,6 +150,9 @@ struct Phi {
     Type ty;
     std::shared_ptr<Temp> to;
     std::vector<std::pair<std::shared_ptr<Block>, std::shared_ptr<Value>>> args;
+
+    // fields below are used for optimization
+    bool marked = false;
 
     Phi(Type ty, std::shared_ptr<Temp> to, decltype(args) args)
         : ty(ty), to(to), args(args) {}
