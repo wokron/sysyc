@@ -90,3 +90,39 @@ bool opt::MemoryToRegisterPass::_is_able_to_reg(ir::InstPtr alloc_inst) {
 
     return true;
 }
+
+bool opt::PhiInsertingPass::run_on_function(ir::Function &func) {
+    for (auto temp : func.temps_in_func) {
+        std::unordered_set<ir::BlockPtr> temp_def_blocks;
+        for (auto def : temp->defs) {
+            auto instdef = std::get_if<ir::InstDef>(&def);
+            if (instdef == nullptr) {
+                throw std::runtime_error("not inst def in when inserting phi");
+            }
+            temp_def_blocks.insert(instdef->blk);
+        }
+
+        std::unordered_set<ir::BlockPtr> phi_inserted_blocks;
+        std::unordered_set<ir::BlockPtr> worklist(temp_def_blocks.begin(),
+                                                  temp_def_blocks.end());
+
+        while (!worklist.empty()) {
+            auto it = worklist.begin();
+            auto block = *it;
+            worklist.erase(it);
+
+            for (auto df : block->dfron) {
+                if (phi_inserted_blocks.find(df) == phi_inserted_blocks.end()) {
+                    df->phis.push_back(std::make_shared<ir::Phi>(
+                        temp->get_type(), temp)); // %temp =t phi ...
+                    worklist.insert(df);
+                    if (temp_def_blocks.find(df) == temp_def_blocks.end()) {
+                        worklist.insert(df);
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}

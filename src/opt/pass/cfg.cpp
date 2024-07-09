@@ -29,15 +29,25 @@ bool FillPredsPass::run_on_function(ir::Function &func) {
 }
 
 bool FillUsesPass::run_on_function(ir::Function &func) {
+    func.temps_in_func.clear();
+
     for (auto block = func.start; block; block = block->next) {
+        block->temps_in_block.clear();
+
         for (auto &phi : block->phis) {
             phi->to->defs.clear();
             phi->to->uses.clear();
+
+            block->temps_in_block.insert(phi->to);
+            func.temps_in_func.insert(phi->to);
         }
         for (auto &inst : block->insts) {
             if (inst->to) {
                 inst->to->defs.clear();
                 inst->to->uses.clear();
+
+                block->temps_in_block.insert(inst->to);
+                func.temps_in_func.insert(inst->to);
             }
         }
     }
@@ -45,7 +55,7 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
     for (auto block = func.start; block; block = block->next) {
         // phi
         for (auto &phi : block->phis) {
-            phi->to->defs.push_back(ir::PhiDef{phi});
+            phi->to->defs.push_back(ir::PhiDef{phi, block});
             for (auto [blk, arg] : phi->args) {
                 if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg);
                     temp) {
@@ -56,15 +66,15 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
         // inst
         for (auto &inst : block->insts) {
             if (inst->to) {
-                inst->to->defs.push_back(ir::InstDef{inst});
+                inst->to->defs.push_back(ir::InstDef{inst, block});
             }
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
                 temp) {
-                temp->uses.push_back(ir::InstUse{inst});
+                temp->uses.push_back(ir::InstUse{inst, block});
             }
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[1]);
                 temp) {
-                temp->uses.push_back(ir::InstUse{inst});
+                temp->uses.push_back(ir::InstUse{inst, block});
             }
         }
         // jump

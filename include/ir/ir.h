@@ -156,6 +156,9 @@ struct Phi {
 
     Phi(Type ty, std::shared_ptr<Temp> to, decltype(args) args)
         : ty(ty), to(to), args(args) {}
+    
+    Phi(Type ty, std::shared_ptr<Temp> to)
+        : ty(ty), to(to), args(decltype(args){}) {}
 
     void emit(std::ostream &out) const;
 };
@@ -248,6 +251,7 @@ struct PhiUse {
 
 struct InstUse {
     std::shared_ptr<Inst> ins;
+    std::shared_ptr<Block> blk;
 };
 
 struct JmpUse {
@@ -263,6 +267,7 @@ struct PhiDef {
 
 struct InstDef {
     std::shared_ptr<Inst> ins;
+    std::shared_ptr<Block> blk;
 };
 
 using Def = std::variant<PhiDef, InstDef>;

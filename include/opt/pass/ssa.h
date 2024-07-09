@@ -8,9 +8,14 @@ class MemoryToRegisterPass : public FunctionPass {
   public:
     bool run_on_function(ir::Function &func) override;
 
-    private:
+  private:
     bool _mem_to_reg(ir::InstPtr alloc_inst);
     bool _is_able_to_reg(ir::InstPtr alloc_inst);
+};
+
+class PhiInsertingPass : public FunctionPass {
+  public:
+    bool run_on_function(ir::Function &func) override;
 };
 
 } // namespace opt
