@@ -88,7 +88,9 @@ bool FillReversePostOrderPass::run_on_function(ir::Function &func) {
 
     // reverse
     for (auto it = post_order.rbegin(); it != post_order.rend(); ++it) {
-        func.rpo.push_back(*it);
+        auto elm = *it;
+        elm->rpo_id = func.rpo.size();
+        func.rpo.push_back(elm);
     }
 
     return false;
@@ -117,4 +119,58 @@ void FillReversePostOrderPass::_post_order_traverse(
     post_order.push_back(block);
 }
 
+bool opt::CooperFillDominatorsPass::run_on_function(ir::Function &func) {
+    for (auto block = func.start; block; block = block->next) {
+        block->idom = nullptr;
+        block->doms.clear();
+    }
+
+    bool improved = false;
+    do {
+        improved = false;
+        for (auto block : func.rpo) {
+            if (block == func.start) {
+                continue;
+            }
+            ir::BlockPtr new_idom = nullptr;
+            for (auto pred : block->preds) {
+                if (pred->idom || pred == func.start) {
+                    new_idom = _intersect(new_idom, pred);
+                }
+            }
+            if (new_idom != block->idom) {
+                improved = true;
+                block->idom = new_idom;
+            }
+        }
+    } while (improved);
+
+    // reversed relation
+    for (auto block = func.start; block; block = block->next) {
+        if (block->idom != nullptr) {
+            block->idom->doms.push_back(block);
+        }
+    }
+
+    return false;
+}
+
+ir::BlockPtr CooperFillDominatorsPass::_intersect(ir::BlockPtr b1,
+                                                  ir::BlockPtr b2) {
+    if (b1 == nullptr) {
+        return b2;
+    }
+    while (b1 != b2) {
+        if (b1->rpo_id < b2->rpo_id) {
+            b1.swap(b2);
+        }
+        while (b1->rpo_id > b2->rpo_id) {
+            b1 = b1->idom;
+            if (b1 == nullptr) {
+                throw std::runtime_error("cooper's fill dom algorithm fail");
+            }
+        }
+    }
+    return b1;
+}
 } // namespace opt

@@ -25,4 +25,12 @@ private:
                                      std::vector<ir::BlockPtr> &post_order);
 };
 
+class CooperFillDominatorsPass : public FunctionPass {
+public:
+    bool run_on_function(ir::Function &func) override;
+
+private:
+    ir::BlockPtr _intersect(ir::BlockPtr b1, ir::BlockPtr b2);
+};
+
 } // namespace opt
