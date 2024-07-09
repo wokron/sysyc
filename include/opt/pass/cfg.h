@@ -33,4 +33,12 @@ private:
     ir::BlockPtr _intersect(ir::BlockPtr b1, ir::BlockPtr b2);
 };
 
+class FillDominanceFrontierPass : public FunctionPass {
+public:
+    bool run_on_function(ir::Function &func) override;
+
+private:
+    bool _is_strictly_dominate(ir::BlockPtr b1, ir::BlockPtr b2);
+};
+
 } // namespace opt

@@ -188,14 +188,15 @@ struct Block {
     std::shared_ptr<Block> next;
 
     // fields below are used for optimization
-    int rpo_id; // number of reverse post order (use in cooper's fill dom)
     std::vector<std::shared_ptr<Block>> preds; // predecessors
     std::unordered_set<std::shared_ptr<Temp>> live_def, live_in,
         live_out; // liveness
     std::unordered_set<std::shared_ptr<Temp>> temps_in_block;
+    int rpo_id; // number of reverse post order (use in cooper's fill dom)
     // dominator tree
     std::shared_ptr<Block> idom; // father node
     std::vector<std::shared_ptr<Block>> doms; // child nodes
+    std::vector<std::shared_ptr<Block>> dfron; // dominance frontier
 
     static std::shared_ptr<Block> create(std::string name, Function &func);
 

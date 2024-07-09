@@ -47,7 +47,8 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
         for (auto &phi : block->phis) {
             phi->to->defs.push_back(ir::PhiDef{phi});
             for (auto [blk, arg] : phi->args) {
-                if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg); temp) {
+                if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg);
+                    temp) {
                     temp->uses.push_back(ir::PhiUse{phi, block});
                 }
             }
@@ -57,15 +58,18 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
             if (inst->to) {
                 inst->to->defs.push_back(ir::InstDef{inst});
             }
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]); temp) {
+            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
+                temp) {
                 temp->uses.push_back(ir::InstUse{inst});
             }
-            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[1]); temp) {
+            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[1]);
+                temp) {
                 temp->uses.push_back(ir::InstUse{inst});
             }
         }
         // jump
-        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block->jump.arg); temp) {
+        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block->jump.arg);
+            temp) {
             temp->uses.push_back(ir::JmpUse{block});
         }
     }
@@ -173,4 +177,51 @@ ir::BlockPtr CooperFillDominatorsPass::_intersect(ir::BlockPtr b1,
     }
     return b1;
 }
+
+bool FillDominanceFrontierPass::run_on_function(ir::Function &func) {
+    for (auto block = func.start; block; block = block->next) {
+        block->dfron.clear();
+    }
+    for (auto block = func.start; block; block = block->next) {
+        ir::BlockPtr a, b, x; // edge a -> b
+        a = block;
+        switch (block->jump.type) {
+        case ir::Jump::JNZ:
+            b = block->jump.blk[1];
+            x = a;
+            while (!_is_strictly_dominate(x, b)) {
+                x->dfron.push_back(b);
+                x = x->idom;
+            }
+            // fallthrough
+        case ir::Jump::JMP:
+            b = block->jump.blk[0];
+            x = a;
+            while (!_is_strictly_dominate(x, b)) {
+                x->dfron.push_back(b);
+                x = x->idom;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    return false;
+}
+
+bool FillDominanceFrontierPass::_is_strictly_dominate(ir::BlockPtr b1,
+                                                      ir::BlockPtr b2) {
+    if (b1 == nullptr || b2 == nullptr) {
+        throw std::runtime_error("fail to fill dominate frontier");
+    }
+    if (b1 == b2) {
+        return true;
+    }
+    while (b2->rpo_id > b1->rpo_id) {
+        b2 = b2->idom;
+    }
+    return b1 == b2;
+}
+
 } // namespace opt
