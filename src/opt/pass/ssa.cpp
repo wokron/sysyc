@@ -113,10 +113,20 @@ bool opt::PhiInsertingPass::run_on_function(ir::Function &func) {
 
             for (auto df : block->dfron) {
                 if (phi_inserted_blocks.find(df) == phi_inserted_blocks.end()) {
-                    df->phis.push_back(std::make_shared<ir::Phi>(
-                        temp->get_type(), temp)); // %temp =t phi ...
+                    // insert phi
+                    decltype(ir::Phi::args) phi_args;
+                    for (auto pred : block->preds) {
+                        phi_args.push_back({pred, temp});
+                    }
+                    auto phi = std::make_shared<ir::Phi>(
+                        temp->get_type(), temp,
+                        phi_args); // %temp =t phi @b1 %temp, @b2 %temp, ...
+                    df->phis.push_back(phi);
+                    temp->defs.push_back(ir::PhiDef{phi, df});
+
                     worklist.insert(df);
                     if (temp_def_blocks.find(df) == temp_def_blocks.end()) {
+                        temp_def_blocks.insert(df);
                         worklist.insert(df);
                     }
                 }
@@ -125,4 +135,94 @@ bool opt::PhiInsertingPass::run_on_function(ir::Function &func) {
     }
 
     return false;
+}
+
+bool opt::VariableRenamingPass::run_on_function(ir::Function &func) {
+    RenameStack rename_stack;
+    for (auto temp : func.temps_in_func) {
+        rename_stack.insert({temp, std::stack<ir::TempPtr>()});
+    }
+    _dom_tree_preorder_traversal(func.start, rename_stack, func.temp_counter);
+
+    return false;
+}
+
+void opt::VariableRenamingPass::_dom_tree_preorder_traversal(
+    ir::BlockPtr block, RenameStack &rename_stack, uint &temp_counter) {
+    std::vector<ir::TempPtr> renamed_temps;
+    for (auto phi : block->phis) {
+        auto new_temp = _create_temp_from(phi->to, temp_counter);
+        new_temp->defs.push_back(ir::PhiDef{phi, block});
+
+        rename_stack.at(phi->to).push(new_temp);
+        renamed_temps.push_back(phi->to);
+        phi->to = new_temp;
+    }
+
+    for (auto inst : block->insts) {
+        // uses
+        for (int i = 0; i < 2; i++)
+            if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i])) {
+                if (rename_stack.at(temp).empty()) {
+                    throw std::runtime_error("use must after def");
+                }
+                inst->arg[i] = rename_stack.at(temp).top();
+            }
+        // def
+        if (inst->to != nullptr) {
+            if (inst->to->defs.size() == 1) { // don't need to rename
+                rename_stack.at(inst->to).push(inst->to);
+                renamed_temps.push_back(inst->to);
+            } else {
+                auto new_temp = _create_temp_from(inst->to, temp_counter);
+                new_temp->defs.push_back(ir::InstDef{inst, block});
+
+                rename_stack.at(inst->to).push(new_temp);
+                renamed_temps.push_back(inst->to);
+                inst->to = new_temp;
+            }
+        }
+
+        std::vector<ir::BlockPtr> succs;
+        switch (block->jump.type) {
+        case ir::Jump::JNZ:
+            succs.push_back(block->jump.blk[1]);
+        case ir::Jump::JMP:
+            succs.push_back(block->jump.blk[0]);
+            break;
+        default:
+            break;
+        }
+
+        for (auto succ : succs) {
+            for (auto phi : succ->phis) {
+                for (auto &[src_block, value] : phi->args) {
+                    auto temp = std::dynamic_pointer_cast<ir::Temp>(value);
+                    if (temp && src_block == block) {
+                        auto &temp_rename_stack = rename_stack.at(temp);
+                        value = temp_rename_stack.empty()
+                                    ? nullptr
+                                    : temp_rename_stack.top();
+                    }
+                }
+            }
+        }
+
+        for (auto child : block->doms) {
+            _dom_tree_preorder_traversal(child, rename_stack, temp_counter);
+        }
+
+        for (auto temp : renamed_temps) {
+            rename_stack.at(temp).pop();
+        }
+    }
+}
+
+ir::TempPtr opt::VariableRenamingPass::_create_temp_from(ir::TempPtr old_temp,
+                                                         uint &temp_counter) {
+    auto name = old_temp->name + "." + std::to_string(old_temp->id);
+    auto new_temp = std::make_shared<ir::Temp>(name, old_temp->get_type(),
+                                               std::vector<ir::Def>{});
+    new_temp->id = temp_counter++;
+    return new_temp;
 }
