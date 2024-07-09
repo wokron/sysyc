@@ -58,3 +58,5 @@ OP(ISWTOF, "swtof")
 OP(IPAR, "par")
 OP(IARG, "arg")
 OP(ICALL, "call")
+
+OP(ICOPY, "copy")
