@@ -1,4 +1,5 @@
 #include "opt/pass/dead.h"
+#include <algorithm>
 
 bool opt::SimpleDeadCodeEliminationPass::run_on_function(ir::Function &func) {
     _frontier.clear();
