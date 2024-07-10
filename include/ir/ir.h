@@ -147,18 +147,17 @@ struct Inst {
 struct Block;
 
 struct Phi {
-    Type ty;
     std::shared_ptr<Temp> to;
     std::vector<std::pair<std::shared_ptr<Block>, std::shared_ptr<Value>>> args;
 
     // fields below are used for optimization
     bool marked = false;
 
-    Phi(Type ty, std::shared_ptr<Temp> to, decltype(args) args)
-        : ty(ty), to(to), args(args) {}
+    Phi(std::shared_ptr<Temp> to, decltype(args) args)
+        : to(to), args(args) {}
     
-    Phi(Type ty, std::shared_ptr<Temp> to)
-        : ty(ty), to(to), args(decltype(args){}) {}
+    Phi(std::shared_ptr<Temp> to)
+        : to(to), args(decltype(args){}) {}
 
     void emit(std::ostream &out) const;
 };

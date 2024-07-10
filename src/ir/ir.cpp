@@ -82,7 +82,7 @@ void Inst::emit(std::ostream &out) const {
 
 void Phi::emit(std::ostream &out) const {
     to->emit(out);
-    out << " =" << ty << " phi ";
+    out << " =" << type_to_string(to->type) << " phi ";
     bool first = true;
     for (auto &[block, value] : args) {
         if (first) {
@@ -91,7 +91,11 @@ void Phi::emit(std::ostream &out) const {
             out << ", ";
         }
         out << "@" << block->get_name() << " ";
-        value->emit(out);
+        if (value == nullptr) {
+            out << "nil";
+        } else {
+            value->emit(out);
+        }
     }
 }
 

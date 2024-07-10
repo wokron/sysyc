@@ -47,7 +47,7 @@ bool opt::MemoryToRegisterPass::_mem_to_reg(ir::InstPtr alloc_inst) {
             used_inst->arg[1] = nullptr;
 
             temp->type = used_inst->arg[0]->get_type();
-            temp->defs.push_back(ir::InstDef{used_inst});
+            temp->defs.push_back(ir::InstDef{used_inst, instuse->blk});
             break;
         case ir::InstType::ILOADS:
         case ir::InstType::ILOADL:
@@ -56,7 +56,7 @@ bool opt::MemoryToRegisterPass::_mem_to_reg(ir::InstPtr alloc_inst) {
             // %to =t copy %temp
             used_inst->insttype = ir::InstType::ICOPY;
             temp->type = used_inst->to->get_type();
-            temp->uses.push_back(ir::InstUse{used_inst});
+            temp->uses.push_back(ir::InstUse{used_inst, instuse->blk});
             break;
         default:
             throw std::logic_error("unable to mem2reg");
@@ -102,6 +102,10 @@ bool opt::PhiInsertingPass::run_on_function(ir::Function &func) {
             temp_def_blocks.insert(instdef->blk);
         }
 
+        if (temp_def_blocks.size() == 1) {
+            continue;
+        }
+
         std::unordered_set<ir::BlockPtr> phi_inserted_blocks;
         std::unordered_set<ir::BlockPtr> worklist(temp_def_blocks.begin(),
                                                   temp_def_blocks.end());
@@ -115,11 +119,11 @@ bool opt::PhiInsertingPass::run_on_function(ir::Function &func) {
                 if (phi_inserted_blocks.find(df) == phi_inserted_blocks.end()) {
                     // insert phi
                     decltype(ir::Phi::args) phi_args;
-                    for (auto pred : block->preds) {
+                    for (auto pred : df->preds) {
                         phi_args.push_back({pred, temp});
                     }
                     auto phi = std::make_shared<ir::Phi>(
-                        temp->get_type(), temp,
+                        temp,
                         phi_args); // %temp =t phi @b1 %temp, @b2 %temp, ...
                     df->phis.push_back(phi);
                     temp->defs.push_back(ir::PhiDef{phi, df});
@@ -182,39 +186,38 @@ void opt::VariableRenamingPass::_dom_tree_preorder_traversal(
                 inst->to = new_temp;
             }
         }
+    }
 
-        std::vector<ir::BlockPtr> succs;
-        switch (block->jump.type) {
-        case ir::Jump::JNZ:
-            succs.push_back(block->jump.blk[1]);
-        case ir::Jump::JMP:
-            succs.push_back(block->jump.blk[0]);
-            break;
-        default:
-            break;
-        }
+    std::vector<ir::BlockPtr> succs;
+    switch (block->jump.type) {
+    case ir::Jump::JNZ:
+        succs.push_back(block->jump.blk[1]);
+    case ir::Jump::JMP:
+        succs.push_back(block->jump.blk[0]);
+        break;
+    default:
+        break;
+    }
 
-        for (auto succ : succs) {
-            for (auto phi : succ->phis) {
-                for (auto &[src_block, value] : phi->args) {
-                    auto temp = std::dynamic_pointer_cast<ir::Temp>(value);
-                    if (temp && src_block == block) {
-                        auto &temp_rename_stack = rename_stack.at(temp);
-                        value = temp_rename_stack.empty()
-                                    ? nullptr
-                                    : temp_rename_stack.top();
-                    }
+    for (auto succ : succs) {
+        for (auto phi : succ->phis) {
+            for (auto &[src_block, value] : phi->args) {
+                auto temp = std::dynamic_pointer_cast<ir::Temp>(value);
+                if (temp && src_block == block) {
+                    auto &temp_rename_stack = rename_stack.at(temp);
+                    value = temp_rename_stack.empty() ? nullptr
+                                                      : temp_rename_stack.top();
                 }
             }
         }
+    }
 
-        for (auto child : block->doms) {
-            _dom_tree_preorder_traversal(child, rename_stack, temp_counter);
-        }
+    for (auto child : block->doms) {
+        _dom_tree_preorder_traversal(child, rename_stack, temp_counter);
+    }
 
-        for (auto temp : renamed_temps) {
-            rename_stack.at(temp).pop();
-        }
+    for (auto temp : renamed_temps) {
+        rename_stack.at(temp).pop();
     }
 }
 

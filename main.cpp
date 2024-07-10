@@ -13,6 +13,12 @@ using Passes =
                       opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
                       opt::FillIntervalPass>;
 
+using TestPasses =
+    opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
+                      opt::FillPredsPass, opt::FillReversePostOrderPass,
+                      opt::FillUsesPass, opt::CooperFillDominatorsPass,
+                      opt::FillDominanceFrontierPass, opt::MemoryToRegisterPass, opt::PhiInsertingPass, opt::VariableRenamingPass>;
+
 struct Options {
     bool optimize = false;
     bool emit_ast = false;
@@ -63,7 +69,7 @@ void compile(const char *name, const Options &options,
     }
 
     ir::Module module;
-    Visitor visitor(module, options.optimize);
+    Visitor visitor(module, false);
     visitor.visit(*root);
 
     if (has_error()) {
@@ -71,7 +77,7 @@ void compile(const char *name, const Options &options,
     }
 
     if (options.optimize) {
-        Passes pass;
+        TestPasses pass;
         pass.run(module);
     }
 
