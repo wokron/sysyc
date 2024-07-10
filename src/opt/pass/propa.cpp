@@ -53,7 +53,8 @@ bool opt::ConstAndCopyPropagationPass::run_on_basic_block(ir::Block &block) {
     return false;
 }
 
-ir::ValuePtr opt::ConstAndCopyPropagationPass::_fold_if_can(const ir::Inst &inst) {
+ir::ValuePtr
+opt::ConstAndCopyPropagationPass::_fold_if_can(const ir::Inst &inst) {
     switch (inst.insttype) {
     case ir::InstType::ICOPY:
         return inst.arg[0];
@@ -88,4 +89,59 @@ ir::ValuePtr opt::ConstAndCopyPropagationPass::_fold_if_can(const ir::Inst &inst
     default:
         return nullptr;
     }
+}
+
+bool opt::CopyPropagationPass::run_on_function(ir::Function &func) {
+    bool changed = false;
+    std::unordered_map<ir::ValuePtr, ir::ValuePtr> copy_map;
+    for (auto temp : func.temps_in_func) {
+        if (temp->defs.size() != 1) {
+            throw std::logic_error("ssa is required");
+        }
+        auto iter_temp = temp;
+        do {
+            auto instdef = std::get_if<ir::InstDef>(&iter_temp->defs[0]);
+            if (instdef == nullptr) {
+                break;
+            }
+            auto inst = instdef->ins;
+            if (inst->insttype != ir::InstType::ICOPY) {
+                break;
+            }
+            copy_map[temp] = inst->arg[0]; // insert will not replace the old
+                                           // value, so we use []
+            changed = true;
+            iter_temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
+        } while (iter_temp != nullptr);
+    }
+
+    for (auto temp : func.temps_in_func) {
+        auto it = copy_map.find(temp);
+        if (it == copy_map.end()) {
+            continue;
+        }
+
+        auto target = it->second;
+
+        for (auto use : temp->uses) {
+            if (auto instuse = std::get_if<ir::InstUse>(&use)) {
+                for (int i = 0; i < 2; i++)
+                    if (temp == instuse->ins->arg[i]) {
+                        instuse->ins->arg[i] = target;
+                    }
+            } else if (auto phiuse = std::get_if<ir::PhiUse>(&use)) {
+                for (auto &[block, value] : phiuse->phi->args) {
+                    if (temp == value) {
+                        value = target;
+                    }
+                }
+            } else if (auto jumpuse = std::get_if<ir::JmpUse>(&use)) {
+                jumpuse->blk->jump.arg = target;
+            } else {
+                throw std::runtime_error("invalid use");
+            }
+        }
+    }
+
+    return changed;
 }

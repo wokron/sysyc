@@ -15,4 +15,9 @@ class ConstAndCopyPropagationPass : public BasicBlockPass {
     ir::Folder _folder;
 };
 
+class CopyPropagationPass : public FunctionPass {
+public:
+    bool run_on_function(ir::Function &func) override;
+};
+
 } // namespace opt
