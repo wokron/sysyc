@@ -32,4 +32,6 @@ class VariableRenamingPass : public FunctionPass {
     ir::TempPtr _create_temp_from(ir::TempPtr old_temp, uint &temp_counter);
 };
 
+using SSAConstructPass = PassPipeline<opt::MemoryToRegisterPass, opt::PhiInsertingPass, opt::VariableRenamingPass>;
+
 } // namespace opt
