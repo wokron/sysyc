@@ -2,19 +2,26 @@
 
 # this script is used for building the compiler
 
-# if build directory does not exist, create it
-if [ ! -d "build" ]; then
-    mkdir build
+profile="build"
+flag=""
+if [ "$1" == "debug" ]; then
+    profile="debug"
+    flag="$flag -DCMAKE_BUILD_TYPE=Debug"
 fi
 
-# enter build directory
-cd build
+# if profile directory does not exist, create it
+if [ ! -d $profile ]; then
+    mkdir $profile
+fi
+
+# enter profile directory
+cd $profile
 
 # run cmake
-cmake ..
+cmake .. $flag
 
 # build the project
 make
 
-# exit build directory
+# exit profile directory
 cd ..
