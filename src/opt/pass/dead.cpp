@@ -35,8 +35,8 @@ void opt::SimpleDeadCodeEliminationPass::_mark_always_alive(
 }
 
 void opt::SimpleDeadCodeEliminationPass::_mark_all_alive(ir::Function &func) {
-    std::unordered_set<ir::TempPtr> new_frontier;
     while (!_frontier.empty()) {
+        std::unordered_set<ir::TempPtr> new_frontier;
         for (auto frontier_temp : _frontier) {
             for (auto def : frontier_temp->defs) {
                 if (auto instdef = std::get_if<ir::InstDef>(&def)) {
