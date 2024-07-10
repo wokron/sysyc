@@ -8,9 +8,10 @@
 #include <fstream>
 #include <getopt.h>
 
-using Passes =
-    opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
-                      opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+using Passes = opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass>;
+
+using RegisterPass =
+    opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
                       opt::FillIntervalPass>;
 
 struct Options {
@@ -85,6 +86,9 @@ void compile(const char *name, const Options &options,
     }
 
     // TODO: ir to asm
+
+    RegisterPass reg_pass;
+    reg_pass.run(module);
 
     std::cerr << "Register allocation:" << std::endl;
     for (auto &func : module.functions) {
