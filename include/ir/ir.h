@@ -47,7 +47,7 @@ struct Address : public Const {
 
     std::string get_asm_value() override { return name; }
 
-private:
+  private:
     static std::unordered_map<std::string, std::shared_ptr<Address>>
         addrcon_cache;
 };
@@ -96,7 +96,7 @@ struct ConstBits : public Const {
         }
     }
 
-private:
+  private:
     static std::unordered_map<float, std::shared_ptr<ConstBits>> floatcon_cache;
     static std::unordered_map<int, std::shared_ptr<ConstBits>> intcon_cache;
 };
@@ -141,6 +141,16 @@ struct Inst {
                                         std::shared_ptr<Value> arg1);
 
     void emit(std::ostream &out) const;
+
+    void modify_args(const std::shared_ptr<Value> &old_value,
+                     const std::shared_ptr<Value> &new_value) {
+        if (arg[0] == old_value) {
+            arg[0] = new_value;
+        }
+        if (arg[1] == old_value) {
+            arg[1] = new_value;
+        }
+    }
 };
 
 struct Block;
@@ -150,10 +160,21 @@ struct Phi {
     std::shared_ptr<Temp> to;
     std::vector<std::pair<std::shared_ptr<Block>, std::shared_ptr<Value>>> args;
 
-    Phi(Type ty, std::shared_ptr<Temp> to, decltype(args) args)
+    Phi(Type ty, std::shared_ptr<Temp> to, decltype(args) args = {})
         : ty(ty), to(to), args(args) {}
 
     void emit(std::ostream &out) const;
+
+    void modify_args(const std::shared_ptr<Value> &old_value,
+                     const std::shared_ptr<Block> &new_block,
+                     const std::shared_ptr<Value> &new_value) {
+        for (auto &arg : args) {
+            if (arg.second == old_value) {
+                arg.first = new_block;
+                arg.second = new_value;
+            }
+        }
+    }
 };
 
 struct Jump {
@@ -184,12 +205,12 @@ struct Block {
     std::shared_ptr<Block> next;
 
     // fields below are used for optimization
-    std::vector<std::shared_ptr<Block>> preds; // predecessors
-    std::vector<std::shared_ptr<Block>> succs; // successors
-    std::unordered_set<std::shared_ptr<Block>> dom_list; // dom list
+    std::vector<std::shared_ptr<Block>> preds;               // predecessors
+    std::vector<std::shared_ptr<Block>> succs;               // successors
+    std::unordered_set<std::shared_ptr<Block>> dom_list;     // dom list
     std::unordered_set<std::shared_ptr<Block>> dom_children; // dom children
-    std::shared_ptr<Block> dom_parent; //dom parent
-    std::unordered_set<std::shared_ptr<Block>> df_list; // df list
+    std::shared_ptr<Block> dom_parent;                       // dom parent
+    std::unordered_set<std::shared_ptr<Block>> df_list;      // df list
     std::unordered_set<std::shared_ptr<Temp>> live_def, live_in,
         live_out; // liveness
     std::unordered_set<std::shared_ptr<Temp>> temps_in_block;
@@ -258,6 +279,7 @@ struct PhiDef {
 
 struct InstDef {
     std::shared_ptr<Inst> ins;
+    std::shared_ptr<Block> blk;
 };
 
 using Def = std::variant<PhiDef, InstDef>;

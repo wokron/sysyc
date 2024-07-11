@@ -51,7 +51,7 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
     for (auto block = func.start; block; block = block->next) {
         // phi
         for (auto &phi : block->phis) {
-            phi->to->defs.push_back(ir::PhiDef{phi});
+            phi->to->defs.push_back(ir::PhiDef{phi,block});
             for (auto [blk, arg] : phi->args) {
                 if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg);
                     temp) {
@@ -62,7 +62,7 @@ bool FillUsesPass::run_on_function(ir::Function &func) {
         // inst
         for (auto &inst : block->insts) {
             if (inst->to) {
-                inst->to->defs.push_back(ir::InstDef{inst});
+                inst->to->defs.push_back(ir::InstDef{inst,block});
             }
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
                 temp) {
@@ -127,7 +127,7 @@ void FillReversePostOrderPass::_post_order_traverse(
     post_order.push_back(block);
 }
 
-void dfs_exclude(ir::BlockPtr exclude_block,
+void DomListPass::dfs_exclude(ir::BlockPtr exclude_block,
                  ir::BlockPtr cur_block) {
     if (exclude_block == cur_block) {
         return;

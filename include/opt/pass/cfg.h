@@ -28,6 +28,9 @@ class FillReversePostOrderPass : public FunctionPass {
 class DomListPass : public FunctionPass {
   public:
     bool run_on_function(ir::Function &func) override;
+
+  private:
+    void dfs_exclude(ir::BlockPtr exclude_block, ir::BlockPtr cur_block);
 };
 
 class DomTreePass : public FunctionPass {
