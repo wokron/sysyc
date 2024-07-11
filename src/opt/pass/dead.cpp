@@ -20,8 +20,8 @@ void opt::SimpleDeadCodeEliminationPass::_mark_always_alive(
                 _insert_if_temp(_frontier, inst->arg[1]);
             } else if (inst->insttype == ir::InstType::IPAR) {
                 inst->marked = true;
-                _insert_if_temp(_frontier, inst->arg[0]);
             } else if (inst->insttype == ir::InstType::IARG) {
+                _insert_if_temp(_frontier, inst->arg[0]);
                 inst->marked = true;
             } else if (inst->insttype == ir::InstType::ICALL) {
                 inst->marked = true;

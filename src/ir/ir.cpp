@@ -92,7 +92,7 @@ void Phi::emit(std::ostream &out) const {
         }
         out << "@" << block->get_name() << " ";
         if (value == nullptr) {
-            out << "nil";
+            out << "0"; // hope this can compile
         } else {
             value->emit(out);
         }

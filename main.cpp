@@ -8,7 +8,13 @@
 #include <fstream>
 #include <getopt.h>
 
-using Passes = opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass>;
+using Passes =
+    opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
+                      opt::FillPredsPass, opt::FillReversePostOrderPass,
+                      opt::FillUsesPass, opt::CooperFillDominatorsPass,
+                      opt::FillDominanceFrontierPass, opt::SSAConstructPass,
+                      opt::FillUsesPass, opt::CopyPropagationPass,
+                      opt::SimpleDeadCodeEliminationPass>;
 
 using RegisterPass =
     opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
@@ -18,8 +24,9 @@ using TestPasses =
     opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
                       opt::FillPredsPass, opt::FillReversePostOrderPass,
                       opt::FillUsesPass, opt::CooperFillDominatorsPass,
-                      opt::FillDominanceFrontierPass, opt::SSAConstructPass,
-                      opt::FillUsesPass, opt::CopyPropagationPass, opt::SimpleDeadCodeEliminationPass>;
+                      opt::FillDominanceFrontierPass, opt::MemoryToRegisterPass,
+                      opt::PhiInsertingPass, opt::VariableRenamingPass,
+                      opt::SimpleDeadCodeEliminationPass>;
 
 struct Options {
     bool optimize = false;
