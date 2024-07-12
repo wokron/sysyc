@@ -26,7 +26,7 @@ using TestPasses =
                       opt::FillUsesPass, opt::CooperFillDominatorsPass,
                       opt::FillDominanceFrontierPass, opt::MemoryToRegisterPass,
                       opt::PhiInsertingPass, opt::VariableRenamingPass,
-                      opt::SimpleDeadCodeEliminationPass>;
+                      opt::SimpleDeadCodeEliminationPass, opt::SSADestructPass>;
 
 struct Options {
     bool optimize = false;
