@@ -1,6 +1,6 @@
 #include "opt/pass/propa.h"
 
-bool opt::ConstAndCopyPropagationPass::run_on_basic_block(ir::Block &block) {
+bool opt::LocalConstAndCopyPropagationPass::run_on_basic_block(ir::Block &block) {
     std::unordered_map<ir::ValuePtr, ir::ValuePtr> propagate_map;
 
     for (auto phi : block.phis) {
@@ -54,7 +54,7 @@ bool opt::ConstAndCopyPropagationPass::run_on_basic_block(ir::Block &block) {
 }
 
 ir::ValuePtr
-opt::ConstAndCopyPropagationPass::_fold_if_can(const ir::Inst &inst) {
+opt::LocalConstAndCopyPropagationPass::_fold_if_can(const ir::Inst &inst) {
     switch (inst.insttype) {
     case ir::InstType::ICOPY:
         return inst.arg[0];

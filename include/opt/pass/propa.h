@@ -10,7 +10,7 @@ namespace opt {
  * @note Nothing is required before this pass.
  * @warning This pass will break use-def relationship filled by `FillUsesPass`
  */
-class ConstAndCopyPropagationPass : public BasicBlockPass {
+class LocalConstAndCopyPropagationPass : public BasicBlockPass {
   public:
     bool run_on_basic_block(ir::Block &block) override;
 

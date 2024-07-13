@@ -20,13 +20,14 @@ using RegisterPass =
     opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
                       opt::FillIntervalPass>;
 
-using TestPasses =
-    opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
-                      opt::FillPredsPass, opt::FillReversePostOrderPass,
-                      opt::FillUsesPass, opt::CooperFillDominatorsPass,
-                      opt::FillDominanceFrontierPass, opt::SSAConstructPass,
-                      opt::SimpleDeadCodeEliminationPass, opt::FillUsesPass,
-                      opt::CopyPropagationPass>;
+using TestPasses = opt::PassPipeline<
+    opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillPredsPass,
+    opt::FillReversePostOrderPass, opt::FillUsesPass,
+    opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
+    opt::SSAConstructPass, opt::FillUsesPass, opt::CopyPropagationPass,
+    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::SSADestructPass,
+    opt::LocalConstAndCopyPropagationPass, opt::FillUsesPass,
+    opt::SimpleDeadCodeEliminationPass>;
 
 struct Options {
     bool optimize = false;
