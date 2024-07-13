@@ -1,4 +1,5 @@
 #include "opt/pass/ssa.h"
+#include <algorithm>
 
 bool opt::MemoryToRegisterPass::run_on_function(ir::Function &func) {
     bool changed = false;

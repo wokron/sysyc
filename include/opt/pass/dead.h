@@ -4,6 +4,12 @@
 #include <unordered_set>
 
 namespace opt {
+
+/**
+ * @brief Simple dead code elimination pass
+ * @note This pass requires `FillUsesPass`
+ * @warning This pass will break use-def relationship filled by `FillUsesPass`
+ */
 class SimpleDeadCodeEliminationPass : public FunctionPass {
   public:
     bool run_on_function(ir::Function &func) override;

@@ -11,7 +11,8 @@ namespace opt {
  * @note Empty blocks are blocks without any instructions or phi nodes.
  * @note This pass will make empty block unreachable, so they can be removed
  * later by UnreachableBlockRemovalPass.
- * @warning This pass will break predecessor relationship.
+ * @note Nothing is required before this pass.
+ * @warning This pass will break predecessor relationship filled by `FillPredsPass`.
  */
 class EmptyBlockRemovalPass : public FunctionPass {
 public:
@@ -30,6 +31,8 @@ private:
  * successor.
  * @note This pass will make some blocks unreachable, so they can be removed
  * later by UnreachableBlockRemovalPass.
+ * @note Requires `FillPredsPass` to be run before.
+ * @warning This pass will break predecessor relationship filled by `FillPredsPass`.
  */
 class BlockMergingPass : public FunctionPass {
 public:
@@ -40,7 +43,7 @@ public:
  * @brief Pass to remove unreachable blocks.
  * @note This pass will remove blocks that are not reachable
  * from the entry block.
- * @warning This pass will break predecessor relationship.
+ * @note Nothing is required before this pass.
  */
 class UnreachableBlockRemovalPass : public FunctionPass {
 public:
@@ -57,11 +60,10 @@ private:
 
 /**
  * @brief Pass to simplify CFG.
- * @note This pass is a pipeline of EmptyBlockRemovalPass, BlockMergingPass,
- * and UnreachableBlockRemovalPass.
  * @note This pass will remove empty blocks, merge blocks, and remove
  * unreachable blocks.
- * @warning This pass will break predecessor relationship
+ * @note Requires `FillPredsPass` to be run before.
+ * @warning This pass will break predecessor relationship filled by `FillPredsPass`.
  */
 using SimplifyCFGPass =
     PassPipeline<BlockMergingPass, EmptyBlockRemovalPass,
