@@ -3,6 +3,16 @@
 
 bool opt::SimpleDeadCodeEliminationPass::run_on_function(ir::Function &func) {
     _frontier.clear();
+    // init marked
+    for (auto block = func.start; block; block = block->next) {
+        for (auto phi : block->phis) {
+            phi->marked = false;
+        }
+        for (auto inst : block->insts) {
+            inst->marked = false;
+        }
+    }
+
     _mark_always_alive(func);
     _mark_all_alive(func);
     return _remove_unmarked(func);

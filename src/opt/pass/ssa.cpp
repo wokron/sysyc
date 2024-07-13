@@ -369,6 +369,9 @@ void opt::SSADestructPass::_parallel_copy_to_sequential(
 
 void opt::SSADestructPass::_emit_copy(ir::BlockPtr block, ir::ValuePtr to,
                                       ir::ValuePtr from) {
+    if (from == nullptr) { // no need to copy
+        return;
+    }
     auto to_temp = std::dynamic_pointer_cast<ir::Temp>(to);
     if (to_temp == nullptr) {
         throw std::runtime_error("copy target is not tmep");
