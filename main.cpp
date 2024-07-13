@@ -24,8 +24,9 @@ using TestPasses =
     opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
                       opt::FillPredsPass, opt::FillReversePostOrderPass,
                       opt::FillUsesPass, opt::CooperFillDominatorsPass,
-                      opt::FillDominanceFrontierPass, opt::SSAConstructPass, opt::FillUsesPass,
-                      opt::SimpleDeadCodeEliminationPass, opt::SSADestructPass>;
+                      opt::FillDominanceFrontierPass, opt::SSAConstructPass,
+                      opt::SimpleDeadCodeEliminationPass, opt::FillUsesPass,
+                      opt::CopyPropagationPass>;
 
 struct Options {
     bool optimize = false;

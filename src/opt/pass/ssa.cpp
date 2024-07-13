@@ -18,18 +18,18 @@ bool opt::MemoryToRegisterPass::_mem_to_reg(ir::InstPtr alloc_inst) {
     }
 
     // just use to as new temp, and replace alloc
-    // %temp =l allocn <bytes>
-    // nop
+    // before: %temp =l allocn <bytes>
+    // after: %temp =t copy 0
     auto temp = alloc_inst->to;
-    temp->defs.clear();
-    temp->type = ir::Type::X;
+    temp->type = ir::Type::W; // default type for var that never use or define
     std::vector<ir::Use> uses(temp->uses.begin(), temp->uses.end());
     temp->uses.clear();
 
-    alloc_inst->insttype = ir::InstType::INOP;
-    alloc_inst->arg[0] = nullptr;
+    // attention, here we use copy instead of nop because we need to keep the
+    // life range of temp, this is important for phi inserting pass
+    alloc_inst->insttype = ir::InstType::ICOPY;
+    alloc_inst->arg[0] = ir::ConstBits::get(0);
     alloc_inst->arg[1] = nullptr;
-    alloc_inst->to = nullptr;
 
     for (auto use : uses) {
         auto instuse = std::get_if<ir::InstUse>(&use);
@@ -41,8 +41,8 @@ bool opt::MemoryToRegisterPass::_mem_to_reg(ir::InstPtr alloc_inst) {
         case ir::InstType::ISTORES:
         case ir::InstType::ISTOREL:
         case ir::InstType::ISTOREW:
-            // store %from %temp
-            // %temp =t copy %from
+            // before: store %from %temp
+            // after: %temp =t copy %from
             used_inst->insttype = ir::InstType::ICOPY;
             used_inst->to = temp;
             used_inst->arg[1] = nullptr;
@@ -53,8 +53,8 @@ bool opt::MemoryToRegisterPass::_mem_to_reg(ir::InstPtr alloc_inst) {
         case ir::InstType::ILOADS:
         case ir::InstType::ILOADL:
         case ir::InstType::ILOADW:
-            // %to =t load %temp
-            // %to =t copy %temp
+            // before: %to =t load %temp
+            // after: %to =t copy %temp
             used_inst->insttype = ir::InstType::ICOPY;
             temp->type = used_inst->to->get_type();
             temp->uses.push_back(ir::InstUse{used_inst, instuse->blk});
@@ -169,7 +169,7 @@ void opt::VariableRenamingPass::_dom_tree_preorder_traversal(
         for (int i = 0; i < 2; i++)
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i])) {
                 if (rename_stack.at(temp).empty()) {
-                    continue; // keep the original temp
+                    throw std::runtime_error("use before def");
                 }
                 inst->arg[i] = rename_stack.at(temp).top();
             }
