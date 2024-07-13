@@ -8,19 +8,7 @@
 #include <fstream>
 #include <getopt.h>
 
-using Passes =
-    opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass,
-                      opt::FillPredsPass, opt::FillReversePostOrderPass,
-                      opt::FillUsesPass, opt::CooperFillDominatorsPass,
-                      opt::FillDominanceFrontierPass, opt::SSAConstructPass,
-                      opt::FillUsesPass, opt::CopyPropagationPass,
-                      opt::SimpleDeadCodeEliminationPass>;
-
-using RegisterPass =
-    opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
-                      opt::FillIntervalPass>;
-
-using TestPasses = opt::PassPipeline<
+using Passes = opt::PassPipeline<
     opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillPredsPass,
     opt::FillReversePostOrderPass, opt::FillUsesPass,
     opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
@@ -28,6 +16,10 @@ using TestPasses = opt::PassPipeline<
     opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::SSADestructPass,
     opt::LocalConstAndCopyPropagationPass, opt::FillUsesPass,
     opt::SimpleDeadCodeEliminationPass>;
+
+using RegisterPasses =
+    opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+                      opt::FillIntervalPass>;
 
 struct Options {
     bool optimize = false;
@@ -87,7 +79,7 @@ void compile(const char *name, const Options &options,
     }
 
     if (options.optimize) {
-        TestPasses pass;
+        Passes pass;
         pass.run(module);
     }
 
@@ -102,7 +94,7 @@ void compile(const char *name, const Options &options,
 
     // TODO: ir to asm
 
-    RegisterPass reg_pass;
+    RegisterPasses reg_pass;
     reg_pass.run(module);
 
     std::cerr << "Register allocation:" << std::endl;
