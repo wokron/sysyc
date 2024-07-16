@@ -12,8 +12,8 @@ using Passes = opt::PassPipeline<
     opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillPredsPass,
     opt::FillReversePostOrderPass, opt::FillUsesPass,
     opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
-    opt::SSAConstructPass, opt::FillUsesPass, opt::CopyPropagationPass,
-    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::SSADestructPass,
+    opt::SSAConstructPass, opt::FillInlinePass, opt::FunctionInliningPass, opt::FillUsesPass, opt::CopyPropagationPass,
+    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass, opt::SSADestructPass,
     opt::LocalConstAndCopyPropagationPass, opt::FillUsesPass,
     opt::SimpleDeadCodeEliminationPass>;
 

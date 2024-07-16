@@ -10,11 +10,28 @@ namespace opt {
  * @note Nothing is required before this pass.
  */
 class FillLeafPass : public ModulePass {
-public:
+  public:
     bool run_on_module(ir::Module &module) override;
 
-private:
+  private:
     bool _is_leaf_function(ir::Function &func);
+};
+
+
+class FillInlinePass : public FunctionPass {
+  public:
+    bool run_on_function(ir::Function &func) override;
+};
+
+class FunctionInliningPass : public FunctionPass {
+  public:
+    bool run_on_function(ir::Function &func) override;
+
+  private:
+    void _do_inline(ir::BlockPtr prev, ir::Function &inline_func,
+                    ir::Function &target_func,
+                    const std::vector<ir::ValuePtr> &args,
+                    std::vector<std::pair<ir::BlockPtr, ir::ValuePtr>> &rets);
 };
 
 } // namespace opt
