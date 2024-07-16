@@ -9,7 +9,7 @@
 
 namespace ir {
 
-static std::unordered_map<InstType, std::string> inst2name = {
+std::unordered_map<InstType, std::string> inst2name = {
 #define OP(op, name) {op, name},
 #include "ir/ops.h"
 #undef OP

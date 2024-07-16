@@ -129,6 +129,8 @@ enum InstType {
 
 };
 
+extern std::unordered_map<InstType, std::string> inst2name;
+
 struct Temp;
 
 struct Inst {
