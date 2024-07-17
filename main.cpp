@@ -12,10 +12,10 @@ using Passes = opt::PassPipeline<
     opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillPredsPass,
     opt::FillReversePostOrderPass, opt::FillUsesPass,
     opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
-    opt::SSAConstructPass, opt::FillInlinePass, opt::FunctionInliningPass, opt::FillUsesPass, opt::CopyPropagationPass,
-    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass, opt::SSADestructPass,
-    opt::LocalConstAndCopyPropagationPass, opt::FillUsesPass,
-    opt::SimpleDeadCodeEliminationPass>;
+    opt::SSAConstructPass, opt::FillUsesPass, opt::GVNPass, opt::FillUsesPass,
+    opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass,
+    opt::SSADestructPass, opt::LocalConstAndCopyPropagationPass,
+    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass>;
 
 using RegisterPasses =
     opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
@@ -71,7 +71,7 @@ void compile(const char *name, const Options &options,
     }
 
     ir::Module module;
-    Visitor visitor(module, false);
+    Visitor visitor(module, options.optimize);
     visitor.visit(*root);
 
     if (has_error()) {
