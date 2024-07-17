@@ -123,8 +123,35 @@ for testfile in $testfiles; do
 
         rm $ir_file $output_file
     else
-        echo "stage not supported"
-        exit 1
+        c_file=${filename}.c
+        riscv_file=${filename}
+        input_file=${filename}.in
+        output_file=${filename}.out
+        opt=""
+        if [ $stage == "ir-opt" ]; then
+            opt="-O1"
+        fi
+        cp "$testfile" "$c_file"
+        riscv64-linux-gnu-gcc -static -o $riscv_file $c_file
+        qemu-riscv64-static $riscv_file
+
+        ret_val=$?
+        echo $ret_val >>$output_file
+
+        ret_val=$?
+
+        if [ -f $expect_file ]; then
+            diff -Z $expect_file $output_file
+            if [ $? -eq 0 ]; then
+                echo "($test_no/$total_tests) $testfile passed ✓"
+                pass_count=$((pass_count + 1))
+            else
+                echo "($test_no/$total_tests) $testfile failed x"
+                fail_count=$((fail_count + 1))
+            fi
+        fi
+
+        rm $riscv_file $output_file $c_file
     fi
 
     test_no=$((test_no + 1))
