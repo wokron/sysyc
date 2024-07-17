@@ -295,8 +295,7 @@ void Generator::_generate_add_inst(const ir::Inst &inst, StackManager& stack_man
     case ir::Type::W:
     case ir::Type::L: {
         std::string add = inst.to->get_type() == ir::Type::W ? "addw" : "add";
-        std::string addi =
-            inst.to->get_type() == ir::Type::W ? "addiw" : "addi";
+        std::string addi = inst.to->get_type() == ir::Type::W ? "addiw" : "addi";
         if (temp_arg0 && temp_arg1) {
             _out << INDENT
                  << build(add, to, arg0, arg1)

@@ -44,7 +44,7 @@ inline std::string build(std::string op, std::string rd) {
 inline int get_temp_reg() {
     static int choice = 0;
     choice ^= 1;
-    return choice ? 5 : 6; 
+    return choice ? 14 : 15;
 }
 
 } // namespace target
