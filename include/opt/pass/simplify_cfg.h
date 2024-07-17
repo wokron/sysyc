@@ -63,7 +63,7 @@ private:
  * @note This pass will remove empty blocks, merge blocks, and remove
  * unreachable blocks.
  * @note Requires `FillPredsPass` to be run before.
- * @warning This pass will break predecessor relationship filled by `FillPredsPass`.
+ * @warning This pass will break every CFG-related passes.
  */
 using SimplifyCFGPass =
     PassPipeline<BlockMergingPass, EmptyBlockRemovalPass,

@@ -4,6 +4,10 @@
 
 namespace opt {
 
+/**
+ * @brief Helper class for GVN pass.
+ * @note This class is used to hash values.
+ */
 class HashHelper {
 public:
     int hash(ir::TempPtr temp);
@@ -19,6 +23,11 @@ private:
     int _counter = 0;
 };
 
+/**
+ * @brief A pass that performs global value numbering.
+ * @note Requires `CooperFillDominatorsPass` and `SSAConstructPass`.
+ * @warning This pass will break use-def relationship fill by `FillUsesPass`.
+ */
 class GVNPass : public FunctionPass {
   public:
     bool run_on_function(ir::Function &func) override;

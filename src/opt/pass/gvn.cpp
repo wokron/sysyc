@@ -1,4 +1,5 @@
 #include "opt/pass/gvn.h"
+#include <algorithm>
 #include <sstream>
 
 int opt::HashHelper::hash(ir::TempPtr temp) {
@@ -98,8 +99,10 @@ bool opt::GVNPass::run_on_function(ir::Function &func) {
     std::vector<ir::BlockPtr> dom_rpo;
     _get_dom_tree_rpo(func, dom_rpo);
 
-    std::unordered_map<int, ir::TempPtr> hash_temp_map; // get temp with the same hash
-    std::unordered_map<ir::ValuePtr, ir::ValuePtr> value_map; // value for replacement
+    std::unordered_map<int, ir::TempPtr>
+        hash_temp_map; // get temp with the same hash
+    std::unordered_map<ir::ValuePtr, ir::ValuePtr>
+        value_map; // value for replacement
 
     for (auto block : dom_rpo) {
         for (auto phi : block->phis) {

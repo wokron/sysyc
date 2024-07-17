@@ -10,24 +10,32 @@ namespace opt {
  * @note Nothing is required before this pass.
  */
 class FillLeafPass : public ModulePass {
-  public:
+public:
     bool run_on_module(ir::Module &module) override;
 
-  private:
+private:
     bool _is_leaf_function(ir::Function &func);
 };
 
-
+/**
+ * @brief A pass that fills the `is_inline` field of each function.
+ * @note Nothing is required before this pass.
+ */
 class FillInlinePass : public FunctionPass {
-  public:
+public:
     bool run_on_function(ir::Function &func) override;
 };
 
+/**
+ * @brief A pass that performs function inlining.
+ * @note Requires `FillInlinePass`.
+ * @note This pass will break every CFG-related pass.
+ */
 class FunctionInliningPass : public FunctionPass {
-  public:
+public:
     bool run_on_function(ir::Function &func) override;
 
-  private:
+private:
     void _do_inline(ir::BlockPtr prev, ir::Function &inline_func,
                     ir::Function &target_func,
                     const std::vector<ir::ValuePtr> &args,
