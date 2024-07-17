@@ -25,6 +25,10 @@ private:
     void _generate_load_inst(const ir::Inst &inst, StackManager &stack_manager);
     
     void _generate_add_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_sub_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_mul_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_div_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_rem_inst(const ir::Inst &inst, StackManager &stack_manager);
 
     void _generate_jump_inst(const ir::Jump &jump, StackManager &stack_manager);
 
