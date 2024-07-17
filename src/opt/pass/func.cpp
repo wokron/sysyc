@@ -23,14 +23,29 @@ bool FillLeafPass::_is_leaf_function(ir::Function &func) {
 } // namespace opt
 
 bool opt::FillInlinePass::run_on_function(ir::Function &func) {
+    func.is_inline = _is_inline(func);
+
+    return false;
+}
+
+bool opt::FillInlinePass::_is_inline(const ir::Function &func) {
     int block_count = 0;
     for (auto block = func.start; block; block = block->next) {
         block_count++;
+
+        for (auto inst : block->insts) {
+            if (inst->insttype == ir::InstType::ICALL) {
+                auto addr = std::static_pointer_cast<ir::Address>(inst->arg[0]);
+                if (addr->ref_func == &func) { // direct recursive
+                    // since sysy cannot separate func's decl and def, indirect
+                    // recursive is impossible
+                    return false;
+                }
+            }
+        }
     }
-    if (block_count < 5) { // very simple
-        func.is_inline = true;
-    }
-    return false;
+
+    return block_count < 5; // very simple
 }
 
 bool opt::FunctionInliningPass::run_on_function(ir::Function &func) {

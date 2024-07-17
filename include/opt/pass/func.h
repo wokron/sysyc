@@ -24,6 +24,9 @@ private:
 class FillInlinePass : public FunctionPass {
 public:
     bool run_on_function(ir::Function &func) override;
+
+private:
+    bool _is_inline(const ir::Function &func);
 };
 
 /**
