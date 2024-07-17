@@ -64,6 +64,12 @@ bool opt::MemoryToRegisterPass::_mem_to_reg(ir::InstPtr alloc_inst) {
         }
     }
 
+    if (temp->type == ir::Type::W) {
+        alloc_inst->arg[0] = ir::ConstBits::get(0);
+    } else {
+        alloc_inst->arg[0] = ir::ConstBits::get(0.0f);
+    }
+
     return true;
 }
 
