@@ -29,6 +29,8 @@ private:
     void _generate_mul_inst(const ir::Inst &inst, StackManager &stack_manager);
     void _generate_div_inst(const ir::Inst &inst, StackManager &stack_manager);
     void _generate_rem_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_copy_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_float_compare_inst(const ir::Inst &inst, StackManager &stack_manager);
 
     void _generate_jump_inst(const ir::Jump &jump, StackManager &stack_manager);
 

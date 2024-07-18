@@ -19,7 +19,7 @@ using Passes = opt::PassPipeline<
     opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass>;
 
 using RegisterPasses =
-    opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+    opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
                       opt::FillIntervalPass>;
 
 struct Options {
@@ -139,6 +139,7 @@ void compile(const char *name, const Options &options,
         target::Generator generator(outfile);
 
         generator.generate(module);
+        return;
     }
 
     cmd_error(name, "nothing to do");
