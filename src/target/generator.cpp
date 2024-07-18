@@ -93,14 +93,14 @@ void Generator::generate_func(const ir::Function &func) {
     for (auto block = func.start; block; block = block->next) {
         _out << ".L" << block->id << ":" << std::endl;
 
-        std::vector<ir::ValuePtr> call_params;
+        std::vector<ir::ValuePtr> call_args;
         int par_count = 0;
         for (const auto &inst : block->insts) {
             if (inst->insttype == ir::InstType::IARG) {
-                call_params.push_back(inst->arg[0]);
+                call_args.push_back(inst->arg[0]);
             } else if (inst->insttype == ir::InstType::ICALL) {
-                _generate_call_inst(*inst, call_params);
-                call_params.clear();
+                _generate_call_inst(*inst, call_args, stack_manager);
+                call_args.clear();
             } else if (inst->insttype == ir::InstType::IPAR) {
                 _generate_par_inst(*inst, stack_manager, par_count++);
             } else {
@@ -178,9 +178,6 @@ void Generator::_generate_inst(const ir::Inst &inst,
         _out << INDENT << "nop" << std::endl;
     }
 }
-
-void Generator::_generate_call_inst(const ir::Inst &call_inst,
-                                    std::vector<ir::ValuePtr> params) {}
 
 std::string get_const_asm_value(ir::ValuePtr value) {
     if (auto const_value = std::dynamic_pointer_cast<ir::Const>(value)) {
@@ -270,6 +267,54 @@ std::string get_asm_addr(ir::ValuePtr value, StackManager &stack_manager) {
         return std::to_string(offset) + "(sp)";
     } else {
         throw std::logic_error("unsupported value type");
+    }
+}
+
+void Generator::_generate_call_inst(const ir::Inst &call_inst,
+                                    const std::vector<ir::ValuePtr> &args,
+                                    StackManager &stack_manager) {
+    int arg_count = args.size() - 1;
+    for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
+        auto arg = *it;
+        if (arg_count <= 7) {
+            auto arg0 = get_asm_arg(arg, stack_manager, _out, false);
+            switch (arg->get_type()) {
+            case ir::Type::W:
+            case ir::Type::L: {
+                _out << INDENT
+                     << build("mv", "a" + std::to_string(arg_count), arg0)
+                     << std::endl;
+            } break;
+            case ir::Type::S: {
+                _out << INDENT
+                     << build("fmv.s", "fa" + std::to_string(arg_count), arg0)
+                     << std::endl;
+            } break;
+            default:
+                throw std::logic_error("unsupported type");
+            }
+        } else {
+            throw std::logic_error("unimplemented");
+        }
+    }
+    _out << INDENT
+         << build("call",
+                  std::static_pointer_cast<ir::Address>(call_inst.arg[0])->name)
+         << std::endl;
+
+    if (call_inst.to != nullptr) {
+        auto to = get_asm_to(call_inst.to);
+        switch (call_inst.to->get_type()) {
+        case ir::Type::W:
+        case ir::Type::L: {
+            _out << INDENT << build("mv", to, "a0") << std::endl;
+        } break;
+        case ir::Type::S: {
+            _out << INDENT << build("fmv.s", to, "fa0") << std::endl;
+        } break;
+        default:
+            throw std::logic_error("unsupported type");
+        }
     }
 }
 
@@ -626,10 +671,13 @@ void Generator::_generate_par_inst(const ir::Inst &inst,
         switch (inst.to->get_type()) {
         case ir::Type::L:
         case ir::Type::W:
-            _out << INDENT << build("mv", to, "a" + std::to_string(par_count)) << std::endl;
+            _out << INDENT << build("mv", to, "a" + std::to_string(par_count))
+                 << std::endl;
             break;
         case ir::Type::S:
-            _out << INDENT << build("fmv.s", to, "fa" + std::to_string(par_count)) << std::endl;
+            _out << INDENT
+                 << build("fmv.s", to, "fa" + std::to_string(par_count))
+                 << std::endl;
             break;
         default:
             break; // unreachable

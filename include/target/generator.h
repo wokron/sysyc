@@ -18,7 +18,7 @@ public:
 
 private:
     void _generate_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_call_inst(const ir::Inst &call_inst, std::vector<ir::ValuePtr> params);
+    void _generate_call_inst(const ir::Inst &call_inst, const std::vector<ir::ValuePtr> &params, StackManager &stack_manager);
 
     void _generate_alloc_inst(const ir::Inst &inst, StackManager &stack_manager);
     void _generate_store_inst(const ir::Inst &inst, StackManager &stack_manager);
