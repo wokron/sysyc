@@ -5,6 +5,7 @@
 namespace opt {
 
 bool EmptyBlockRemovalPass::run_on_function(ir::Function &func) {
+    _block_replacement.clear();
     for (auto block = func.start; block; block = block->next) {
         switch (block->jump.type) {
         case ir::Jump::JMP:

@@ -433,38 +433,75 @@ void Visitor::visit_if_stmt(const IfStmt &node) {
 }
 
 void Visitor::visit_while_stmt(const WhileStmt &node) {
-    // TODO: loop rotation optimization
-    auto cond_block = _builder.create_label("while_cond");
+    if (_optimize) {
+        // while with loop rotation
+        auto jump_to_cond = _builder.create_jmp(nullptr);
 
-    auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
+        auto body_block = _builder.create_label("while_body");
 
-    auto body_block = _builder.create_label("while_body");
+        _while_stack.push(ContinueBreak({}, {}));
 
-    _while_stack.push(ContinueBreak({}, {}));
+        _current_scope = _current_scope->push_scope();
+        visit_stmt(*node.stmt);
+        _current_scope = _current_scope->pop_scope();
 
-    _current_scope = _current_scope->push_scope();
-    visit_stmt(*node.stmt);
-    _current_scope = _current_scope->pop_scope();
+        auto [continue_jmp, break_jmp] = _while_stack.top();
+        _while_stack.pop();
 
-    auto [continue_jmp, break_jmp] = _while_stack.top();
-    _while_stack.pop();
+        auto cond_block = _builder.create_label("while_cond");
 
-    _builder.create_jmp(cond_block);
+        auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
 
-    auto join_block = _builder.create_label("while_join");
+        auto join_block = _builder.create_label("while_join");
 
-    // fill jump targets
-    for (auto &jmp_block : jmp_to_true) {
-        jmp_block->jump.blk[0] = body_block;
-    }
-    for (auto &jmp_block : jmp_to_false) {
-        jmp_block->jump.blk[1] = join_block;
-    }
-    for (auto &jmp_block : continue_jmp) {
-        jmp_block->jump.blk[0] = cond_block;
-    }
-    for (auto &jmp_block : break_jmp) {
-        jmp_block->jump.blk[0] = join_block;
+        // fill jump targets
+        jump_to_cond->jump.blk[0] = cond_block;
+        for (auto &jmp_block : jmp_to_true) {
+            jmp_block->jump.blk[0] = body_block;
+        }
+        for (auto &jmp_block : jmp_to_false) {
+            jmp_block->jump.blk[1] = join_block;
+        }
+        for (auto &jmp_block : continue_jmp) {
+            jmp_block->jump.blk[0] = cond_block;
+        }
+        for (auto &jmp_block : break_jmp) {
+            jmp_block->jump.blk[0] = join_block;
+        }
+    } else {
+        // normal while loop
+        auto cond_block = _builder.create_label("while_cond");
+
+        auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
+
+        auto body_block = _builder.create_label("while_body");
+
+        _while_stack.push(ContinueBreak({}, {}));
+
+        _current_scope = _current_scope->push_scope();
+        visit_stmt(*node.stmt);
+        _current_scope = _current_scope->pop_scope();
+
+        auto [continue_jmp, break_jmp] = _while_stack.top();
+        _while_stack.pop();
+
+        _builder.create_jmp(cond_block);
+
+        auto join_block = _builder.create_label("while_join");
+
+        // fill jump targets
+        for (auto &jmp_block : jmp_to_true) {
+            jmp_block->jump.blk[0] = body_block;
+        }
+        for (auto &jmp_block : jmp_to_false) {
+            jmp_block->jump.blk[1] = join_block;
+        }
+        for (auto &jmp_block : continue_jmp) {
+            jmp_block->jump.blk[0] = cond_block;
+        }
+        for (auto &jmp_block : break_jmp) {
+            jmp_block->jump.blk[0] = join_block;
+        }
     }
 }
 

@@ -23,7 +23,7 @@ using ConstLValReturn =
     std::tuple<sym::TypePtr, std::map<int, sym::Initializer::InitValue>>;
 
 class Visitor {
-  private:
+private:
     sym::SymbolTablePtr _current_scope;
     ir::Module &_module;
     ir::IRBuilder _builder;
@@ -35,10 +35,13 @@ class Visitor {
     // record the count to make the func re-entrant
     int _require_const_lval = 0;
 
-  public:
-    Visitor(ir::Module &module)
+    bool _optimize = false;
+
+public:
+    Visitor(ir::Module &module, bool optimize = false)
         : _module(module),
-          _current_scope(std::make_shared<sym::SymbolTable>(nullptr)) {
+          _current_scope(std::make_shared<sym::SymbolTable>(nullptr)),
+          _optimize(optimize) {
         _add_builtin_funcs();
     }
 
@@ -84,7 +87,7 @@ class Visitor {
     CondReturn visit_cond(const Cond &node);
     CondReturn visit_logical_exp(const LogicalExp &node);
 
-  private:
+private:
     // some utility methods
 
     /**

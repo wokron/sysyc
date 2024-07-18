@@ -9,7 +9,7 @@
 
 namespace ir {
 
-static std::unordered_map<InstType, std::string> inst2name = {
+std::unordered_map<InstType, std::string> inst2name = {
 #define OP(op, name) {op, name},
 #include "ir/ops.h"
 #undef OP
@@ -82,7 +82,7 @@ void Inst::emit(std::ostream &out) const {
 
 void Phi::emit(std::ostream &out) const {
     to->emit(out);
-    out << " =" << ty << " phi ";
+    out << " =" << type_to_string(to->type) << " phi ";
     bool first = true;
     for (auto &[block, value] : args) {
         if (first) {
@@ -91,7 +91,11 @@ void Phi::emit(std::ostream &out) const {
             out << ", ";
         }
         out << "@" << block->get_name() << " ";
-        value->emit(out);
+        if (value == nullptr) {
+            out << "0"; // hope this can compile
+        } else {
+            value->emit(out);
+        }
     }
 }
 

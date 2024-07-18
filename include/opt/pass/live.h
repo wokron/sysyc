@@ -6,20 +6,20 @@ namespace opt {
 
 /**
  * @brief A pass that performs liveness analysis on a function.
- * @note Requires `ReversePostOrderPass` to be run before.
+ * @note This pass requires `ReversePostOrderPass` to be run before.
  */
 class LivenessAnalysisPass : public FunctionPass {
 public:
     bool run_on_function(ir::Function &func) override;
 
 private:
-    void _init_use_def(ir::Block &block);
+    void _init_live_use_def(ir::Block &block);
     bool _update_live(ir::Block &block);
 };
 
 /**
  * @brief A pass that finds the live intervals of each temp in a function.
- * @note Requires `LivenessAnalysisPass` to be run before.
+ * @note This pass requires `LivenessAnalysisPass` to be run before.
  */
 class FillIntervalPass : public FunctionPass {
 public:

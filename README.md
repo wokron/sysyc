@@ -17,18 +17,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
   - [X] Semantic analysis
 
 - [ ] Phase Two: Compiler Backend
-  - [ ] Register allocation algorithm
+  - [X] Register allocation algorithm
   - [ ] Target code generation
 
 - [ ] Phase Three: Compiler Optimization
-  - [ ] SSA construction and elimination
+  - [X] SSA construction and elimination
   - [ ] Other optimization algorithms
      - [ ] Peephole Optimization
-     - [ ] Constant Folding and Constant Propagation
-     - [ ] Function Inlining
-     - [ ] GCM and GVN
-     - [ ] Loop Rotation
-     - [ ] CFG Simplifying
-     - [ ] Deadcode Elimination
+     - [X] Constant Folding and Constant Propagation
+     - [X] Function Inlining
+     - [ ] GCM
+     = [X] GVN
+     - [X] Loop Rotation
+     - [X] CFG Simplifying
+     - [X] Deadcode Elimination
      - [ ] Strength Reduction
      - [ ] Tail Recursion Optimization
