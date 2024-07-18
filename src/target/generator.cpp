@@ -94,12 +94,15 @@ void Generator::generate_func(const ir::Function &func) {
         _out << ".L" << block->id << ":" << std::endl;
 
         std::vector<ir::ValuePtr> call_params;
+        int par_count = 0;
         for (const auto &inst : block->insts) {
-            if (inst->insttype == ir::InstType::IPAR) {
+            if (inst->insttype == ir::InstType::IARG) {
                 call_params.push_back(inst->arg[0]);
             } else if (inst->insttype == ir::InstType::ICALL) {
                 _generate_call_inst(*inst, call_params);
                 call_params.clear();
+            } else if (inst->insttype == ir::InstType::IPAR) {
+                _generate_par_inst(*inst, stack_manager, par_count++);
             } else {
                 _generate_inst(*inst, stack_manager);
             }
@@ -161,6 +164,15 @@ void Generator::_generate_inst(const ir::Inst &inst,
     case ir::InstType::ICGES:
     case ir::InstType::ICGTS:
         _generate_float_compare_inst(inst, stack_manager);
+        break;
+    case ir::InstType::IEXTSW:
+        _generate_extsw_inst(inst, stack_manager);
+        break;
+    case ir::InstType::ISTOSI:
+        _generate_stosi_inst(inst, stack_manager);
+        break;
+    case ir::InstType::ISWTOF:
+        _generate_swtof_inst(inst, stack_manager);
         break;
     default:
         _out << INDENT << "nop" << std::endl;
@@ -421,6 +433,25 @@ void Generator::_generate_sub_inst(const ir::Inst &inst,
     }
 }
 
+void Generator::_generate_neg_inst(const ir::Inst &inst,
+                                   StackManager &stack_manager) {
+    auto to = get_asm_to(inst.to);
+    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
+    switch (inst.to->get_type()) {
+    case ir::Type::L:
+        _out << INDENT << build("neg", arg0) << std::endl;
+        break;
+    case ir::Type::W:
+        _out << INDENT << build("negw", arg0) << std::endl;
+        break;
+    case ir::Type::S:
+        _out << INDENT << build("fneg.s", arg0) << std::endl;
+        break;
+    default:
+        throw std::logic_error("unsupported type");
+    }
+}
+
 void Generator::_generate_mul_inst(const ir::Inst &inst,
                                    StackManager &stack_manager) {
     auto temp_arg0 = std::dynamic_pointer_cast<ir::Temp>(inst.arg[0]);
@@ -535,7 +566,7 @@ void Generator::_generate_copy_inst(const ir::Inst &inst,
 }
 
 void Generator::_generate_float_compare_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager) {
+                                             StackManager &stack_manager) {
     auto to = get_asm_to(inst.to);
     auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
     auto arg1 = get_asm_arg(inst.arg[1], stack_manager, _out, false);
@@ -564,6 +595,50 @@ void Generator::_generate_float_compare_inst(const ir::Inst &inst,
     }
 }
 
+void Generator::_generate_extsw_inst(const ir::Inst &inst,
+                                     StackManager &stack_manager) {
+    auto to = get_asm_to(inst.to);
+    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
+
+    _out << INDENT << build("sext.w", to, arg0) << std::endl;
+}
+
+void Generator::_generate_stosi_inst(const ir::Inst &inst,
+                                     StackManager &stack_manager) {
+    auto to = get_asm_to(inst.to);
+    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
+
+    _out << INDENT << build("fcvt.w.s", to, arg0) << std::endl;
+}
+
+void Generator::_generate_swtof_inst(const ir::Inst &inst,
+                                     StackManager &stack_manager) {
+    auto to = get_asm_to(inst.to);
+    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
+
+    _out << INDENT << build("fcvt.s.w", to, arg0) << std::endl;
+}
+
+void Generator::_generate_par_inst(const ir::Inst &inst,
+                                   StackManager &stack_manager, int par_count) {
+    auto to = get_asm_to(inst.to);
+    if (par_count <= 7) { // in a0-a7
+        switch (inst.to->get_type()) {
+        case ir::Type::L:
+        case ir::Type::W:
+            _out << INDENT << build("mv", to, "a" + std::to_string(par_count)) << std::endl;
+            break;
+        case ir::Type::S:
+            _out << INDENT << build("fmv.s", to, "fa" + std::to_string(par_count)) << std::endl;
+            break;
+        default:
+            break; // unreachable
+        }
+    } else {
+        throw std::logic_error("unimplemented");
+    }
+}
+
 static bool is_int_compare(ir::InstType insttype) {
     switch (insttype) {
     case ir::InstType::ICNEW:
@@ -588,7 +663,7 @@ void Generator::_generate_jump_inst(const ir::Jump &jump,
             _out << INDENT << build("mv", "a0", arg) << std::endl;
         }
         // recover saved registers
-        
+
         for (auto [reg, offset] :
              stack_manager.get_callee_saved_regs_offset()) {
             _out << INDENT
@@ -597,7 +672,8 @@ void Generator::_generate_jump_inst(const ir::Jump &jump,
                  << std::endl;
         }
         _out << INDENT
-             << build("addi", "sp", "sp", std::to_string(stack_manager.get_frame_size()))
+             << build("addi", "sp", "sp",
+                      std::to_string(stack_manager.get_frame_size()))
              << std::endl;
 
         _out << INDENT << build("jr", "ra") << std::endl;
