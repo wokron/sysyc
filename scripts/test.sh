@@ -123,22 +123,24 @@ for testfile in $testfiles; do
 
         rm $ir_file $output_file
     else
-        c_file=${filename}.c
-        riscv_file=${filename}
-        input_file=${filename}.in
-        output_file=${filename}.out
+        asm_file=${filename}.S
         opt=""
-        if [ $stage == "ir-opt" ]; then
+        if [ $stage == "asm-opt" ]; then
             opt="-O1"
         fi
-        cp "$testfile" "$c_file"
-        riscv64-linux-gnu-gcc -static -o $riscv_file $c_file
-        qemu-riscv64-static $riscv_file
+        $SYSYC --emit-asm -o $asm_file $testfile $opt
+
+        output_file=${filename}.out
+
+        # if exist input file, run the asm file with input
+        if [ -f $input_file ]; then
+            bash ./scripts/riscv_run.sh $asm_file <$input_file >$output_file 
+        else
+            bash ./scripts/riscv_run.sh $asm_file >$output_file 
+        fi
 
         ret_val=$?
         echo $ret_val >>$output_file
-
-        ret_val=$?
 
         if [ -f $expect_file ]; then
             diff -Z $expect_file $output_file
@@ -151,7 +153,7 @@ for testfile in $testfiles; do
             fi
         fi
 
-        rm $riscv_file $output_file $c_file
+        rm $asm_file $obj_file $filename
     fi
 
     test_no=$((test_no + 1))
