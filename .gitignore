@@ -40,4 +40,5 @@ debug/
 .deploy/
 
 .qbe/
+.riscv/
 testfiles/
