@@ -6,7 +6,7 @@
 # 3. run the generated executable
 
 # Arguments:
-# $1: the ir file to compile
+# $1: the assembly file to compile
 
 BASE_DIR=".riscv"
 CC="riscv64-linux-gnu-gcc"
@@ -19,18 +19,18 @@ filename="${filename%.*}"
 
 exe_file="$BASE_DIR/$filename"
 
-# check if the ir file exists
+# check if the assembly file exists
 if [ ! -f $asm_file ]; then
-    echo "Error: the asm file $asm_file does not exist"
+    echo "Error: the assembly file $asm_file does not exist"
     exit 1
 fi
 
 # create the cache directory if it does not exist
 mkdir -p $BASE_DIR
 
-# use $CC to compile the assembly file
+# compile the assembly file
 obj_file="$BASE_DIR/$filename.o"
-$CC -static -c $asm_file -o $obj_file || ! echo "error: failed to compile assembly file" || exit 1
+$CC -c $asm_file -o $obj_file || ! echo "error: failed to compile assembly file" || exit 1
 
 # check if the runtime library exists, if not, compile it
 lib_file="$BASE_DIR/sylib.o"
@@ -159,22 +159,22 @@ void _sysy_stoptime(int lineno);
 EOF
 
     # compile the runtime library
-    $CC -static -c $lib_src_file -o $lib_file || ! echo "error: failed to compile runtime library" || exit 1
+    $CC -c $lib_src_file -o $lib_file || ! echo "error: failed to compile runtime library" || exit 1
 
     echo "runtime library compiled"
 fi
 
-# link the object file with the runtime library
-$CC -static $obj_file $lib_file -o $exe_file || ! echo "error: failed to link object file with runtime library" || exit 1
+# link the object file with the runtime library (we will use qemu-user-static to run the generated executable, so `-static` is used)
+$CC $obj_file $lib_file -o $exe_file -static || ! echo "error: failed to link object file with runtime library" || exit 1
 
-# run the executable
-qemu-riscv64-static $exe_file
+# run the generated executable
+./$exe_file
 
-# store the exit code
+# store the exit code of the executable
 exit_code=$?
 
-# remove files
-rm -f $obj_file $exe_file
+# remove the generated executable
+rm $exe_file $obj_file
 
 # exit with the exit code
 exit $exit_code
