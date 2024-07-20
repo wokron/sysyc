@@ -1,0 +1,16 @@
+# This Dockerfile is used to build a Docker image that contains the RISC-V cross-compiler
+# and QEMU user-mode emulation for RISC-V.
+
+FROM ubuntu:latest
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y \
+    qemu-user \
+    qemu-user-static \
+    gcc-riscv64-linux-gnu \
+    binutils-riscv64-linux-gnu \
+    binutils-riscv64-linux-gnu-dbg
+
+# Copy ./scripts/riscv_run.sh to /root/riscv_run.sh
+COPY ./scripts/riscv_run.sh /root/riscv_run.sh
