@@ -123,25 +123,34 @@ for testfile in $testfiles; do
 
         rm $ir_file $output_file
     else
-        asm_file=${filename}.S
+        asm_file=${filename}.s
         opt=""
         if [ $stage == "asm-opt" ]; then
             opt="-O1"
         fi
-        $SYSYC --emit-asm -o $asm_file $testfile $opt
+        $SYSYC -S -o $asm_file $testfile $opt || ! echo "$testfile failed to generate asm file x" || continue
 
         output_file=${filename}.out
 
-        # if exist input file, run the asm file with input
-        if [ -f $input_file ]; then
-            bash ./scripts/riscv_run.sh $asm_file <$input_file >$output_file 
-        else
-            bash ./scripts/riscv_run.sh $asm_file >$output_file 
+        riscv_run="./scripts/riscv_run.sh"
+        # if docker exists, use docker to run the asm file
+        if [ -x "$(command -v docker)" ]; then
+            riscv_run="./scripts/riscv_docker_run.sh"
         fi
 
+        # if exist input file, run the asm file with input
+        if [ -f $input_file ]; then
+            bash $riscv_run $asm_file <$input_file >$output_file 
+        else
+            bash $riscv_run $asm_file >$output_file 
+        fi
+
+        # append return value to the output file
         ret_val=$?
+        sed -i '$a\' $output_file
         echo $ret_val >>$output_file
 
+        # compare the content of output_file with expected_output_file
         if [ -f $expect_file ]; then
             diff -Z $expect_file $output_file
             if [ $? -eq 0 ]; then
@@ -153,13 +162,13 @@ for testfile in $testfiles; do
             fi
         fi
 
-        rm $asm_file $output_file
+        rm $ir_file $output_file
     fi
 
     test_no=$((test_no + 1))
 done
 
-rm -f *.out *.ssa
+rm -f *.out *.ssa *.s
 echo
 
 echo "================ test result ==============="

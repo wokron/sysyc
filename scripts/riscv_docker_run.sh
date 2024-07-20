@@ -17,7 +17,7 @@ fi
 asm_file=$1
 
 # check if the docker is installed
-if ! command -v docker &> /dev/null; then
+if ! command -v docker &>/dev/null; then
     echo "Error: docker is not installed"
     exit 1
 fi
@@ -29,18 +29,28 @@ IMAGE_NAME="riscv-cross-compiler"
 if [ ! "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
     echo "Container $CONTAINER_NAME is not running, starting the container..."
 
-    # check if the image exists, if not, build the image
-    if [ ! "$(docker images -q $IMAGE_NAME)" ]; then
-        echo "Image $IMAGE_NAME does not exist, building the image..."
+    # check if the container is already exist. if not, build image and run
+    if [ "$(docker ps -aq -f status=exited -f name=$CONTAINER_NAME)" ]; then
+        echo "Container $CONTAINER_NAME exists but is not running, starting the container..."
 
-        # build the docker image
-        docker build -t $IMAGE_NAME -f Dockerfile.riscv-cross-compiler .
+        # start the container
+        docker start $CONTAINER_NAME
 
-        echo "Image $IMAGE_NAME built"
+        echo "Container $CONTAINER_NAME started"
+    else
+        # check if the image exists, if not, build the image
+        if [ ! "$(docker images -q $IMAGE_NAME)" ]; then
+            echo "Image $IMAGE_NAME does not exist, building the image..."
+
+            # build the docker image
+            docker build -t $IMAGE_NAME -f Dockerfile.riscv-cross-compiler .
+
+            echo "Image $IMAGE_NAME built"
+        fi
+
+        # run the container
+        docker run -itd --name $CONTAINER_NAME $IMAGE_NAME
     fi
-
-    # run the container
-    docker run -itd --name $CONTAINER_NAME $IMAGE_NAME
 
     echo "Container $CONTAINER_NAME started"
 fi
