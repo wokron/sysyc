@@ -1,5 +1,7 @@
 #include "target/generator.h"
+#include "array"
 #include "target/mem.h"
+#include "target/regalloc.h"
 #include "target/utils.h"
 
 #define INDENT "    "
@@ -13,6 +15,10 @@ void Generator::generate(const ir::Module &module) {
 
     for (const auto &func : module.functions) {
         generate_func(*func);
+    }
+
+    for (const auto &data : _local_data) {
+        generate_data(*data);
     }
 
     _out << ".section .note.GNU-stack,\"\",@progbits" << std::endl;
@@ -69,8 +75,9 @@ void Generator::generate_data(const ir::Data &data) {
 }
 
 void Generator::generate_func(const ir::Function &func) {
-    StackManager stack_manager;
-    stack_manager.run(func);
+    ;
+    _stack_manager = StackManager();
+    _stack_manager.run(func);
 
     _out << ".text" << std::endl;
 
@@ -82,9 +89,9 @@ void Generator::generate_func(const ir::Function &func) {
 
     _out << INDENT
          << build("addi", "sp", "sp",
-                  "-" + std::to_string(stack_manager.get_frame_size()))
+                  "-" + std::to_string(_stack_manager.get_frame_size()))
          << std::endl;
-    for (auto [reg, offset] : stack_manager.get_callee_saved_regs_offset()) {
+    for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
         _out << INDENT
              << build("sd", regno2string(reg), std::to_string(offset) + "(sp)")
              << std::endl;
@@ -99,15 +106,15 @@ void Generator::generate_func(const ir::Function &func) {
             if (inst->insttype == ir::InstType::IARG) {
                 call_args.push_back(inst->arg[0]);
             } else if (inst->insttype == ir::InstType::ICALL) {
-                _generate_call_inst(*inst, call_args, stack_manager);
+                _generate_call_inst(*inst, call_args);
                 call_args.clear();
             } else if (inst->insttype == ir::InstType::IPAR) {
-                _generate_par_inst(*inst, stack_manager, par_count++);
+                _generate_par_inst(*inst, par_count++);
             } else {
-                _generate_inst(*inst, stack_manager);
+                _generate_inst(*inst);
             }
         }
-        _generate_jump_inst(block->jump, stack_manager);
+        _generate_jump_inst(block->jump);
     }
 
     _out << ".type " << func.name << ", @function" << std::endl;
@@ -115,47 +122,24 @@ void Generator::generate_func(const ir::Function &func) {
     _out << "/* end function " << func.name << " */" << std::endl << std::endl;
 }
 
-void Generator::_generate_inst(const ir::Inst &inst,
-                               StackManager &stack_manager) {
+void Generator::_generate_inst(const ir::Inst &inst) {
     switch (inst.insttype) {
-    case ir::InstType::IALLOC4:
-    case ir::InstType::IALLOC8:
-        _generate_alloc_inst(inst, stack_manager);
-        break;
     case ir::InstType::ISTOREW:
     case ir::InstType::ISTOREL:
     case ir::InstType::ISTORES:
-        _generate_store_inst(inst, stack_manager);
+        _generate_store_inst(inst);
         break;
     case ir::InstType::ILOADW:
     case ir::InstType::ILOADL:
     case ir::InstType::ILOADS:
-        _generate_load_inst(inst, stack_manager);
+        _generate_load_inst(inst);
         break;
     case ir::InstType::IADD:
-        _generate_add_inst(inst, stack_manager);
-        break;
     case ir::InstType::ISUB:
-        _generate_sub_inst(inst, stack_manager);
-        break;
     case ir::InstType::IMUL:
-        _generate_mul_inst(inst, stack_manager);
-        break;
     case ir::InstType::IDIV:
-        _generate_div_inst(inst, stack_manager);
-        break;
     case ir::InstType::IREM:
-        _generate_rem_inst(inst, stack_manager);
-        break;
-    case ir::InstType::ICOPY:
-        _generate_copy_inst(inst, stack_manager);
-        break;
-    case ir::InstType::ICEQW:
-    case ir::InstType::ICNEW:
-    case ir::InstType::ICSLEW:
-    case ir::InstType::ICSLTW:
-    case ir::InstType::ICSGEW:
-    case ir::InstType::ICSGTW:
+        _generate_arithmetic_inst(inst);
         break;
     case ir::InstType::ICEQS:
     case ir::InstType::ICNES:
@@ -163,129 +147,139 @@ void Generator::_generate_inst(const ir::Inst &inst,
     case ir::InstType::ICLTS:
     case ir::InstType::ICGES:
     case ir::InstType::ICGTS:
-        _generate_float_compare_inst(inst, stack_manager);
+        _generate_float_compare_inst(inst);
+        break;
+    case ir::InstType::ICOPY:
+    case ir::InstType::INEG:
+        _generate_copy_like_inst(inst);
         break;
     case ir::InstType::IEXTSW:
-        _generate_extsw_inst(inst, stack_manager);
-        break;
     case ir::InstType::ISTOSI:
-        _generate_stosi_inst(inst, stack_manager);
-        break;
     case ir::InstType::ISWTOF:
-        _generate_swtof_inst(inst, stack_manager);
+        _generate_convert_inst(inst);
+        break;
+    case ir::InstType::IALLOC4:
+    case ir::InstType::IALLOC8:
+    case ir::InstType::INOP:
+    case ir::InstType::ICEQW:
+    case ir::InstType::ICNEW:
+    case ir::InstType::ICSLEW:
+    case ir::InstType::ICSLTW:
+    case ir::InstType::ICSGEW:
+    case ir::InstType::ICSGTW:
+        /* nop */
         break;
     default:
-        _out << INDENT << "nop" << std::endl;
+        throw std::logic_error("unsupported instruction");
     }
 }
 
-std::string get_const_asm_value(ir::ValuePtr value) {
-    if (auto const_value = std::dynamic_pointer_cast<ir::Const>(value)) {
-        return const_value->get_asm_value();
-    } else {
-        throw std::logic_error("unsupported value type");
-    }
+void Generator::_generate_load_inst(const ir::Inst &inst) {
+    static std::unordered_map<ir::InstType, std::string> inst2asm = {
+        {ir::InstType::ILOADW, "lw"},
+        {ir::InstType::ILOADL, "ld"},
+        {ir::InstType::ILOADS, "flw"},
+    };
+
+    auto [to, write_back] = _get_asm_to(inst.to);
+    auto arg = _get_asm_arg(inst.arg[0], 0);
+
+    _out << INDENT << build(inst2asm.at(inst.insttype), to, arg) << std::endl;
+
+    write_back(_out);
 }
 
-std::string get_asm_to(ir::ValuePtr value) {
-    if (auto temp_value = std::dynamic_pointer_cast<ir::Temp>(value)) {
-        if (temp_value->reg < 0) {
-            temp_value->reg = get_temp_reg();
-        }
-        return regno2string(temp_value->reg);
-    } else {
-        throw std::logic_error("unsupported value type");
-    }
+void Generator::_generate_store_inst(const ir::Inst &inst) {
+    static std::unordered_map<ir::InstType, std::string> inst2asm = {
+        {ir::InstType::ISTOREW, "sw"},
+        {ir::InstType::ISTOREL, "sd"},
+        {ir::InstType::ISTORES, "fsw"},
+    };
+
+    auto arg0 = _get_asm_arg(inst.arg[0], 0);
+    auto arg1 = _get_asm_arg(inst.arg[1], 1);
+
+    _out << INDENT << build(inst2asm.at(inst.insttype), arg0, arg1)
+         << std::endl;
 }
 
-std::string get_asm_arg(ir::ValuePtr value, StackManager &stack_manager,
-                        std::ostream &out, bool support_immediate = true) {
-    if (auto temp_value = std::dynamic_pointer_cast<ir::Temp>(value)) {
-        if (temp_value->reg >= 0) {
-            return regno2string(temp_value->reg);
-        }
+void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
+    // clang-format off
+    static std::unordered_map<ir::InstType, std::unordered_map<ir::Type, std::string>> inst2asm = {
+        {ir::InstType::IADD, {{ir::Type::L, "add"}, {ir::Type::W, "addw"}, {ir::Type::S, "fadd.s"}}},
+        {ir::InstType::ISUB, {{ir::Type::L, "sub"}, {ir::Type::W, "subw"}, {ir::Type::S, "fsub.s"}}},
+        {ir::InstType::IMUL, {{ir::Type::L, "mul"}, {ir::Type::W, "mulw"}, {ir::Type::S, "fadd.s"}}},
+        {ir::InstType::IDIV, {{ir::Type::L, "div"}, {ir::Type::W, "divw"}, {ir::Type::S, "fdiv.s"}}},
+        {ir::InstType::IREM, {{ir::Type::L, "rem"}, {ir::Type::W, "remw"}}},
+    };
+    // clang-format on
 
-        int offset;
-        temp_value->reg = get_temp_reg();
-        if (temp_value->reg == -1) {
-            offset = stack_manager.get_spilled_temps_offset().at(temp_value);
-        } else if (temp_value->reg == -2) {
-            offset = stack_manager.get_local_var_offset().at(temp_value);
-        } else {
-            throw std::logic_error("no register");
-        }
-        std::string lw;
-        switch (temp_value->get_type()) {
-        case ir::Type::W:
-            lw = "lw";
-            break;
-        case ir::Type::L:
-            lw = "ld";
-            break;
-        case ir::Type::S:
-            throw std::logic_error("not implemented");
-        default:
-            throw std::logic_error("unsupported type");
-        };
-        out << INDENT
-            << build(lw, regno2string(temp_value->reg),
-                     std::to_string(offset) + "(sp)")
-            << std::endl;
+    auto arg0 = _get_asm_arg(inst.arg[0], 0);
+    auto arg1 = _get_asm_arg(inst.arg[1], 1);
+    auto [to, write_back] = _get_asm_to(inst.to);
 
-        return regno2string(temp_value->reg);
-    } else if (auto const_value = std::dynamic_pointer_cast<ir::Const>(value)) {
-        if (support_immediate) {
-            return get_const_asm_value(value);
-        } else {
-            int reg = get_temp_reg();
-            if (const_value->get_type() ==
-                ir::Type::S) { // TODO: this is fake now
-                out << INDENT << build("lui", "a5", "%hi(.LC1)") << std::endl;
-                out << INDENT
-                    << build("flw", regno2string(reg), "%lo(.LC0)(a5)")
-                    << std::endl;
-            } else {
-                out << INDENT
-                    << build("li", regno2string(reg),
-                             get_const_asm_value(value))
-                    << std::endl;
-            }
-            return regno2string(reg);
-        }
-    } else {
-        throw std::logic_error("unsupported value type");
-    }
+    auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
+    _out << INDENT << build(inst_str, to, arg0, arg1) << std::endl;
+    write_back(_out);
 }
 
-std::string get_asm_addr(ir::ValuePtr value, StackManager &stack_manager) {
-    if (auto temp_value = std::dynamic_pointer_cast<ir::Temp>(value)) {
-        if (temp_value->reg >= 0) {
-            return regno2string(temp_value->reg);
-        }
+void Generator::_generate_float_compare_inst(const ir::Inst &inst) {
+    static std::unordered_map<ir::InstType, std::string> inst2asm = {
+        {ir::InstType::ICEQS, "feq.s"}, {ir::InstType::ICNES, "fne.s"},
+        {ir::InstType::ICLES, "fle.s"}, {ir::InstType::ICLTS, "flt.s"},
+        {ir::InstType::ICGES, "fle.s"}, {ir::InstType::ICGTS, "flt.s"},
+    };
 
-        int offset;
-        if (temp_value->reg == -1) {
-            offset = stack_manager.get_spilled_temps_offset().at(temp_value);
-        } else if (temp_value->reg == -2) {
-            offset = stack_manager.get_local_var_offset().at(temp_value);
-        } else {
-            throw std::logic_error("no register");
-        }
+    auto [to, write_back] = _get_asm_to(inst.to);
+    auto arg0 = _get_asm_arg(inst.arg[0], 0);
+    auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
-        return std::to_string(offset) + "(sp)";
-    } else {
-        throw std::logic_error("unsupported value type");
-    }
+    _out << INDENT << build(inst2asm.at(inst.insttype), to, arg0, arg1)
+         << std::endl;
+
+    write_back(_out);
 }
 
-void Generator::_generate_call_inst(const ir::Inst &call_inst,
-                                    const std::vector<ir::ValuePtr> &args,
-                                    StackManager &stack_manager) {
+void Generator::_generate_copy_like_inst(const ir::Inst &inst) {
+    // clang-format off
+    static std::unordered_map<ir::InstType, std::unordered_map<ir::Type, std::string>> inst2asm = {
+        {ir::InstType::ICOPY, {{ir::Type::L, "mv"}, {ir::Type::W, "mv"}, {ir::Type::S, "fmv.s"}}},
+        {ir::InstType::INEG, {{ir::Type::L, "neg"}, {ir::Type::W, "neg"}, {ir::Type::S, "fneg.s"}}},
+    };
+    // clang-format on
+
+    auto [to, write_back] = _get_asm_to(inst.to);
+    auto arg = _get_asm_arg(inst.arg[0], 0);
+
+    auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
+
+    _out << INDENT << build(inst_str, to, arg) << std::endl;
+
+    write_back(_out);
+}
+
+void Generator::_generate_convert_inst(const ir::Inst &inst) {
+    static std::unordered_map<ir::InstType, std::string> inst2asm = {
+        {ir::InstType::IEXTSW, "ext.w"},
+        {ir::InstType::ISTOSI, "stosi"},
+        {ir::InstType::ISWTOF, "swtof"},
+    };
+
+    auto [to, write_back] = _get_asm_to(inst.to);
+    auto arg = _get_asm_arg(inst.arg[0], 0);
+
+    _out << INDENT << build(inst2asm.at(inst.insttype), to, arg) << std::endl;
+
+    write_back(_out);
+}
+
+void Generator::_generate_call_inst(const ir::Inst &inst,
+                                    const std::vector<ir::ValuePtr> &args) {
     int arg_count = args.size() - 1;
     for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
         auto arg = *it;
         if (arg_count <= 7) {
-            auto arg0 = get_asm_arg(arg, stack_manager, _out, false);
+            auto arg0 = _get_asm_arg(arg, 0);
             switch (arg->get_type()) {
             case ir::Type::W:
             case ir::Type::L: {
@@ -307,12 +301,12 @@ void Generator::_generate_call_inst(const ir::Inst &call_inst,
     }
     _out << INDENT
          << build("call",
-                  std::static_pointer_cast<ir::Address>(call_inst.arg[0])->name)
+                  std::static_pointer_cast<ir::Address>(inst.arg[0])->name)
          << std::endl;
 
-    if (call_inst.to != nullptr) {
-        auto to = get_asm_to(call_inst.to);
-        switch (call_inst.to->get_type()) {
+    if (inst.to != nullptr) {
+        auto [to, write_back] = _get_asm_to(inst.to);
+        switch (inst.to->get_type()) {
         case ir::Type::W:
         case ir::Type::L: {
             _out << INDENT << build("mv", to, "a0") << std::endl;
@@ -323,307 +317,12 @@ void Generator::_generate_call_inst(const ir::Inst &call_inst,
         default:
             throw std::logic_error("unsupported type");
         }
+        write_back(_out);
     }
 }
 
-void Generator::_generate_alloc_inst(const ir::Inst &inst,
-                                     StackManager &stack_manager) {
-    if (inst.to->reg == -3) {
-        inst.to->reg = -2;
-    }
-}
-
-void Generator::_generate_store_inst(const ir::Inst &inst,
-                                     StackManager &stack_manager) {
-    std::string store;
-    switch (inst.insttype) {
-    case ir::InstType::ISTOREW:
-        store = "sw";
-        break;
-    case ir::InstType::ISTOREL:
-        store = "sd";
-        break;
-    case ir::InstType::ISTORES:
-        store = "fsw";
-        break;
-    default:
-        break; // unreachable
-    }
-
-    std::string arg = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-    std::string addr = get_asm_addr(inst.arg[1], stack_manager);
-
-    _out << INDENT << build(store, arg, addr) << std::endl;
-}
-
-void Generator::_generate_load_inst(const ir::Inst &inst,
-                                    StackManager &stack_manager) {
-    std::string lw;
-    switch (inst.insttype) {
-    case ir::InstType::ILOADW:
-        lw = "lw";
-        break;
-    case ir::InstType::ILOADL:
-        lw = "ld";
-        break;
-    case ir::InstType::ILOADS:
-        lw = "flw";
-        break;
-    default:
-        break; // unreachable
-    }
-
-    auto to = get_asm_to(inst.to);
-    auto addr = get_asm_addr(inst.arg[0], stack_manager);
-
-    _out << INDENT << build(lw, to, addr) << std::endl;
-}
-
-void Generator::_generate_add_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager) {
-    std::string add;
-    std::string addi;
-    auto temp_arg0 = std::dynamic_pointer_cast<ir::Temp>(inst.arg[0]);
-    auto temp_arg1 = std::dynamic_pointer_cast<ir::Temp>(inst.arg[1]);
-
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out);
-    auto arg1 = get_asm_arg(inst.arg[1], stack_manager, _out);
-
-    switch (inst.to->get_type()) {
-    case ir::Type::W:
-    case ir::Type::L: {
-        std::string add = inst.to->get_type() == ir::Type::W ? "addw" : "add";
-        std::string addi =
-            inst.to->get_type() == ir::Type::W ? "addiw" : "addi";
-        if (temp_arg0 && temp_arg1) {
-            _out << INDENT << build(add, to, arg0, arg1) << std::endl;
-        } else if (temp_arg0) {
-            _out << INDENT << build(addi, to, arg0, arg1) << std::endl;
-        } else if (temp_arg1) {
-            _out << INDENT << build(addi, to, arg1, arg0) << std::endl;
-        } else {
-            _out << INDENT << build("li", to, get_const_asm_value(inst.arg[0]))
-                 << std::endl;
-            _out << INDENT
-                 << build(addi, to, to, get_const_asm_value(inst.arg[1]))
-                 << std::endl;
-        }
-    } break;
-    case ir::Type::S:
-        _out << INDENT << build("fadd.s", to, arg0, arg1) << std::endl;
-        break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_sub_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager) {
-    std::string add;
-    std::string addi;
-    auto temp_arg0 = std::dynamic_pointer_cast<ir::Temp>(inst.arg[0]);
-    auto temp_arg1 = std::dynamic_pointer_cast<ir::Temp>(inst.arg[1]);
-
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out);
-    auto arg1 = get_asm_arg(inst.arg[1], stack_manager, _out);
-
-    switch (inst.to->get_type()) {
-    case ir::Type::W:
-    case ir::Type::L: {
-        std::string add = inst.to->get_type() == ir::Type::W ? "subw" : "sub";
-        std::string addi =
-            inst.to->get_type() == ir::Type::W ? "addiw" : "addi";
-        if (temp_arg0 && temp_arg1) {
-            _out << INDENT << build(add, to, arg0, arg1) << std::endl;
-        } else if (temp_arg0) {
-            if (arg1[0] == '-') {
-                _out << INDENT << build(addi, to, arg0, arg1.substr(1))
-                     << std::endl;
-            } else {
-                _out << INDENT << build(addi, to, arg0, "-" + arg1)
-                     << std::endl;
-            }
-        } else if (temp_arg1) {
-            if (arg0[0] == '-') {
-                _out << INDENT << build(addi, to, arg1, arg0.substr(1))
-                     << std::endl;
-            } else {
-                _out << INDENT << build(addi, to, arg1, "-" + arg0)
-                     << std::endl;
-            }
-        } else {
-            _out << INDENT << build("li", to, arg0) << std::endl;
-            if (arg1[0] == '-') {
-                _out << INDENT << build(addi, to, to, arg1.substr(1))
-                     << std::endl;
-            } else {
-                _out << INDENT << build(addi, to, to, "-" + arg1) << std::endl;
-            }
-        }
-    } break;
-    case ir::Type::S:
-        _out << INDENT << build("fsub.s", to, arg0, arg1) << std::endl;
-        break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_neg_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-    switch (inst.to->get_type()) {
-    case ir::Type::L:
-        _out << INDENT << build("neg", arg0) << std::endl;
-        break;
-    case ir::Type::W:
-        _out << INDENT << build("negw", arg0) << std::endl;
-        break;
-    case ir::Type::S:
-        _out << INDENT << build("fneg.s", arg0) << std::endl;
-        break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_mul_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-    auto arg1 = get_asm_arg(inst.arg[1], stack_manager, _out, false);
-
-    switch (inst.to->get_type()) {
-    case ir::Type::W:
-        _out << INDENT << build("mulw", to, arg0, arg1) << std::endl;
-        break;
-    case ir::Type::L:
-        _out << INDENT << build("mul", to, arg0, arg1) << std::endl;
-        break;
-    case ir::Type::S:
-        _out << INDENT << build("fmul.s", to, arg0, arg1) << std::endl;
-        break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_div_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-    auto arg1 = get_asm_arg(inst.arg[1], stack_manager, _out, false);
-
-    switch (inst.to->get_type()) {
-    case ir::Type::W:
-        _out << INDENT << build("divw", to, arg0, arg1) << std::endl;
-        break;
-    case ir::Type::L:
-        _out << INDENT << build("div", to, arg0, arg1) << std::endl;
-        break;
-    case ir::Type::S:
-        _out << INDENT << build("fdiv.s", to, arg0, arg1) << std::endl;
-        break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_rem_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-    auto arg1 = get_asm_arg(inst.arg[1], stack_manager, _out, false);
-
-    switch (inst.to->get_type()) {
-    case ir::Type::W:
-    case ir::Type::L: {
-        std::string mul = inst.to->get_type() == ir::Type::W ? "remw" : "rem";
-        _out << INDENT << build(mul, to, arg0, arg1) << std::endl;
-    } break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_copy_inst(const ir::Inst &inst,
-                                    StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-
-    switch (inst.to->get_type()) {
-    case ir::Type::W:
-    case ir::Type::L: {
-        _out << INDENT << build("mv", to, arg0) << std::endl;
-    } break;
-    case ir::Type::S: {
-        _out << INDENT << build("fmv.s", to, arg0) << std::endl;
-    } break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_float_compare_inst(const ir::Inst &inst,
-                                             StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-    auto arg1 = get_asm_arg(inst.arg[1], stack_manager, _out, false);
-
-    switch (inst.insttype) {
-    case ir::InstType::ICEQS:
-        _out << INDENT << build("feq.s", to, arg0, arg1) << std::endl;
-        break;
-    case ir::InstType::ICNES:
-        _out << INDENT << build("fne.s", to, arg0, arg1) << std::endl;
-        break;
-    case ir::InstType::ICLES:
-        _out << INDENT << build("fle.s", to, arg0, arg1) << std::endl;
-        break;
-    case ir::InstType::ICLTS:
-        _out << INDENT << build("flt.s", to, arg0, arg1) << std::endl;
-        break;
-    case ir::InstType::ICGES:
-        _out << INDENT << build("fle.s", to, arg1, arg0) << std::endl;
-        break;
-    case ir::InstType::ICGTS:
-        _out << INDENT << build("flt.s", to, arg1, arg0) << std::endl;
-        break;
-    default:
-        throw std::logic_error("unsupported type");
-    }
-}
-
-void Generator::_generate_extsw_inst(const ir::Inst &inst,
-                                     StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-
-    _out << INDENT << build("sext.w", to, arg0) << std::endl;
-}
-
-void Generator::_generate_stosi_inst(const ir::Inst &inst,
-                                     StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-
-    _out << INDENT << build("fcvt.w.s", to, arg0) << std::endl;
-}
-
-void Generator::_generate_swtof_inst(const ir::Inst &inst,
-                                     StackManager &stack_manager) {
-    auto to = get_asm_to(inst.to);
-    auto arg0 = get_asm_arg(inst.arg[0], stack_manager, _out, false);
-
-    _out << INDENT << build("fcvt.s.w", to, arg0) << std::endl;
-}
-
-void Generator::_generate_par_inst(const ir::Inst &inst,
-                                   StackManager &stack_manager, int par_count) {
-    auto to = get_asm_to(inst.to);
+void Generator::_generate_par_inst(const ir::Inst &inst, int par_count) {
+    auto [to, write_back] = _get_asm_to(inst.to);
     if (par_count <= 7) { // in a0-a7
         switch (inst.to->get_type()) {
         case ir::Type::L:
@@ -642,6 +341,44 @@ void Generator::_generate_par_inst(const ir::Inst &inst,
     } else {
         throw std::logic_error("unimplemented");
     }
+    write_back(_out);
+}
+
+void Generator::_generate_jump_inst(const ir::Jump &jump) {
+    switch (jump.type) {
+    case ir::Jump::NONE:
+        return;
+    case ir::Jump::RET: {
+        if (jump.arg) {
+            auto arg = _get_asm_arg(jump.arg, 0);
+            _out << INDENT << build("mv", "a0", arg) << std::endl;
+        }
+
+        // recover saved registers
+        for (auto [reg, offset] :
+             _stack_manager.get_callee_saved_regs_offset()) {
+            _out << INDENT
+                 << build("ld", regno2string(reg),
+                          std::to_string(offset) + "(sp)")
+                 << std::endl;
+        }
+        _out << INDENT
+             << build("addi", "sp", "sp",
+                      std::to_string(_stack_manager.get_frame_size()))
+             << std::endl;
+
+        _out << INDENT << build("jr", "ra") << std::endl;
+    } break;
+    case ir::Jump::JMP: {
+        _out << INDENT << build("j", ".L" + std::to_string(jump.blk[0]->id))
+             << std::endl;
+    } break;
+    case ir::Jump::JNZ: {
+        _generate_jnz_inst(jump);
+    } break;
+    default:
+        throw std::logic_error("unsupported jump type");
+    }
 }
 
 static bool is_int_compare(ir::InstType insttype) {
@@ -657,96 +394,173 @@ static bool is_int_compare(ir::InstType insttype) {
     }
 }
 
-void Generator::_generate_jump_inst(const ir::Jump &jump,
-                                    StackManager &stack_manager) {
-    switch (jump.type) {
-    case ir::Jump::NONE:
-        return;
-    case ir::Jump::RET: {
-        if (jump.arg) {
-            auto arg = get_asm_arg(jump.arg, stack_manager, _out, false);
-            _out << INDENT << build("mv", "a0", arg) << std::endl;
+void Generator::_generate_jnz_inst(const ir::Jump &jump) {
+    if (auto temp = std::dynamic_pointer_cast<ir::Temp>(jump.arg)) {
+        if (temp->defs.size() != 1) {
+            throw std::logic_error("requires single def");
         }
-
-        // recover saved registers
-        for (auto [reg, offset] :
-             stack_manager.get_callee_saved_regs_offset()) {
-            _out << INDENT
-                 << build("ld", regno2string(reg),
-                          std::to_string(offset) + "(sp)")
-                 << std::endl;
-        }
-        _out << INDENT
-             << build("addi", "sp", "sp",
-                      std::to_string(stack_manager.get_frame_size()))
-             << std::endl;
-
-        _out << INDENT << build("jr", "ra") << std::endl;
-    } break;
-    case ir::Jump::JMP: {
-        _out << INDENT << build("j", ".L" + std::to_string(jump.blk[0]->id))
-             << std::endl;
-    } break;
-    case ir::Jump::JNZ: {
-        if (auto temp = std::dynamic_pointer_cast<ir::Temp>(jump.arg)) {
-            if (temp->defs.size() != 1) {
-                throw std::logic_error("requires single def");
-            }
-            if (auto instdef = std::get_if<ir::InstDef>(&temp->defs[0]);
-                instdef != nullptr && is_int_compare(instdef->ins->insttype)) {
-                auto arg0 = get_asm_arg(instdef->ins->arg[0], stack_manager,
-                                        _out, false);
-                auto arg1 = get_asm_arg(instdef->ins->arg[1], stack_manager,
-                                        _out, false);
-                switch (instdef->ins->insttype) {
-                case ir::InstType::ICNEW:
-                    _out << INDENT
-                         << build("bne", arg0, arg1,
-                                  ".L" + std::to_string(jump.blk[0]->id))
-                         << std::endl;
-                    break;
-                case ir::InstType::ICSLEW:
-                    _out << INDENT
-                         << build("ble", arg0, arg1,
-                                  ".L" + std::to_string(jump.blk[0]->id))
-                         << std::endl;
-                    break;
-                case ir::InstType::ICSLTW:
-                    _out << INDENT
-                         << build("blt", arg0, arg1,
-                                  ".L" + std::to_string(jump.blk[0]->id))
-                         << std::endl;
-                    break;
-                case ir::InstType::ICSGEW:
-                    _out << INDENT
-                         << build("bge", arg0, arg1,
-                                  ".L" + std::to_string(jump.blk[0]->id))
-                         << std::endl;
-                    break;
-                case ir::InstType::ICSGTW:
-                    _out << INDENT
-                         << build("bgt", arg0, arg1,
-                                  ".L" + std::to_string(jump.blk[0]->id))
-                         << std::endl;
-                    break;
-                default:
-                    throw std::logic_error("unsupported type");
-                }
+        if (auto instdef = std::get_if<ir::InstDef>(&temp->defs[0]);
+            instdef != nullptr && is_int_compare(instdef->ins->insttype)) {
+            auto arg0 = _get_asm_arg(instdef->ins->arg[0], 0);
+            auto arg1 = _get_asm_arg(instdef->ins->arg[1], 1);
+            switch (instdef->ins->insttype) {
+            case ir::InstType::ICNEW:
                 _out << INDENT
-                     << build("j", ".L" + std::to_string(jump.blk[1]->id))
+                     << build("bne", arg0, arg1,
+                              ".L" + std::to_string(jump.blk[0]->id))
                      << std::endl;
                 break;
+            case ir::InstType::ICSLEW:
+                _out << INDENT
+                     << build("ble", arg0, arg1,
+                              ".L" + std::to_string(jump.blk[0]->id))
+                     << std::endl;
+                break;
+            case ir::InstType::ICSLTW:
+                _out << INDENT
+                     << build("blt", arg0, arg1,
+                              ".L" + std::to_string(jump.blk[0]->id))
+                     << std::endl;
+                break;
+            case ir::InstType::ICSGEW:
+                _out << INDENT
+                     << build("bge", arg0, arg1,
+                              ".L" + std::to_string(jump.blk[0]->id))
+                     << std::endl;
+                break;
+            case ir::InstType::ICSGTW:
+                _out << INDENT
+                     << build("bgt", arg0, arg1,
+                              ".L" + std::to_string(jump.blk[0]->id))
+                     << std::endl;
+                break;
+            default:
+                throw std::logic_error("unsupported type");
             }
+            _out << INDENT << build("j", ".L" + std::to_string(jump.blk[1]->id))
+                 << std::endl;
+            return;
         }
-        auto arg = get_asm_arg(jump.arg, stack_manager, _out, false);
-        _out << INDENT
-             << build("bnez", arg, ".L" + std::to_string(jump.blk[0]->id))
+    }
+    auto arg = _get_asm_arg(jump.arg, 0);
+    _out << INDENT << build("bnez", arg, ".L" + std::to_string(jump.blk[0]->id))
+         << std::endl;
+    _out << INDENT << build("j", ".L" + std::to_string(jump.blk[1]->id))
+         << std::endl;
+}
+
+std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
+    if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg)) {
+        if (temp->reg >= 0) {
+            return regno2string(temp->reg);
+        }
+        if (temp->reg == SPILL) {
+            std::string load;
+            switch (temp->get_type()) {
+            case ir::Type::W:
+                load = "lw";
+                break;
+            case ir::Type::L:
+                load = "ld";
+                break;
+            case ir::Type::S:
+                throw "flw";
+            default:
+                throw std::logic_error("unsupported type");
+            };
+            int offset = _stack_manager.get_spilled_temps_offset().at(temp);
+            int reg = _get_temp_reg(temp->get_type(), no);
+            std::string reg_str = regno2string(reg);
+            _out << INDENT
+                 << build(load, reg_str, std::to_string(offset) + "(sp)")
+                 << std::endl;
+
+            return reg_str;
+        } else if (temp->reg == STACK) {
+            int offset = _stack_manager.get_local_var_offset().at(temp);
+            return std::to_string(offset) + "(sp)";
+        } else {
+            throw std::logic_error("no register");
+        }
+    } else if (auto constbits = std::dynamic_pointer_cast<ir::ConstBits>(arg)) {
+        int reg = _get_temp_reg(constbits->get_type(), no);
+        std::string reg_str = regno2string(reg);
+
+        if (constbits->get_type() == ir::Type::S) { // TODO: this is fake now
+            std::string local_data_name =
+                ".LC" + std::to_string(_local_data.size());
+
+            auto local_data = std::shared_ptr<ir::Data>(
+                new ir::Data{false, local_data_name, 4});
+            local_data->append_const(ir::Type::S, {constbits});
+            _local_data.push_back(local_data);
+
+            _out << INDENT << build("lui", "a5", "%hi(" + local_data_name + ")")
+                 << std::endl;
+            _out << INDENT
+                 << build("flw", reg_str, "%lo(" + local_data_name + ")(a5)")
+                 << std::endl;
+        } else {
+            _out << INDENT << build("li", reg_str, constbits->get_asm_value())
+                 << std::endl;
+        }
+
+        return reg_str;
+    } else if (auto addr = std::dynamic_pointer_cast<ir::Address>(arg)) {
+        int reg = _get_temp_reg(addr->get_type(), no);
+        std::string reg_str = regno2string(reg);
+
+        _out << INDENT << build("la", reg_str, addr->get_asm_value())
              << std::endl;
-        _out << INDENT << build("j", ".L" + std::to_string(jump.blk[1]->id))
-             << std::endl;
-    } break;
+
+        return reg_str;
+    } else {
+        throw std::logic_error("unsupported type");
+    }
+}
+
+std::tuple<std::string, std::function<void(std::ostream &)>>
+Generator::_get_asm_to(ir::TempPtr to) {
+    if (to->reg >= 0) {
+        return std::make_tuple(regno2string(to->reg),
+                               [](std::ostream &out) { /* nop */ });
+    }
+    if (to->reg != SPILL) {
+        throw std::logic_error("no register");
+    }
+
+    std::string store;
+    switch (to->get_type()) {
+    case ir::Type::W:
+        store = "sw";
+        break;
+    case ir::Type::L:
+        store = "sd";
+        break;
+    case ir::Type::S:
+        store = "fsw";
+        break;
     default:
-        throw std::logic_error("unsupported jump type");
+        throw std::logic_error("unsupported type");
+    }
+    int offset = _stack_manager.get_spilled_temps_offset().at(to);
+    int reg = _get_temp_reg(to->get_type(), 0);
+    std::string reg_str = regno2string(reg);
+
+    return std::make_tuple(reg_str, [store, reg_str,
+                                     offset](std::ostream &out) {
+        out << INDENT << build(store, reg_str, std::to_string(offset) + "(sp)")
+            << std::endl;
+    });
+}
+
+int Generator::_get_temp_reg(ir::Type type, int no) {
+    std::array<int, 2> reg = {14, 15};            // a4, a5
+    std::array<int, 2> freg = {32 + 14, 32 + 15}; // fa4, fa5
+    if (type == ir::Type::S) {
+        return freg[no];
+    } else {
+        return reg[no];
     }
 }
 

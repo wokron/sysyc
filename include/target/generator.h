@@ -1,11 +1,12 @@
 #pragma once
 
 #include "ir/ir.h"
-#include "target/mem.h"
 #include "ostream"
+#include "target/mem.h"
+#include <functional>
 
 namespace target {
-    
+
 class Generator {
 public:
     Generator() = default;
@@ -17,32 +18,30 @@ public:
     void generate_func(const ir::Function &func);
 
 private:
-    void _generate_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_call_inst(const ir::Inst &call_inst, const std::vector<ir::ValuePtr> &params, StackManager &stack_manager);
+    void _generate_inst(const ir::Inst &inst);
 
-    void _generate_alloc_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_store_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_load_inst(const ir::Inst &inst, StackManager &stack_manager);
-    
-    void _generate_add_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_sub_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_neg_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_mul_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_div_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_rem_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_copy_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_load_inst(const ir::Inst &inst);
+    void _generate_store_inst(const ir::Inst &inst);
+    void _generate_arithmetic_inst(const ir::Inst &inst);
+    void _generate_float_compare_inst(const ir::Inst &inst);
+    void _generate_copy_like_inst(const ir::Inst &inst);
+    void _generate_convert_inst(const ir::Inst &inst);
 
-    void _generate_float_compare_inst(const ir::Inst &inst, StackManager &stack_manager);
+    void _generate_call_inst(const ir::Inst &inst,
+                             const std::vector<ir::ValuePtr> &args);
+    void _generate_par_inst(const ir::Inst &inst, int par_count);
+    void _generate_jump_inst(const ir::Jump &jump);
+    void _generate_jnz_inst(const ir::Jump &jump);
 
-    void _generate_extsw_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_stosi_inst(const ir::Inst &inst, StackManager &stack_manager);
-    void _generate_swtof_inst(const ir::Inst &inst, StackManager &stack_manager);
+    std::string _get_asm_arg(ir::ValuePtr arg, int no);
+    std::tuple<std::string, std::function<void(std::ostream &)>>
+    _get_asm_to(ir::TempPtr to);
 
-    void _generate_par_inst(const ir::Inst &inst, StackManager &stack_manager, int par_count);
-
-    void _generate_jump_inst(const ir::Jump &jump, StackManager &stack_manager);
+    int _get_temp_reg(ir::Type type, int no);
 
     std::ostream &_out = std::cout;
+    StackManager _stack_manager;
+    std::vector<ir::DataPtr> _local_data;
 };
 
 } // namespace target
