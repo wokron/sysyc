@@ -75,7 +75,9 @@ void Generator::generate_data(const ir::Data &data) {
 }
 
 void Generator::generate_func(const ir::Function &func) {
-    ;
+    LinearScanAllocator regalloc;
+    regalloc.allocate_registers(func);
+
     _stack_manager = StackManager();
     _stack_manager.run(func);
 
@@ -351,7 +353,11 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
     case ir::Jump::RET: {
         if (jump.arg) {
             auto arg = _get_asm_arg(jump.arg, 0);
-            _out << INDENT << build("mv", "a0", arg) << std::endl;
+            if (jump.arg->get_type() == ir::Type::S) {
+                _out << INDENT << build("fmv.s", "fa0", arg) << std::endl;
+            } else {
+                _out << INDENT << build("mv", "a0", arg) << std::endl;
+            }
         }
 
         // recover saved registers
@@ -553,6 +559,9 @@ std::string Generator::_get_asm_addr(ir::ValuePtr arg, int no) {
             throw std::logic_error("no register");
         }
     } else if (auto addr = std::dynamic_pointer_cast<ir::Address>(arg)) {
+        auto name = addr->get_asm_value();
+        _out << INDENT << build("lui", "a5", "%hi(" + name + ")") << std::endl;
+        return "%lo(" + name + ")(a5)";
         return addr->get_asm_value();
     } else {
         throw std::logic_error("unsupported type");
