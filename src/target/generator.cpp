@@ -227,7 +227,7 @@ void Generator::_generate_float_compare_inst(const ir::Inst &inst) {
     static std::unordered_map<ir::InstType, std::string> inst2asm = {
         {ir::InstType::ICEQS, "feq.s"}, {ir::InstType::ICNES, "fne.s"},
         {ir::InstType::ICLES, "fle.s"}, {ir::InstType::ICLTS, "flt.s"},
-        {ir::InstType::ICGES, "fle.s"}, {ir::InstType::ICGTS, "flt.s"},
+        {ir::InstType::ICGES, "fge.s"}, {ir::InstType::ICGTS, "fgt.s"},
     };
 
     auto [to, write_back] = _get_asm_to(inst.to);
@@ -244,7 +244,7 @@ void Generator::_generate_copy_like_inst(const ir::Inst &inst) {
     // clang-format off
     static std::unordered_map<ir::InstType, std::unordered_map<ir::Type, std::string>> inst2asm = {
         {ir::InstType::ICOPY, {{ir::Type::L, "mv"}, {ir::Type::W, "mv"}, {ir::Type::S, "fmv.s"}}},
-        {ir::InstType::INEG, {{ir::Type::L, "neg"}, {ir::Type::W, "neg"}, {ir::Type::S, "fneg.s"}}},
+        {ir::InstType::INEG, {{ir::Type::L, "neg"}, {ir::Type::W, "negw"}, {ir::Type::S, "fneg.s"}}},
     };
     // clang-format on
 
@@ -260,9 +260,9 @@ void Generator::_generate_copy_like_inst(const ir::Inst &inst) {
 
 void Generator::_generate_convert_inst(const ir::Inst &inst) {
     static std::unordered_map<ir::InstType, std::string> inst2asm = {
-        {ir::InstType::IEXTSW, "ext.w"},
-        {ir::InstType::ISTOSI, "stosi"},
-        {ir::InstType::ISWTOF, "swtof"},
+        {ir::InstType::IEXTSW, "sext.w"},
+        {ir::InstType::ISTOSI, "fcvt.w.s"},
+        {ir::InstType::ISWTOF, "fcvt.s.w"},
     };
 
     auto [to, write_back] = _get_asm_to(inst.to);
@@ -404,6 +404,12 @@ void Generator::_generate_jnz_inst(const ir::Jump &jump) {
             auto arg0 = _get_asm_arg(instdef->ins->arg[0], 0);
             auto arg1 = _get_asm_arg(instdef->ins->arg[1], 1);
             switch (instdef->ins->insttype) {
+            case ir::InstType::ICEQW:
+                _out << INDENT
+                     << build("beq", arg0, arg1,
+                              ".L" + std::to_string(jump.blk[0]->id))
+                     << std::endl;
+                break;
             case ir::InstType::ICNEW:
                 _out << INDENT
                      << build("bne", arg0, arg1,
