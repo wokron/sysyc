@@ -182,7 +182,7 @@ void Generator::_generate_load_inst(const ir::Inst &inst) {
     };
 
     auto [to, write_back] = _get_asm_to(inst.to);
-    auto arg = _get_asm_arg(inst.arg[0], 0);
+    auto arg = _get_asm_addr(inst.arg[0], 0);
 
     _out << INDENT << build(inst2asm.at(inst.insttype), to, arg) << std::endl;
 
@@ -197,7 +197,7 @@ void Generator::_generate_store_inst(const ir::Inst &inst) {
     };
 
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
-    auto arg1 = _get_asm_arg(inst.arg[1], 1);
+    auto arg1 = _get_asm_addr(inst.arg[1], 1);
 
     _out << INDENT << build(inst2asm.at(inst.insttype), arg0, arg1)
          << std::endl;
@@ -478,7 +478,13 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
             return reg_str;
         } else if (temp->reg == STACK) {
             int offset = _stack_manager.get_local_var_offset().at(temp);
-            return std::to_string(offset) + "(sp)";
+            int reg = _get_temp_reg(temp->get_type(), no);
+            std::string reg_str = regno2string(reg);
+            _out << INDENT
+                 << build("addi", reg_str, "sp", std::to_string(offset))
+                 << std::endl;
+
+            return reg_str;
         } else {
             throw std::logic_error("no register");
         }
@@ -514,6 +520,34 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
              << std::endl;
 
         return reg_str;
+    } else {
+        throw std::logic_error("unsupported type");
+    }
+}
+
+std::string Generator::_get_asm_addr(ir::ValuePtr arg, int no) {
+    if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg)) {
+        if (temp->reg >= 0) {
+            return "(" + regno2string(temp->reg) + ")";
+        }
+
+        if (temp->reg == SPILL) {
+            int reg = _get_temp_reg(temp->get_type(), no);
+            int offset = _stack_manager.get_spilled_temps_offset().at(temp);
+            std::string reg_str = regno2string(reg);
+            _out << INDENT
+                 << build("ld", reg_str, std::to_string(offset) + "(sp)")
+                 << std::endl;
+
+            return "(" + reg_str + ")";
+        } else if (temp->reg == STACK) {
+            int offset = _stack_manager.get_local_var_offset().at(temp);
+            return std::to_string(offset) + "(sp)";
+        } else {
+            throw std::logic_error("no register");
+        }
+    } else if (auto addr = std::dynamic_pointer_cast<ir::Address>(arg)) {
+        return addr->get_asm_value();
     } else {
         throw std::logic_error("unsupported type");
     }

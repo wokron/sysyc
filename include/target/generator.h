@@ -34,6 +34,7 @@ private:
     void _generate_jnz_inst(const ir::Jump &jump);
 
     std::string _get_asm_arg(ir::ValuePtr arg, int no);
+    std::string _get_asm_addr(ir::ValuePtr addr, int no);
     std::tuple<std::string, std::function<void(std::ostream &)>>
     _get_asm_to(ir::TempPtr to);
 
