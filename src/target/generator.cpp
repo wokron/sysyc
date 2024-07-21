@@ -520,6 +520,7 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
 
 static bool is_int_compare(ir::InstType insttype) {
     switch (insttype) {
+    case ir::InstType::ICEQW:
     case ir::InstType::ICNEW:
     case ir::InstType::ICSLEW:
     case ir::InstType::ICSLTW:
