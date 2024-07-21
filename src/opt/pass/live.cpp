@@ -9,7 +9,7 @@ bool opt::LivenessAnalysisPass::run_on_function(ir::Function &func) {
         block->live_def.clear();
         block->live_in.clear();
         block->live_out.clear();
-        _init_use_def(*block);
+        _init_live_use_def(*block);
     }
 
     bool improved = false;
@@ -24,7 +24,7 @@ bool opt::LivenessAnalysisPass::run_on_function(ir::Function &func) {
     return false;
 }
 
-void LivenessAnalysisPass::_init_use_def(ir::Block &block) {
+void LivenessAnalysisPass::_init_live_use_def(ir::Block &block) {
     // use set is useless
     auto &live_use = block.live_in;
 

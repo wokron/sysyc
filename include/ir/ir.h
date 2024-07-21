@@ -34,8 +34,11 @@ struct Const : public Value {
     virtual std::string get_asm_value() = 0;
 };
 
+struct Function;
+
 struct Address : public Const {
     std::string name;
+    Function *ref_func;
 
     Address(std::string name) : name(name) {}
 
@@ -47,7 +50,7 @@ struct Address : public Const {
 
     std::string get_asm_value() override { return name; }
 
-private:
+  private:
     static std::unordered_map<std::string, std::shared_ptr<Address>>
         addrcon_cache;
 };
@@ -96,7 +99,7 @@ struct ConstBits : public Const {
         }
     }
 
-private:
+  private:
     static std::unordered_map<float, std::shared_ptr<ConstBits>> floatcon_cache;
     static std::unordered_map<int, std::shared_ptr<ConstBits>> intcon_cache;
 };
@@ -126,6 +129,8 @@ enum InstType {
 
 };
 
+extern std::unordered_map<InstType, std::string> inst2name;
+
 struct Temp;
 
 struct Inst {
@@ -134,7 +139,8 @@ struct Inst {
     std::shared_ptr<Value> arg[2];
 
     // fields below are used for optimization
-    int number; // for linear scan register allocation
+    int number;          // for linear scan register allocation
+    bool marked = false; // for dead code elimination
 
     static std::shared_ptr<Inst> create(InstType insttype, Type ty,
                                         std::shared_ptr<Value> arg0,
@@ -146,12 +152,15 @@ struct Inst {
 struct Block;
 
 struct Phi {
-    Type ty;
     std::shared_ptr<Temp> to;
     std::vector<std::pair<std::shared_ptr<Block>, std::shared_ptr<Value>>> args;
 
-    Phi(Type ty, std::shared_ptr<Temp> to, decltype(args) args)
-        : ty(ty), to(to), args(args) {}
+    // fields below are used for optimization
+    bool marked = false;
+
+    Phi(std::shared_ptr<Temp> to, decltype(args) args) : to(to), args(args) {}
+
+    Phi(std::shared_ptr<Temp> to) : to(to), args(decltype(args){}) {}
 
     void emit(std::ostream &out) const;
 };
@@ -188,6 +197,11 @@ struct Block {
     std::unordered_set<std::shared_ptr<Temp>> live_def, live_in,
         live_out; // liveness
     std::unordered_set<std::shared_ptr<Temp>> temps_in_block;
+    int rpo_id; // number of reverse post order (use in cooper's fill dom)
+    // dominator tree
+    std::shared_ptr<Block> idom;               // father node
+    std::vector<std::shared_ptr<Block>> doms;  // child nodes
+    std::vector<std::shared_ptr<Block>> dfron; // dominance frontier
 
     static std::shared_ptr<Block> create(std::string name, Function &func);
 
@@ -213,6 +227,8 @@ struct Function {
     // fields below are used for optimization
     std::vector<std::shared_ptr<Block>> rpo; // reverse post order
     std::unordered_set<std::shared_ptr<Temp>> temps_in_func;
+    bool is_leaf = false; // whether the function is a leaf function
+    bool is_inline = false; // whether the function should be inlined
 
     using TempPtrList = std::vector<std::shared_ptr<Temp>>;
     using FunctionPtr = std::shared_ptr<Function>;
@@ -228,7 +244,11 @@ struct Function {
 
     void emit(std::ostream &out) const;
 
-    std::shared_ptr<Address> get_address() const { return Address::get(name); }
+    std::shared_ptr<Address> get_address() {
+        auto addr = Address::get(name);
+        addr->ref_func = this;
+        return addr;
+    }
 };
 
 struct PhiUse {
@@ -238,6 +258,7 @@ struct PhiUse {
 
 struct InstUse {
     std::shared_ptr<Inst> ins;
+    std::shared_ptr<Block> blk;
 };
 
 struct JmpUse {
@@ -253,6 +274,7 @@ struct PhiDef {
 
 struct InstDef {
     std::shared_ptr<Inst> ins;
+    std::shared_ptr<Block> blk;
 };
 
 using Def = std::variant<PhiDef, InstDef>;

@@ -141,7 +141,7 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
             for (int index = 0; index < initializer->get_space(); index++) {
                 // if no init value, just store zero
                 sym::TypePtr val_type = elm_type;
-                ir::ValuePtr val = ir::ConstBits::get(0);
+                ir::ValuePtr val = val_type->is_float() ? ir::ConstBits::get(0.0f) : ir::ConstBits::get(0);
                 if (values.find(index) != values.end()) {
                     auto value = values[index];
                     val_type = std::get<0>(value);
@@ -433,38 +433,75 @@ void Visitor::visit_if_stmt(const IfStmt &node) {
 }
 
 void Visitor::visit_while_stmt(const WhileStmt &node) {
-    // TODO: loop rotation optimization
-    auto cond_block = _builder.create_label("while_cond");
+    if (_optimize) {
+        // while with loop rotation
+        auto jump_to_cond = _builder.create_jmp(nullptr);
 
-    auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
+        auto body_block = _builder.create_label("while_body");
 
-    auto body_block = _builder.create_label("while_body");
+        _while_stack.push(ContinueBreak({}, {}));
 
-    _while_stack.push(ContinueBreak({}, {}));
+        _current_scope = _current_scope->push_scope();
+        visit_stmt(*node.stmt);
+        _current_scope = _current_scope->pop_scope();
 
-    _current_scope = _current_scope->push_scope();
-    visit_stmt(*node.stmt);
-    _current_scope = _current_scope->pop_scope();
+        auto [continue_jmp, break_jmp] = _while_stack.top();
+        _while_stack.pop();
 
-    auto [continue_jmp, break_jmp] = _while_stack.top();
-    _while_stack.pop();
+        auto cond_block = _builder.create_label("while_cond");
 
-    _builder.create_jmp(cond_block);
+        auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
 
-    auto join_block = _builder.create_label("while_join");
+        auto join_block = _builder.create_label("while_join");
 
-    // fill jump targets
-    for (auto &jmp_block : jmp_to_true) {
-        jmp_block->jump.blk[0] = body_block;
-    }
-    for (auto &jmp_block : jmp_to_false) {
-        jmp_block->jump.blk[1] = join_block;
-    }
-    for (auto &jmp_block : continue_jmp) {
-        jmp_block->jump.blk[0] = cond_block;
-    }
-    for (auto &jmp_block : break_jmp) {
-        jmp_block->jump.blk[0] = join_block;
+        // fill jump targets
+        jump_to_cond->jump.blk[0] = cond_block;
+        for (auto &jmp_block : jmp_to_true) {
+            jmp_block->jump.blk[0] = body_block;
+        }
+        for (auto &jmp_block : jmp_to_false) {
+            jmp_block->jump.blk[1] = join_block;
+        }
+        for (auto &jmp_block : continue_jmp) {
+            jmp_block->jump.blk[0] = cond_block;
+        }
+        for (auto &jmp_block : break_jmp) {
+            jmp_block->jump.blk[0] = join_block;
+        }
+    } else {
+        // normal while loop
+        auto cond_block = _builder.create_label("while_cond");
+
+        auto [jmp_to_true, jmp_to_false] = visit_cond(*node.cond);
+
+        auto body_block = _builder.create_label("while_body");
+
+        _while_stack.push(ContinueBreak({}, {}));
+
+        _current_scope = _current_scope->push_scope();
+        visit_stmt(*node.stmt);
+        _current_scope = _current_scope->pop_scope();
+
+        auto [continue_jmp, break_jmp] = _while_stack.top();
+        _while_stack.pop();
+
+        _builder.create_jmp(cond_block);
+
+        auto join_block = _builder.create_label("while_join");
+
+        // fill jump targets
+        for (auto &jmp_block : jmp_to_true) {
+            jmp_block->jump.blk[0] = body_block;
+        }
+        for (auto &jmp_block : jmp_to_false) {
+            jmp_block->jump.blk[1] = join_block;
+        }
+        for (auto &jmp_block : continue_jmp) {
+            jmp_block->jump.blk[0] = cond_block;
+        }
+        for (auto &jmp_block : break_jmp) {
+            jmp_block->jump.blk[0] = join_block;
+        }
     }
 }
 
@@ -799,7 +836,7 @@ ExpReturn Visitor::visit_unary_exp(const UnaryExp &node) {
         if (exp_type->is_int32()) {
             // !a equal to (a == 0)
             return ExpReturn(
-                exp_type, _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
+                exp_type, _builder.create_ceqz(exp_val, ir::ConstBits::get(0)));
         } else if (exp_type->is_float()) {
             // !a equal to (a == 0)
             auto cmp_val =

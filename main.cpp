@@ -8,10 +8,18 @@
 #include <fstream>
 #include <getopt.h>
 
-using Passes = opt::PassPipeline<opt::FillPredsPass, opt::SimplifyCFGPass>;
 
-using RegisterPass =
-    opt::PassPipeline<opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+using Passes = opt::PassPipeline<
+    opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillPredsPass,
+    opt::FillReversePostOrderPass, opt::FillUsesPass,
+    opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
+    opt::SSAConstructPass, opt::FillUsesPass, opt::GVNPass, opt::FillUsesPass,
+    opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass,
+    opt::SSADestructPass, opt::LocalConstAndCopyPropagationPass,
+    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass>;
+
+using RegisterPasses =
+    opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
                       opt::FillIntervalPass>;
 
 struct Options {
@@ -64,7 +72,7 @@ void compile(const char *name, const Options &options,
     }
 
     ir::Module module;
-    Visitor visitor(module);
+    Visitor visitor(module, options.optimize);
     visitor.visit(*root);
 
     if (has_error()) {
@@ -87,40 +95,41 @@ void compile(const char *name, const Options &options,
 
     // TODO: ir to asm
 
-    RegisterPass reg_pass;
+
+    RegisterPasses reg_pass;
     reg_pass.run(module);
 
-    std::cerr << "Register allocation:" << std::endl;
-    for (auto &func : module.functions) {
-        std::cerr << "Function: " << func->name << std::endl;
-        target::LinearScanAllocator regalloc;
-        regalloc.allocate_registers(*func);
-        for (auto [temp, reg] : regalloc.get_register_map()) {
-            temp->emit(std::cerr);
-            std::cerr << " -> " << target::regno2string(reg) << std::endl;
-        }
-    }
+    // std::cerr << "Register allocation:" << std::endl;
+    // for (auto &func : module.functions) {
+    //     std::cerr << "Function: " << func->name << std::endl;
+    //     target::LinearScanAllocator regalloc;
+    //     regalloc.allocate_registers(*func);
+    //     for (auto [temp, reg] : regalloc.get_register_map()) {
+    //         temp->emit(std::cerr);
+    //         std::cerr << " -> " << target::regno2string(reg) << std::endl;
+    //     }
+    // }
 
-    std::cerr << "Stack layout:" << std::endl;
-    for (auto &func : module.functions) {
-        std::cerr << "Function: " << func->name << std::endl;
-        target::StackManager stack_manager;
-        stack_manager.run(*func);
+    // std::cerr << "Stack layout:" << std::endl;
+    // for (auto &func : module.functions) {
+    //     std::cerr << "Function: " << func->name << std::endl;
+    //     target::StackManager stack_manager;
+    //     stack_manager.run(*func);
 
-        for (auto [reg, offset] :
-             stack_manager.get_callee_saved_regs_offset()) {
-            std::cerr << target::regno2string(reg) << " -> sp(" << offset << ")"
-                      << std::endl;
-        }
-        for (auto [temp, offset] : stack_manager.get_local_var_offset()) {
-            temp->emit(std::cerr);
-            std::cerr << " -> sp(" << offset << ")" << std::endl;
-        }
-        for (auto [temp, offset] : stack_manager.get_spilled_temps_offset()) {
-            temp->emit(std::cerr);
-            std::cerr << " -> sp(" << offset << ")" << std::endl;
-        }
-    }
+    //     for (auto [reg, offset] :
+    //          stack_manager.get_callee_saved_regs_offset()) {
+    //         std::cerr << target::regno2string(reg) << " -> sp(" << offset << ")"
+    //                   << std::endl;
+    //     }
+    //     for (auto [temp, offset] : stack_manager.get_local_var_offset()) {
+    //         temp->emit(std::cerr);
+    //         std::cerr << " -> sp(" << offset << ")" << std::endl;
+    //     }
+    //     for (auto [temp, offset] : stack_manager.get_spilled_temps_offset()) {
+    //         temp->emit(std::cerr);
+    //         std::cerr << " -> sp(" << offset << ")" << std::endl;
+    //     }
+    // }
 
     if (options.emit_asm) {
         if (output.length() == 0) {
@@ -130,6 +139,7 @@ void compile(const char *name, const Options &options,
         target::Generator generator(outfile);
 
         generator.generate(module);
+        return;
     }
 
     cmd_error(name, "nothing to do");
