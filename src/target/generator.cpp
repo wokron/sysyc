@@ -4,9 +4,17 @@
 #include "target/regalloc.h"
 #include "target/utils.h"
 
+namespace target {
+
 #define INDENT "    "
 
-namespace target {
+// 12-bit immediate value range
+static const int IMM12_MIN = -2048;
+static const int IMM12_MAX = 2047;
+
+static bool is_in_imm12_range(int value) {
+    return value >= IMM12_MIN && value <= IMM12_MAX;
+}
 
 void Generator::generate(const ir::Module &module) {
     for (const auto &data : module.datas) {
@@ -89,14 +97,29 @@ void Generator::generate_func(const ir::Function &func) {
 
     _out << func.name << ":" << std::endl;
 
-    _out << INDENT
-         << build("addi", "sp", "sp",
-                  "-" + std::to_string(_stack_manager.get_frame_size()))
-         << std::endl;
-    for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
-        _out << INDENT
-             << build("sd", regno2string(reg), std::to_string(offset) + "(sp)")
+    int frame_size = _stack_manager.get_frame_size();
+    if (is_in_imm12_range(frame_size)) {
+        _out << INDENT << build("addi", "sp", "sp", std::to_string(-frame_size))
              << std::endl;
+    } else {
+        _out << INDENT << build("li", "a5", std::to_string(frame_size))
+             << std::endl;
+        _out << INDENT << build("sub", "sp", "sp", "a5") << std::endl;
+    }
+
+    for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
+        if (is_in_imm12_range(offset)) {
+            _out << INDENT
+                 << build("sd", regno2string(reg),
+                          std::to_string(offset) + "(sp)")
+                 << std::endl;
+        } else {
+            _out << INDENT << build("li", "a5", std::to_string(offset))
+                 << std::endl;
+            _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+            _out << INDENT << build("sd", regno2string(reg), "0(a5)")
+                 << std::endl;
+        }
     }
 
     for (auto block = func.start; block; block = block->next) {
@@ -298,7 +321,23 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
                 throw std::logic_error("unsupported type");
             }
         } else {
-            throw std::logic_error("unimplemented");
+            static std::unordered_map<ir::Type, std::string> inst2asm = {
+                {ir::Type::W, "sw"}, {ir::Type::L, "sd"}, {ir::Type::S, "fsw"}};
+            int offset = (arg_count - 8) * 8;
+            auto arg0 = _get_asm_arg(arg, 0);
+            if (is_in_imm12_range(offset)) {
+                _out << INDENT
+                     << build(inst2asm.at(arg->get_type()), arg0,
+                              std::to_string(offset) + "(sp)")
+                     << std::endl;
+            } else {
+                _out << INDENT << build("li", "a5", std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+                _out << INDENT
+                     << build(inst2asm.at(arg->get_type()), arg0, "0(a5)")
+                     << std::endl;
+            }
         }
     }
     _out << INDENT
@@ -341,7 +380,22 @@ void Generator::_generate_par_inst(const ir::Inst &inst, int par_count) {
             break; // unreachable
         }
     } else {
-        throw std::logic_error("unimplemented");
+        static std::unordered_map<ir::Type, std::string> inst2asm = {
+            {ir::Type::W, "lw"}, {ir::Type::L, "ld"}, {ir::Type::S, "flw"}};
+        int offset = (par_count - 8) * 8 + _stack_manager.get_frame_size();
+        if (is_in_imm12_range(offset)) {
+            _out << INDENT
+                 << build(inst2asm.at(inst.to->get_type()), to,
+                          std::to_string(offset) + "(sp)")
+                 << std::endl;
+        } else {
+            _out << INDENT << build("li", "a5", std::to_string(offset))
+                 << std::endl;
+            _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+            _out << INDENT
+                 << build(inst2asm.at(inst.to->get_type()), to, "0(a5)")
+                 << std::endl;
+        }
     }
     write_back(_out);
 }
@@ -363,15 +417,32 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
         // recover saved registers
         for (auto [reg, offset] :
              _stack_manager.get_callee_saved_regs_offset()) {
-            _out << INDENT
-                 << build("ld", regno2string(reg),
-                          std::to_string(offset) + "(sp)")
-                 << std::endl;
+
+            if (is_in_imm12_range(offset)) {
+                _out << INDENT
+                     << build("ld", regno2string(reg),
+                              std::to_string(offset) + "(sp)")
+                     << std::endl;
+            } else {
+                _out << INDENT << build("li", "a5", std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+                _out << INDENT << build("ld", regno2string(reg), "0(a5)")
+                     << std::endl;
+            }
         }
-        _out << INDENT
-             << build("addi", "sp", "sp",
-                      std::to_string(_stack_manager.get_frame_size()))
-             << std::endl;
+
+        auto frame_size = _stack_manager.get_frame_size();
+        if (is_in_imm12_range(frame_size)) {
+            _out << INDENT
+                 << build("addi", "sp", "sp",
+                          std::to_string(_stack_manager.get_frame_size()))
+                 << std::endl;
+        } else {
+            _out << INDENT << build("li", "a5", std::to_string(frame_size))
+                 << std::endl;
+            _out << INDENT << build("add", "sp", "sp", "a5") << std::endl;
+        }
 
         _out << INDENT << build("jr", "ra") << std::endl;
     } break;
@@ -483,18 +554,34 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
             int offset = _stack_manager.get_spilled_temps_offset().at(temp);
             int reg = _get_temp_reg(temp->get_type(), no);
             std::string reg_str = regno2string(reg);
-            _out << INDENT
-                 << build(load, reg_str, std::to_string(offset) + "(sp)")
-                 << std::endl;
+
+            if (is_in_imm12_range(offset)) {
+                _out << INDENT
+                     << build(load, reg_str, std::to_string(offset) + "(sp)")
+                     << std::endl;
+            } else {
+                _out << INDENT << build("li", "a5", std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+                _out << INDENT << build(load, reg_str, "0(a5)") << std::endl;
+            }
 
             return reg_str;
         } else if (temp->reg == STACK) {
             int offset = _stack_manager.get_local_var_offset().at(temp);
             int reg = _get_temp_reg(temp->get_type(), no);
             std::string reg_str = regno2string(reg);
-            _out << INDENT
-                 << build("addi", reg_str, "sp", std::to_string(offset))
-                 << std::endl;
+
+            if (is_in_imm12_range(offset)) {
+                _out << INDENT
+                     << build("addi", reg_str, "sp", std::to_string(offset))
+                     << std::endl;
+            } else {
+                _out << INDENT << build("li", reg_str, std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", reg_str, "sp", reg_str)
+                     << std::endl;
+            }
 
             return reg_str;
         } else {
@@ -504,7 +591,7 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
         int reg = _get_temp_reg(constbits->get_type(), no);
         std::string reg_str = regno2string(reg);
 
-        if (constbits->get_type() == ir::Type::S) { // TODO: this is fake now
+        if (constbits->get_type() == ir::Type::S) {
             std::string local_data_name =
                 ".LC" + std::to_string(_local_data.size());
 
@@ -540,21 +627,39 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
 std::string Generator::_get_asm_addr(ir::ValuePtr arg, int no) {
     if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg)) {
         if (temp->reg >= 0) {
-            return "(" + regno2string(temp->reg) + ")";
+            return "0(" + regno2string(temp->reg) + ")";
         }
 
         if (temp->reg == SPILL) {
             int reg = _get_temp_reg(temp->get_type(), no);
             int offset = _stack_manager.get_spilled_temps_offset().at(temp);
             std::string reg_str = regno2string(reg);
-            _out << INDENT
-                 << build("ld", reg_str, std::to_string(offset) + "(sp)")
-                 << std::endl;
 
-            return "(" + reg_str + ")";
+            if (is_in_imm12_range(offset)) {
+                _out << INDENT
+                     << build("ld", reg_str, std::to_string(offset) + "(sp)")
+                     << std::endl;
+            } else {
+                _out << INDENT << build("li", "a5", std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+                _out << INDENT << build("ld", reg_str, "0(a5)") << std::endl;
+            }
+
+            return "0(" + reg_str + ")";
         } else if (temp->reg == STACK) {
             int offset = _stack_manager.get_local_var_offset().at(temp);
-            return std::to_string(offset) + "(sp)";
+            if (is_in_imm12_range(offset)) {
+                return std::to_string(offset) + "(sp)";
+            } else {
+                int reg = _get_temp_reg(temp->get_type(), no);
+                std::string reg_str = regno2string(reg);
+                _out << INDENT << build("li", reg_str, std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", reg_str, "sp", reg_str)
+                     << std::endl;
+                return "0(" + reg_str + ")";
+            }
         } else {
             throw std::logic_error("no register");
         }
@@ -596,11 +701,19 @@ Generator::_get_asm_to(ir::TempPtr to) {
     int reg = _get_temp_reg(to->get_type(), 0);
     std::string reg_str = regno2string(reg);
 
-    return std::make_tuple(reg_str, [store, reg_str,
-                                     offset](std::ostream &out) {
-        out << INDENT << build(store, reg_str, std::to_string(offset) + "(sp)")
-            << std::endl;
-    });
+    return std::make_tuple(
+        reg_str, [store, reg_str, offset](std::ostream &out) {
+            if (is_in_imm12_range(offset)) {
+                out << INDENT
+                    << build(store, reg_str, std::to_string(offset) + "(sp)")
+                    << std::endl;
+            } else {
+                out << INDENT << build("li", "a5", std::to_string(offset))
+                    << std::endl;
+                out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+                out << INDENT << build(store, reg_str, "0(a5)") << std::endl;
+            }
+        });
 }
 
 int Generator::_get_temp_reg(ir::Type type, int no) {

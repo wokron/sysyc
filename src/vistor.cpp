@@ -141,7 +141,7 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
             for (int index = 0; index < initializer->get_space(); index++) {
                 // if no init value, just store zero
                 sym::TypePtr val_type = elm_type;
-                ir::ValuePtr val = ir::ConstBits::get(0);
+                ir::ValuePtr val = val_type->is_float() ? ir::ConstBits::get(0.0f) : ir::ConstBits::get(0);
                 if (values.find(index) != values.end()) {
                     auto value = values[index];
                     val_type = std::get<0>(value);
