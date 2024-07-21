@@ -4,6 +4,7 @@
 #include "ostream"
 #include "target/mem.h"
 #include <functional>
+#include <set>
 
 namespace target {
 
@@ -43,6 +44,13 @@ private:
     std::ostream &_out = std::cout;
     StackManager _stack_manager;
     std::vector<ir::DataPtr> _local_data;
+
+    struct RegReach {
+        int reg;
+        int end;
+    };
+    std::set<RegReach, std::function<bool(const RegReach &, const RegReach &)>>
+        _reg_reach;
 };
 
 } // namespace target

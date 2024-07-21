@@ -123,6 +123,9 @@ void Generator::generate_func(const ir::Function &func) {
     }
 
     for (auto block = func.start; block; block = block->next) {
+        _reg_reach = decltype(_reg_reach)(
+            [](const RegReach &a, const RegReach &b) { return a.end < b.end; });
+
         _out << ".L" << block->id << ":" << std::endl;
 
         std::vector<ir::ValuePtr> call_args;
@@ -137,6 +140,14 @@ void Generator::generate_func(const ir::Function &func) {
                 _generate_par_inst(*inst, par_count++);
             } else {
                 _generate_inst(*inst);
+            }
+
+            if (inst->to && inst->to->is_local) {
+                if (inst->to->reg == NO_REGISTER) {
+                    throw std::runtime_error("no register allocated");
+                } else if (inst->to->reg > 0) {
+                    _reg_reach.insert({inst->to->reg, inst->to->interval.end});
+                }
             }
         }
         _generate_jump_inst(block->jump);
@@ -300,6 +311,30 @@ void Generator::_generate_convert_inst(const ir::Inst &inst) {
 
 void Generator::_generate_call_inst(const ir::Inst &inst,
                                     const std::vector<ir::ValuePtr> &args) {
+
+    while (_reg_reach.size() > 0 && (*_reg_reach.begin()).end <= inst.number) {
+        auto front_active = *_reg_reach.begin();
+        _reg_reach.erase(_reg_reach.begin());
+    }
+
+    // save caller saved registers (t and ft)
+    for (auto [reg, end] : _reg_reach) {
+        auto offset = _stack_manager.get_caller_saved_regs_offset().at(reg);
+        auto store = reg >= 32 ? "fsd" : "sd";
+        if (is_in_imm12_range(offset)) {
+            _out << INDENT
+                 << build(store, regno2string(reg),
+                          std::to_string(offset) + "(sp)")
+                 << std::endl;
+        } else {
+            _out << INDENT << build("li", "a5", std::to_string(offset))
+                 << std::endl;
+            _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+            _out << INDENT << build(store, regno2string(reg), "0(a5)")
+                 << std::endl;
+        }
+    }
+
     int arg_count = args.size() - 1;
     for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
         auto arg = *it;
@@ -344,6 +379,23 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
          << build("call",
                   std::static_pointer_cast<ir::Address>(inst.arg[0])->name)
          << std::endl;
+
+    // restore caller saved registers
+    for (auto [reg, offset] : _stack_manager.get_caller_saved_regs_offset()) {
+        auto load = reg >= 32 ? "fld" : "ld";
+        if (is_in_imm12_range(offset)) {
+            _out << INDENT
+                 << build(load, regno2string(reg),
+                          std::to_string(offset) + "(sp)")
+                 << std::endl;
+        } else {
+            _out << INDENT << build("li", "a5", std::to_string(offset))
+                 << std::endl;
+            _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+            _out << INDENT << build(load, regno2string(reg), "0(a5)")
+                 << std::endl;
+        }
+    }
 
     if (inst.to != nullptr) {
         auto [to, write_back] = _get_asm_to(inst.to);
