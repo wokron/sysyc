@@ -252,7 +252,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
     static std::unordered_map<ir::InstType, std::unordered_map<ir::Type, std::string>> inst2asm = {
         {ir::InstType::IADD, {{ir::Type::L, "add"}, {ir::Type::W, "addw"}, {ir::Type::S, "fadd.s"}}},
         {ir::InstType::ISUB, {{ir::Type::L, "sub"}, {ir::Type::W, "subw"}, {ir::Type::S, "fsub.s"}}},
-        {ir::InstType::IMUL, {{ir::Type::L, "mul"}, {ir::Type::W, "mulw"}, {ir::Type::S, "fadd.s"}}},
+        {ir::InstType::IMUL, {{ir::Type::L, "mul"}, {ir::Type::W, "mulw"}, {ir::Type::S, "fmul.s"}}},
         {ir::InstType::IDIV, {{ir::Type::L, "div"}, {ir::Type::W, "divw"}, {ir::Type::S, "fdiv.s"}}},
         {ir::InstType::IREM, {{ir::Type::L, "rem"}, {ir::Type::W, "remw"}}},
     };
