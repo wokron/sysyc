@@ -11,7 +11,7 @@ namespace target {
 
 class RegisterAllocator {
 public:
-    virtual void allocate_registers(ir::Function &func) = 0;
+    virtual void allocate_registers(const ir::Function &func) = 0;
 
     std::unordered_map<ir::TempPtr, int> get_register_map() const {
         return _register_map;
@@ -23,12 +23,12 @@ protected:
 
 class LinearScanAllocator : public RegisterAllocator {
 public:
-    void allocate_registers(ir::Function &func) override;
+    void allocate_registers(const ir::Function &func) override;
 
 private:
-    void _allocate_temps(ir::Function &func);
+    void _allocate_temps(const ir::Function &func);
 
-    void _allocate_temps_with_intervals(ir::Function &func,
+    void _allocate_temps_with_intervals(const ir::Function &func,
                                         std::vector<ir::TempPtr> &intervals,
                                         std::unordered_set<int> &reg_set);
 

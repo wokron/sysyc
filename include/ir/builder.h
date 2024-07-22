@@ -83,6 +83,7 @@ public:
     ValuePtr create_alloc(Type ty, int bytes);
 
     ValuePtr create_ceqw(ValuePtr lhs, ValuePtr rhs);
+    ValuePtr create_ceqz(ValuePtr lhs, ValuePtr rhs);
     ValuePtr create_cnew(ValuePtr lhs, ValuePtr rhs);
     ValuePtr create_cslew(ValuePtr lhs, ValuePtr rhs);
     ValuePtr create_csltw(ValuePtr lhs, ValuePtr rhs);

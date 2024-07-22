@@ -40,4 +40,11 @@ inline std::string build(std::string op, std::string rd) {
     return op + " " + rd;
 }
 
+// This method should only be called when there is no register allocation.
+inline int get_temp_reg() {
+    static int choice = 0;
+    choice ^= 1;
+    return choice ? 14 : 15;
+}
+
 } // namespace target

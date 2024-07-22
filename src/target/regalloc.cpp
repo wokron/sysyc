@@ -5,12 +5,12 @@
 
 namespace target {
 
-void LinearScanAllocator::allocate_registers(ir::Function &func) {
+void LinearScanAllocator::allocate_registers(const ir::Function &func) {
     _register_map.clear();
     _allocate_temps(func);
 }
 
-void LinearScanAllocator::_allocate_temps(ir::Function &func) {
+void LinearScanAllocator::_allocate_temps(const ir::Function &func) {
     std::vector<ir::TempPtr> intervals;
     std::vector<ir::TempPtr> f_intervals;
     std::vector<ir::TempPtr> local_intervals;
@@ -53,7 +53,7 @@ void LinearScanAllocator::_allocate_temps(ir::Function &func) {
 }
 
 void LinearScanAllocator::_allocate_temps_with_intervals(
-    ir::Function &func, std::vector<ir::TempPtr> &intervals,
+    const ir::Function &func, std::vector<ir::TempPtr> &intervals,
     std::unordered_set<int> &reg_set) {
     // sort intervals by start point
     std::sort(intervals.begin(), intervals.end(),

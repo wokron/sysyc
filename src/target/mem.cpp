@@ -57,6 +57,9 @@ void StackManager::run(const ir::Function &func) {
     for (auto [temp, offset] : _spilled_temps_offset) {
         _spilled_temps_offset[temp] = offset + _frame_size;
     }
+    for (auto [temp, offset] : _caller_saved_regs_offset) {
+        _caller_saved_regs_offset[temp] = offset + _frame_size;
+    }
 }
 
 void StackManager::_collect_function_info(const ir::Function &func) {
@@ -106,7 +109,7 @@ void StackManager::_collect_block_info(const ir::Block &block) {
     // get the maximum number of arguments passed to a function
     int arg_count = 0;
     for (auto inst : block.insts) {
-        if (inst->insttype == ir::InstType::IPAR) {
+        if (inst->insttype == ir::InstType::IARG) {
             arg_count++;
         } else if (inst->insttype == ir::InstType::ICALL) {
             _max_func_call_args = std::max(_max_func_call_args, arg_count);

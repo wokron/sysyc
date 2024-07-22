@@ -162,7 +162,7 @@ for testfile in $testfiles; do
             fi
         fi
 
-        rm $ir_file $output_file
+        rm $asm_file $output_file
     fi
 
     test_no=$((test_no + 1))
