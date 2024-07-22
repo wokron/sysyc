@@ -57,6 +57,9 @@ void StackManager::run(const ir::Function &func) {
     for (auto [temp, offset] : _spilled_temps_offset) {
         _spilled_temps_offset[temp] = offset + _frame_size;
     }
+    for (auto [temp, offset] : _caller_saved_regs_offset) {
+        _caller_saved_regs_offset[temp] = offset + _frame_size;
+    }
 }
 
 void StackManager::_collect_function_info(const ir::Function &func) {
