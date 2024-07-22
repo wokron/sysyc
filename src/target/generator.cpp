@@ -347,46 +347,9 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
         }
     }
 
-    int arg_count = args.size() - 1;
-    for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
-        auto arg = *it;
-        if (arg_count <= 7) {
-            auto arg0 = _get_asm_arg(arg, 0);
-            switch (arg->get_type()) {
-            case ir::Type::W:
-            case ir::Type::L: {
-                _out << INDENT
-                     << build("mv", "a" + std::to_string(arg_count), arg0)
-                     << std::endl;
-            } break;
-            case ir::Type::S: {
-                _out << INDENT
-                     << build("fmv.s", "fa" + std::to_string(arg_count), arg0)
-                     << std::endl;
-            } break;
-            default:
-                throw std::logic_error("unsupported type");
-            }
-        } else {
-            static std::unordered_map<ir::Type, std::string> inst2asm = {
-                {ir::Type::W, "sw"}, {ir::Type::L, "sd"}, {ir::Type::S, "fsw"}};
-            int offset = (arg_count - 8) * 8;
-            auto arg0 = _get_asm_arg(arg, 0);
-            if (is_in_imm12_range(offset)) {
-                _out << INDENT
-                     << build(inst2asm.at(arg->get_type()), arg0,
-                              std::to_string(offset) + "(sp)")
-                     << std::endl;
-            } else {
-                _out << INDENT << build("li", "a5", std::to_string(offset))
-                     << std::endl;
-                _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
-                _out << INDENT
-                     << build(inst2asm.at(arg->get_type()), arg0, "0(a5)")
-                     << std::endl;
-            }
-        }
-    }
+    _generate_arguments(args, 0);
+    _generate_arguments(args, 1);
+
     _out << INDENT
          << build("call",
                   std::static_pointer_cast<ir::Address>(inst.arg[0])->name)
@@ -423,6 +386,51 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
             throw std::logic_error("unsupported type");
         }
         write_back(_out);
+    }
+}
+
+void Generator::_generate_arguments(const std::vector<ir::ValuePtr> &args,
+                                    int pass) {
+    int arg_count = args.size() - 1;
+    for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
+        auto arg = *it;
+        if (arg_count <= 7) {
+            if ((arg->get_type() == ir::Type::W) && pass == 1) {
+                auto [arg0, is_const] = _get_asm_arg_or_w_constbits(arg, 0);
+                std::string inst = is_const ? "li" : "mv";
+                _out << INDENT
+                     << build(inst, "a" + std::to_string(arg_count), arg0)
+                     << std::endl;
+            } else if ((arg->get_type() == ir::Type::L) && pass == 0) {
+                auto arg0 = _get_asm_arg(arg, 0);
+                _out << INDENT
+                     << build("mv", "a" + std::to_string(arg_count), arg0)
+                     << std::endl;
+            } else if ((arg->get_type() == ir::Type::S) && pass == 0) {
+                auto arg0 = _get_asm_arg(arg, 0);
+                _out << INDENT
+                     << build("fmv.s", "fa" + std::to_string(arg_count), arg0)
+                     << std::endl;
+            }
+        } else if (pass == 0) {
+            static std::unordered_map<ir::Type, std::string> inst2asm = {
+                {ir::Type::W, "sw"}, {ir::Type::L, "sd"}, {ir::Type::S, "fsw"}};
+            int offset = (arg_count - 8) * 8;
+            auto arg0 = _get_asm_arg(arg, 0);
+            if (is_in_imm12_range(offset)) {
+                _out << INDENT
+                     << build(inst2asm.at(arg->get_type()), arg0,
+                              std::to_string(offset) + "(sp)")
+                     << std::endl;
+            } else {
+                _out << INDENT << build("li", "a5", std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+                _out << INDENT
+                     << build(inst2asm.at(arg->get_type()), arg0, "0(a5)")
+                     << std::endl;
+            }
+        }
     }
 }
 
@@ -687,6 +695,16 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
     } else {
         throw std::logic_error("unsupported type");
     }
+}
+
+std::tuple<std::string, bool>
+Generator::_get_asm_arg_or_w_constbits(ir::ValuePtr arg, int no) {
+    if (auto constbits = std::dynamic_pointer_cast<ir::ConstBits>(arg)) {
+        if (constbits->get_type() == ir::Type::W) {
+            return std::make_tuple(constbits->get_asm_value(), true);
+        }
+    }
+    return std::make_tuple(_get_asm_arg(arg, no), false);
 }
 
 std::string Generator::_get_asm_addr(ir::ValuePtr arg, int no) {
