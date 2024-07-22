@@ -16,9 +16,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
   - [x] Symbol table + Type system
   - [X] Semantic analysis
 
-- [ ] Phase Two: Compiler Backend
+- [X] Phase Two: Compiler Backend
   - [X] Register allocation algorithm
-  - [ ] Target code generation
+  - [X] Target code generation
 
 - [ ] Phase Three: Compiler Optimization
   - [X] SSA construction and elimination
