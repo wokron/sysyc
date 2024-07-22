@@ -312,7 +312,11 @@ void Generator::_generate_convert_inst(const ir::Inst &inst) {
     auto [to, write_back] = _get_asm_to(inst.to);
     auto arg = _get_asm_arg(inst.arg[0], 0);
 
-    _out << INDENT << build(inst2asm.at(inst.insttype), to, arg) << std::endl;
+    _out << INDENT << build(inst2asm.at(inst.insttype), to, arg);
+    if (inst.insttype == ir::InstType::ISTOSI) {
+        _out << ", rtz";
+    }
+    _out << std::endl;
 
     write_back(_out);
 }
