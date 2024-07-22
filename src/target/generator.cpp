@@ -356,7 +356,8 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
          << std::endl;
 
     // restore caller saved registers
-    for (auto [reg, offset] : _stack_manager.get_caller_saved_regs_offset()) {
+    for (auto [reg, end] : _reg_reach) {
+        auto offset = _stack_manager.get_caller_saved_regs_offset().at(reg);
         auto load = reg >= 32 ? "fld" : "ld";
         if (is_in_imm12_range(offset)) {
             _out << INDENT
