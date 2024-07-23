@@ -354,11 +354,11 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
         }
     }
 
-    // l and f (except $fa4)
+    // l and s arguments (except for $fa4)
     _generate_arguments(args, 0);
-    // $fa4
+    // $fa4 if there is
     _generate_arguments(args, 1);
-    // w
+    // w arguments
     _generate_arguments(args, 2);
 
     _out << INDENT
