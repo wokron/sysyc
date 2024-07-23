@@ -354,8 +354,12 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
         }
     }
 
+    // l and f (except $fa4)
     _generate_arguments(args, 0);
+    // $fa4
     _generate_arguments(args, 1);
+    // w
+    _generate_arguments(args, 2);
 
     _out << INDENT
          << build("call",
@@ -403,7 +407,7 @@ void Generator::_generate_arguments(const std::vector<ir::ValuePtr> &args,
     for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
         auto arg = *it;
         if (arg_count <= 7) {
-            if ((arg->get_type() == ir::Type::W) && pass == 1) {
+            if ((arg->get_type() == ir::Type::W) && pass == 2) {
                 auto [arg0, is_const] = _get_asm_arg_or_w_constbits(arg, 0);
                 std::string inst = is_const ? "li" : "mv";
                 _out << INDENT
@@ -414,7 +418,9 @@ void Generator::_generate_arguments(const std::vector<ir::ValuePtr> &args,
                 _out << INDENT
                      << build("mv", "a" + std::to_string(arg_count), arg0)
                      << std::endl;
-            } else if ((arg->get_type() == ir::Type::S) && pass == 0) {
+            } else if ((arg->get_type() == ir::Type::S) &&
+                       (((pass == 0) && (arg_count != 4)) ||
+                        ((pass == 1) && (arg_count == 4)))) {
                 auto arg0 = _get_asm_arg(arg, 0);
                 _out << INDENT
                      << build("fmv.s", "fa" + std::to_string(arg_count), arg0)
