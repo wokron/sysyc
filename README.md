@@ -27,7 +27,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
      - [X] Constant Folding and Constant Propagation
      - [X] Function Inlining
      - [ ] GCM
-     = [X] GVN
+     - [X] GVN
      - [X] Loop Rotation
      - [X] CFG Simplifying
      - [X] Deadcode Elimination
