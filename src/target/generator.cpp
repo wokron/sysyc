@@ -269,17 +269,24 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 
 void Generator::_generate_float_compare_inst(const ir::Inst &inst) {
     static std::unordered_map<ir::InstType, std::string> inst2asm = {
-        {ir::InstType::ICEQS, "feq.s"}, {ir::InstType::ICNES, "fne.s"},
+        {ir::InstType::ICEQS, "feq.s"}, {ir::InstType::ICNES, "feq.s"},
         {ir::InstType::ICLES, "fle.s"}, {ir::InstType::ICLTS, "flt.s"},
-        {ir::InstType::ICGES, "fge.s"}, {ir::InstType::ICGTS, "fgt.s"},
+        {ir::InstType::ICGES, "fle.s"}, {ir::InstType::ICGTS, "flt.s"},
     };
 
     auto [to, write_back] = _get_asm_to(inst.to);
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
+    if (inst.insttype == ir::InstType::ICGES ||
+        inst.insttype == ir::InstType::ICGTS) {
+        std::swap(arg0, arg1);
+    }
     _out << INDENT << build(inst2asm.at(inst.insttype), to, arg0, arg1)
          << std::endl;
+    if (inst.insttype == ir::InstType::ICNES) {
+        _out << INDENT << build("xori", to, to, "1") << std::endl;
+    }
 
     write_back(_out);
 }
@@ -347,8 +354,12 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
         }
     }
 
+    // l and s arguments (except for $fa4)
     _generate_arguments(args, 0);
+    // $fa4 if there is
     _generate_arguments(args, 1);
+    // w arguments
+    _generate_arguments(args, 2);
 
     _out << INDENT
          << build("call",
@@ -396,7 +407,7 @@ void Generator::_generate_arguments(const std::vector<ir::ValuePtr> &args,
     for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
         auto arg = *it;
         if (arg_count <= 7) {
-            if ((arg->get_type() == ir::Type::W) && pass == 1) {
+            if ((arg->get_type() == ir::Type::W) && pass == 2) {
                 auto [arg0, is_const] = _get_asm_arg_or_w_constbits(arg, 0);
                 std::string inst = is_const ? "li" : "mv";
                 _out << INDENT
@@ -407,7 +418,9 @@ void Generator::_generate_arguments(const std::vector<ir::ValuePtr> &args,
                 _out << INDENT
                      << build("mv", "a" + std::to_string(arg_count), arg0)
                      << std::endl;
-            } else if ((arg->get_type() == ir::Type::S) && pass == 0) {
+            } else if ((arg->get_type() == ir::Type::S) &&
+                       (((pass == 0) && (arg_count != 4)) ||
+                        ((pass == 1) && (arg_count == 4)))) {
                 auto arg0 = _get_asm_arg(arg, 0);
                 _out << INDENT
                      << build("fmv.s", "fa" + std::to_string(arg_count), arg0)
@@ -621,7 +634,8 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
                 load = "ld";
                 break;
             case ir::Type::S:
-                throw "flw";
+                load = "flw";
+                break;
             default:
                 throw std::logic_error("unsupported type");
             };
