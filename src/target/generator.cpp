@@ -269,17 +269,24 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 
 void Generator::_generate_float_compare_inst(const ir::Inst &inst) {
     static std::unordered_map<ir::InstType, std::string> inst2asm = {
-        {ir::InstType::ICEQS, "feq.s"}, {ir::InstType::ICNES, "fne.s"},
+        {ir::InstType::ICEQS, "feq.s"}, {ir::InstType::ICNES, "feq.s"},
         {ir::InstType::ICLES, "fle.s"}, {ir::InstType::ICLTS, "flt.s"},
-        {ir::InstType::ICGES, "fge.s"}, {ir::InstType::ICGTS, "fgt.s"},
+        {ir::InstType::ICGES, "fle.s"}, {ir::InstType::ICGTS, "flt.s"},
     };
 
     auto [to, write_back] = _get_asm_to(inst.to);
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
+    if (inst.insttype == ir::InstType::ICGES ||
+        inst.insttype == ir::InstType::ICGTS) {
+        std::swap(arg0, arg1);
+    }
     _out << INDENT << build(inst2asm.at(inst.insttype), to, arg0, arg1)
          << std::endl;
+    if (inst.insttype == ir::InstType::ICNES) {
+        _out << INDENT << build("xori", to, to, "1") << std::endl;
+    }
 
     write_back(_out);
 }
@@ -621,7 +628,8 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
                 load = "ld";
                 break;
             case ir::Type::S:
-                throw "flw";
+                load = "flw";
+                break;
             default:
                 throw std::logic_error("unsupported type");
             };
