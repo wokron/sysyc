@@ -108,16 +108,17 @@ void Generator::generate_func(const ir::Function &func) {
     }
 
     for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
+        std::string store = (reg >= 32 ? "fsd" : "sd");
         if (is_in_imm12_range(offset)) {
             _out << INDENT
-                 << build("sd", regno2string(reg),
+                 << build(store, regno2string(reg),
                           std::to_string(offset) + "(sp)")
                  << std::endl;
         } else {
             _out << INDENT << build("li", "a5", std::to_string(offset))
                  << std::endl;
             _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
-            _out << INDENT << build("sd", regno2string(reg), "0(a5)")
+            _out << INDENT << build(store, regno2string(reg), "0(a5)")
                  << std::endl;
         }
     }
@@ -503,17 +504,17 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
         // recover saved registers
         for (auto [reg, offset] :
              _stack_manager.get_callee_saved_regs_offset()) {
-
+            std::string load = (reg >= 32 ? "fld" : "ld");
             if (is_in_imm12_range(offset)) {
                 _out << INDENT
-                     << build("ld", regno2string(reg),
+                     << build(load, regno2string(reg),
                               std::to_string(offset) + "(sp)")
                      << std::endl;
             } else {
                 _out << INDENT << build("li", "a5", std::to_string(offset))
                      << std::endl;
                 _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
-                _out << INDENT << build("ld", regno2string(reg), "0(a5)")
+                _out << INDENT << build(load, regno2string(reg), "0(a5)")
                      << std::endl;
             }
         }
