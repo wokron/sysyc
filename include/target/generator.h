@@ -25,6 +25,7 @@ private:
     void _generate_load_inst(const ir::Inst &inst);
     void _generate_store_inst(const ir::Inst &inst);
     void _generate_arithmetic_inst(const ir::Inst &inst);
+    void _generate_compare_inst(const ir::Inst &inst);
     void _generate_float_compare_inst(const ir::Inst &inst);
     void _generate_copy_like_inst(const ir::Inst &inst);
     void _generate_convert_inst(const ir::Inst &inst);
@@ -34,7 +35,6 @@ private:
     void _generate_arguments(const std::vector<ir::ValuePtr> &args, int pass);
     void _generate_par_inst(const ir::Inst &inst, int par_count);
     void _generate_jump_inst(const ir::Jump &jump);
-    void _generate_jnz_inst(const ir::Jump &jump);
 
     std::string _get_asm_arg(ir::ValuePtr arg, int no);
     std::tuple<std::string, bool>

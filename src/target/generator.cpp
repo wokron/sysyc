@@ -178,6 +178,14 @@ void Generator::_generate_inst(const ir::Inst &inst) {
     case ir::InstType::IREM:
         _generate_arithmetic_inst(inst);
         break;
+    case ir::InstType::ICEQW:
+    case ir::InstType::ICNEW:
+    case ir::InstType::ICSLEW:
+    case ir::InstType::ICSLTW:
+    case ir::InstType::ICSGEW:
+    case ir::InstType::ICSGTW:
+        _generate_compare_inst(inst);
+        break;
     case ir::InstType::ICEQS:
     case ir::InstType::ICNES:
     case ir::InstType::ICLES:
@@ -206,12 +214,6 @@ void Generator::_generate_inst(const ir::Inst &inst) {
     case ir::InstType::IALLOC4:
     case ir::InstType::IALLOC8:
     case ir::InstType::INOP:
-    case ir::InstType::ICEQW:
-    case ir::InstType::ICNEW:
-    case ir::InstType::ICSLEW:
-    case ir::InstType::ICSLTW:
-    case ir::InstType::ICSGEW:
-    case ir::InstType::ICSGTW:
         /* nop */
         break;
     default:
@@ -265,6 +267,41 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
     _out << INDENT << build(inst_str, to, arg0, arg1) << std::endl;
+    write_back(_out);
+}
+
+void Generator::_generate_compare_inst(const ir::Inst &inst) {
+    auto [to, write_back] = _get_asm_to(inst.to);
+    auto arg0 = _get_asm_arg(inst.arg[0], 0);
+    auto arg1 = _get_asm_arg(inst.arg[1], 1);
+
+    switch (inst.insttype) {
+    case ir::InstType::ICEQW:
+        _out << INDENT << build("xor", to, arg0, arg1) << std::endl;
+        _out << INDENT << build("sltiu", to, to, "1") << std::endl;
+        break;
+    case ir::InstType::ICNEW:
+        _out << INDENT << build("xor", to, arg0, arg1) << std::endl;
+        _out << INDENT << build("sltu", to, "zero", to) << std::endl;
+        break;
+    case ir::InstType::ICSLEW:
+        _out << INDENT << build("slt", to, arg1, arg0) << std::endl;
+        _out << INDENT << build("xori", to, to, "1") << std::endl;
+        break;
+    case ir::InstType::ICSLTW:
+        _out << INDENT << build("slt", to, arg0, arg1) << std::endl;
+        break;
+    case ir::InstType::ICSGEW:
+        _out << INDENT << build("slt", to, arg0, arg1) << std::endl;
+        _out << INDENT << build("xori", to, to, "1") << std::endl;
+        break;
+    case ir::InstType::ICSGTW:
+        _out << INDENT << build("slt", to, arg1, arg0) << std::endl;
+        break;
+    default:
+        throw std::logic_error("unsupported type");
+    }
+
     write_back(_out);
 }
 
@@ -538,7 +575,12 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
              << std::endl;
     } break;
     case ir::Jump::JNZ: {
-        _generate_jnz_inst(jump);
+        auto arg = _get_asm_arg(jump.arg, 0);
+        _out << INDENT
+             << build("bnez", arg, ".L" + std::to_string(jump.blk[0]->id))
+             << std::endl;
+        _out << INDENT << build("j", ".L" + std::to_string(jump.blk[1]->id))
+             << std::endl;
     } break;
     default:
         throw std::logic_error("unsupported jump type");
@@ -557,67 +599,6 @@ static bool is_int_compare(ir::InstType insttype) {
     default:
         return false;
     }
-}
-
-void Generator::_generate_jnz_inst(const ir::Jump &jump) {
-    if (auto temp = std::dynamic_pointer_cast<ir::Temp>(jump.arg)) {
-        if (temp->defs.size() != 1) {
-            throw std::logic_error("requires single def");
-        }
-        if (auto instdef = std::get_if<ir::InstDef>(&temp->defs[0]);
-            instdef != nullptr && is_int_compare(instdef->ins->insttype)) {
-            auto arg0 = _get_asm_arg(instdef->ins->arg[0], 0);
-            auto arg1 = _get_asm_arg(instdef->ins->arg[1], 1);
-            switch (instdef->ins->insttype) {
-            case ir::InstType::ICEQW:
-                _out << INDENT
-                     << build("beq", arg0, arg1,
-                              ".L" + std::to_string(jump.blk[0]->id))
-                     << std::endl;
-                break;
-            case ir::InstType::ICNEW:
-                _out << INDENT
-                     << build("bne", arg0, arg1,
-                              ".L" + std::to_string(jump.blk[0]->id))
-                     << std::endl;
-                break;
-            case ir::InstType::ICSLEW:
-                _out << INDENT
-                     << build("ble", arg0, arg1,
-                              ".L" + std::to_string(jump.blk[0]->id))
-                     << std::endl;
-                break;
-            case ir::InstType::ICSLTW:
-                _out << INDENT
-                     << build("blt", arg0, arg1,
-                              ".L" + std::to_string(jump.blk[0]->id))
-                     << std::endl;
-                break;
-            case ir::InstType::ICSGEW:
-                _out << INDENT
-                     << build("bge", arg0, arg1,
-                              ".L" + std::to_string(jump.blk[0]->id))
-                     << std::endl;
-                break;
-            case ir::InstType::ICSGTW:
-                _out << INDENT
-                     << build("bgt", arg0, arg1,
-                              ".L" + std::to_string(jump.blk[0]->id))
-                     << std::endl;
-                break;
-            default:
-                throw std::logic_error("unsupported type");
-            }
-            _out << INDENT << build("j", ".L" + std::to_string(jump.blk[1]->id))
-                 << std::endl;
-            return;
-        }
-    }
-    auto arg = _get_asm_arg(jump.arg, 0);
-    _out << INDENT << build("bnez", arg, ".L" + std::to_string(jump.blk[0]->id))
-         << std::endl;
-    _out << INDENT << build("j", ".L" + std::to_string(jump.blk[1]->id))
-         << std::endl;
 }
 
 std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
