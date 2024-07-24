@@ -158,11 +158,6 @@ ValuePtr IRBuilder::create_ceqw(ValuePtr lhs, ValuePtr rhs) {
     return insert_inst(inst);
 }
 
-ValuePtr IRBuilder::create_ceqz(ValuePtr lhs, ValuePtr rhs) {
-    auto inst = Inst::create(InstType::ICEQZ, Type::W, lhs, rhs);
-    return insert_inst(inst);
-}
-
 /**
  * @brief Create a compare not equal instruction,
  * format: %to =w cnew <lhs>, <rhs>

@@ -203,14 +203,6 @@ void Generator::_generate_inst(const ir::Inst &inst) {
     case ir::InstType::ISWTOF:
         _generate_convert_inst(inst);
         break;
-    case ir::InstType::ICEQZ: {
-        auto [to, write_back] = _get_asm_to(inst.to);
-        auto arg0 = _get_asm_arg(inst.arg[0], 0);
-
-        _out << INDENT << build("seqz", to, arg0) << std::endl;
-
-        write_back(_out);
-    } break;
     case ir::InstType::IALLOC4:
     case ir::InstType::IALLOC8:
     case ir::InstType::INOP:

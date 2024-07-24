@@ -41,7 +41,6 @@ OP(ICSLEW, "cslew")
 OP(ICSLTW, "csltw")
 OP(ICSGEW, "csgew")
 OP(ICSGTW, "csgtw")
-OP(ICEQZ, "ceqw") // just for logical not
 
 OP(ICEQS, "ceqs")
 OP(ICNES, "cnes")

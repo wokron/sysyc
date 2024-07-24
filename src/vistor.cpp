@@ -836,7 +836,7 @@ ExpReturn Visitor::visit_unary_exp(const UnaryExp &node) {
         if (exp_type->is_int32()) {
             // !a equal to (a == 0)
             return ExpReturn(
-                exp_type, _builder.create_ceqz(exp_val, ir::ConstBits::get(0)));
+                exp_type, _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
         } else if (exp_type->is_float()) {
             // !a equal to (a == 0)
             auto cmp_val =
