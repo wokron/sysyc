@@ -27,7 +27,7 @@ private:
     void _generate_arithmetic_inst(const ir::Inst &inst);
     void _generate_compare_inst(const ir::Inst &inst);
     void _generate_float_compare_inst(const ir::Inst &inst);
-    void _generate_copy_like_inst(const ir::Inst &inst);
+    void _generate_unary_inst(const ir::Inst &inst);
     void _generate_convert_inst(const ir::Inst &inst);
 
     void _generate_call_inst(const ir::Inst &inst,

@@ -196,7 +196,7 @@ void Generator::_generate_inst(const ir::Inst &inst) {
         break;
     case ir::InstType::ICOPY:
     case ir::InstType::INEG:
-        _generate_copy_like_inst(inst);
+        _generate_unary_inst(inst);
         break;
     case ir::InstType::IEXTSW:
     case ir::InstType::ISTOSI:
@@ -321,7 +321,7 @@ void Generator::_generate_float_compare_inst(const ir::Inst &inst) {
     write_back(_out);
 }
 
-void Generator::_generate_copy_like_inst(const ir::Inst &inst) {
+void Generator::_generate_unary_inst(const ir::Inst &inst) {
     // clang-format off
     static std::unordered_map<ir::InstType, std::unordered_map<ir::Type, std::string>> inst2asm = {
         {ir::InstType::ICOPY, {{ir::Type::L, "mv"}, {ir::Type::W, "mv"}, {ir::Type::S, "fmv.s"}}},
