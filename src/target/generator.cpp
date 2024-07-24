@@ -268,26 +268,26 @@ void Generator::_generate_compare_inst(const ir::Inst &inst) {
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
     switch (inst.insttype) {
-    case ir::InstType::ICEQW:
+    case ir::InstType::ICEQW: // (a0 ^ a1) < 1
         _out << INDENT << build("xor", to, arg0, arg1) << std::endl;
         _out << INDENT << build("sltiu", to, to, "1") << std::endl;
         break;
-    case ir::InstType::ICNEW:
+    case ir::InstType::ICNEW: // 0 < (a0 ^ a1)
         _out << INDENT << build("xor", to, arg0, arg1) << std::endl;
         _out << INDENT << build("sltu", to, "zero", to) << std::endl;
         break;
-    case ir::InstType::ICSLEW:
+    case ir::InstType::ICSLEW: // !(a1 < a0)
         _out << INDENT << build("slt", to, arg1, arg0) << std::endl;
         _out << INDENT << build("xori", to, to, "1") << std::endl;
         break;
-    case ir::InstType::ICSLTW:
+    case ir::InstType::ICSLTW: // a0 < a1
         _out << INDENT << build("slt", to, arg0, arg1) << std::endl;
         break;
-    case ir::InstType::ICSGEW:
+    case ir::InstType::ICSGEW: // !(a0 < a1)
         _out << INDENT << build("slt", to, arg0, arg1) << std::endl;
         _out << INDENT << build("xori", to, to, "1") << std::endl;
         break;
-    case ir::InstType::ICSGTW:
+    case ir::InstType::ICSGTW: // a1 < a0
         _out << INDENT << build("slt", to, arg1, arg0) << std::endl;
         break;
     default:
