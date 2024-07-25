@@ -98,10 +98,11 @@ bool LivenessAnalysisPass::_update_live(ir::Block &block) {
     }
 
     // in[B] = in[B] ∪ (out[B] - def[B])
-    std::unordered_set<ir::TempPtr> update;
-    std::set_difference(block.live_out.begin(), block.live_out.end(),
-                        block.live_def.begin(), block.live_def.end(),
-                        std::inserter(update, update.begin()));
+    std::unordered_set<ir::TempPtr> update(block.live_out.begin(),
+                                           block.live_out.end());
+    for (const auto &elm_in_def : block.live_def) {
+        update.erase(elm_in_def);
+    }
     block.live_in.insert(update.begin(), update.end());
 
     auto improved = old_in.size() != block.live_in.size();
@@ -121,7 +122,7 @@ bool FillIntervalPass::run_on_function(ir::Function &func) {
         int last_number = number - 1;
 
         func.temps_in_func.insert(block->temps_in_block.begin(),
-                                 block->temps_in_block.end());
+                                  block->temps_in_block.end());
 
         for (auto temp : block->temps_in_block) {
             auto is_local = block->live_in.find(temp) == block->live_in.end() &&
