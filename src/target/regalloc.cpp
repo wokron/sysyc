@@ -122,14 +122,12 @@ void LinearScanAllocator::_find_intervals(
     std::vector<ir::TempPtr> *intervals_ptrs[2][2] = {
         {&intervals, &f_intervals}, {&local_intervals, &f_local_intervals}};
 
-    for (auto block : func.rpo) {
-        for (auto temp : block->temps_in_block) {
-            auto is_float = temp->get_type() == ir::Type::S;
-            auto is_local = temp->is_local;
-            auto &intervals_ref = *intervals_ptrs[is_local][is_float];
+    for (auto temp : func.temps_in_func) {
+        auto is_float = temp->get_type() == ir::Type::S;
+        auto is_local = temp->is_local;
+        auto &intervals_ref = *intervals_ptrs[is_local][is_float];
 
-            intervals_ref.push_back(temp);
-        }
+        intervals_ref.push_back(temp);
     }
 }
 
