@@ -101,10 +101,11 @@ void Generator::generate_func(const ir::Function &func) {
     if (is_in_imm12_range(frame_size)) {
         _out << INDENT << build("addi", "sp", "sp", std::to_string(-frame_size))
              << std::endl;
-    } else {
-        _out << INDENT << build("li", "a5", std::to_string(frame_size))
+    } else { // since a5-a6 may still store value here, we use t0 as
+             // intermediate reg
+        _out << INDENT << build("li", "t0", std::to_string(frame_size))
              << std::endl;
-        _out << INDENT << build("sub", "sp", "sp", "a5") << std::endl;
+        _out << INDENT << build("sub", "sp", "sp", "t0") << std::endl;
     }
 
     for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
@@ -115,10 +116,10 @@ void Generator::generate_func(const ir::Function &func) {
                           std::to_string(offset) + "(sp)")
                  << std::endl;
         } else {
-            _out << INDENT << build("li", "a5", std::to_string(offset))
+            _out << INDENT << build("li", "t0", std::to_string(offset))
                  << std::endl;
-            _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
-            _out << INDENT << build(store, regno2string(reg), "0(a5)")
+            _out << INDENT << build("add", "t0", "sp", "t0") << std::endl;
+            _out << INDENT << build(store, regno2string(reg), "0(t0)")
                  << std::endl;
         }
     }
