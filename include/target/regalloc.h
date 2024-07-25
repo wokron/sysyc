@@ -38,6 +38,8 @@ private:
                          std::vector<ir::TempPtr> &local_intervals,
                          std::vector<ir::TempPtr> &f_local_intervals);
 
+    static bool _is_local(const ir::TempPtr &temp);
+
     std::unordered_set<ir::TempPtr> _global_temps;
 };
 
