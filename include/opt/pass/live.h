@@ -19,7 +19,7 @@ private:
 
 /**
  * @brief A pass that finds the live intervals of each temp in a function.
- * @note This pass requires `LivenessAnalysisPass` to be run before.
+ * @note This pass requires `LivenessAnalysisPass` and `FillUsePass` to be run before.
  */
 class FillIntervalPass : public FunctionPass {
 public:
