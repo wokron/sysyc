@@ -133,6 +133,8 @@ extern std::unordered_map<InstType, std::string> inst2name;
 
 struct Temp;
 
+struct Block;
+
 struct Inst {
     InstType insttype;
     std::shared_ptr<Temp> to;
@@ -142,6 +144,10 @@ struct Inst {
     int number;          // for linear scan register allocation
     bool marked = false; // for dead code elimination
 
+    //gcm
+    std::shared_ptr<Block> eariliest_block;
+    std::shared_ptr<Block> latest_block;
+
     static std::shared_ptr<Inst> create(InstType insttype, Type ty,
                                         std::shared_ptr<Value> arg0,
                                         std::shared_ptr<Value> arg1);
@@ -149,7 +155,7 @@ struct Inst {
     void emit(std::ostream &out) const;
 };
 
-struct Block;
+
 
 struct Phi {
     std::shared_ptr<Temp> to;
@@ -202,6 +208,7 @@ struct Block {
     std::shared_ptr<Block> idom;               // father node
     std::vector<std::shared_ptr<Block>> doms;  // child nodes
     std::vector<std::shared_ptr<Block>> dfron; // dominance frontier
+    int dom_depth;
 
     static std::shared_ptr<Block> create(std::string name, Function &func);
 
