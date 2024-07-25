@@ -11,6 +11,8 @@ void StackManager::run(const ir::Function &func) {
 
     _frame_size = 0;
 
+    // TODO: judge leaf and non-leaf function
+
     // size of callee saved registers (include ra)
     _frame_size += 8;
     _callee_saved_regs_offset[1] = -_frame_size; // ra

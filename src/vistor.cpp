@@ -155,6 +155,7 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
                     continue;
                 }
 
+                // TODO: this could be optimized
                 auto offset = ir::ConstBits::get(elm_type->get_size() * index);
                 auto elm_addr =
                     _builder.create_add(ir::Type::L, symbol->value, offset);

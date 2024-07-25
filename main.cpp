@@ -93,9 +93,6 @@ void compile(const char *name, const Options &options,
         return;
     }
 
-    // TODO: ir to asm
-
-
     RegisterPasses reg_pass;
     reg_pass.run(module);
 
