@@ -397,6 +397,22 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
                   std::static_pointer_cast<ir::Address>(inst.arg[0])->name)
          << std::endl;
 
+    if (inst.to != nullptr && inst.to->uses.size() > 0) {
+        auto [to, write_back] = _get_asm_to(inst.to);
+        switch (inst.to->get_type()) {
+        case ir::Type::W:
+        case ir::Type::L: {
+            _out << INDENT << build("mv", to, "a0") << std::endl;
+        } break;
+        case ir::Type::S: {
+            _out << INDENT << build("fmv.s", to, "fa0") << std::endl;
+        } break;
+        default:
+            throw std::logic_error("unsupported type");
+        }
+        write_back(_out);
+    }
+
     // restore caller saved registers
     for (auto [reg, end] : _reg_reach) {
         auto offset = _stack_manager.get_caller_saved_regs_offset().at(reg);
@@ -413,22 +429,6 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
             _out << INDENT << build(load, regno2string(reg), "0(a5)")
                  << std::endl;
         }
-    }
-
-    if (inst.to != nullptr) {
-        auto [to, write_back] = _get_asm_to(inst.to);
-        switch (inst.to->get_type()) {
-        case ir::Type::W:
-        case ir::Type::L: {
-            _out << INDENT << build("mv", to, "a0") << std::endl;
-        } break;
-        case ir::Type::S: {
-            _out << INDENT << build("fmv.s", to, "fa0") << std::endl;
-        } break;
-        default:
-            throw std::logic_error("unsupported type");
-        }
-        write_back(_out);
     }
 }
 
