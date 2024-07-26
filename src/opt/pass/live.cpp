@@ -125,26 +125,22 @@ bool FillIntervalPass::run_on_function(ir::Function &func) {
         _find_intervals_in_block(*block, first_def, last_use, number);
         int last_number = number - 1;
 
-        for (auto temp : func.temps_in_func) {
-            if (block->live_in.find(temp) ==
-                block->live_in.end()) { // if temp is not in the live_in set
-                // live interval extended to the first def
-                temp->interval.start =
-                    std::min(temp->interval.start, first_def[temp]);
-            } else {
-                // first number of block is in the live interval
-                temp->interval.start =
-                    std::min(temp->interval.start, first_number);
-            }
-            if (block->live_out.find(temp) ==
-                block->live_out.end()) { // if temp is not in the live_out set
-                // live interval extended to the last use
-                temp->interval.end =
-                    std::max(temp->interval.end, last_use[temp]);
-            } else {
-                // last number of block is in the live interval
-                temp->interval.end = std::max(temp->interval.end, last_number);
-            }
+        for (auto [temp, first_def_pos] : first_def) {
+            // live interval extended to the first def
+            temp->interval.start =
+                std::min(temp->interval.start, first_def_pos);
+        }
+        for (auto [temp, last_use_pos] : last_use) {
+            // live interval extended to the last use
+            temp->interval.end = std::max(temp->interval.end, last_use_pos);
+        }
+        for (auto temp : block->live_in) {
+            // first number of block is in the live interval
+            temp->interval.start = std::min(temp->interval.start, first_number);
+        }
+        for (auto temp : block->live_out) {
+            // last number of block is in the live interval
+            temp->interval.end = std::max(temp->interval.end, last_number);
         }
     }
 
