@@ -126,7 +126,7 @@ void Generator::generate_func(const ir::Function &func) {
 
     for (auto block = func.start; block; block = block->next) {
         _reg_reach = decltype(_reg_reach)(
-            [](const RegReach &a, const RegReach &b) { return a.end < b.end; });
+            [](const RegReach &a, const RegReach &b) { return a.end <= b.end; });
 
         _out << ".L" << block->id << ":" << std::endl;
 
