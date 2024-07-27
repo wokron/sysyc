@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ir/ir.h"
-#include "target/mem.h"
 #include "ostream"
 #include "target/mem.h"
 #include <functional>
@@ -36,12 +35,17 @@ private:
     void _generate_par_inst(const ir::Inst &inst, int par_count);
     void _generate_jump_inst(const ir::Jump &jump);
 
-    std::string _get_asm_arg(ir::ValuePtr arg, int no);
-    std::tuple<std::string, bool>
-    _get_asm_arg_or_w_constbits(ir::ValuePtr arg, int no);
+    std::string _get_asm_arg(
+        ir::ValuePtr arg, int no,
+        std::function<int(ir::Type, int)> get_temp_reg = _get_temp_reg);
+
+    std::tuple<std::string, bool> _get_asm_arg_or_w_constbits(ir::ValuePtr arg,
+                                                              int no);
     std::string _get_asm_addr(ir::ValuePtr addr, int no);
+
     std::tuple<std::string, std::function<void(std::ostream &)>>
-    _get_asm_to(ir::TempPtr to, std::function<int(ir::Type, int)> get_temp_reg);
+    _get_asm_to(ir::TempPtr to,
+                std::function<int(ir::Type, int)> get_temp_reg = _get_temp_reg);
 
     static int _get_temp_reg(ir::Type type, int no);
 

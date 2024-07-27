@@ -125,8 +125,10 @@ void Generator::generate_func(const ir::Function &func) {
     }
 
     for (auto block = func.start; block; block = block->next) {
-        _reg_reach = decltype(_reg_reach)(
-            [](const RegReach &a, const RegReach &b) { return a.end <= b.end; });
+        _reg_reach =
+            decltype(_reg_reach)([](const RegReach &a, const RegReach &b) {
+                return a.end <= b.end;
+            });
 
         _out << ".L" << block->id << ":" << std::endl;
 
@@ -221,7 +223,7 @@ void Generator::_generate_load_inst(const ir::Inst &inst) {
         {ir::InstType::ILOADS, "flw"},
     };
 
-    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
+    auto [to, write_back] = _get_asm_to(inst.to);
     auto arg = _get_asm_addr(inst.arg[0], 0);
 
     _out << INDENT << build(inst2asm.at(inst.insttype), to, arg) << std::endl;
@@ -256,7 +258,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
-    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
+    auto [to, write_back] = _get_asm_to(inst.to);
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
     _out << INDENT << build(inst_str, to, arg0, arg1) << std::endl;
@@ -264,7 +266,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 }
 
 void Generator::_generate_compare_inst(const ir::Inst &inst) {
-    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
+    auto [to, write_back] = _get_asm_to(inst.to);
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
@@ -305,7 +307,7 @@ void Generator::_generate_float_compare_inst(const ir::Inst &inst) {
         {ir::InstType::ICGES, "fle.s"}, {ir::InstType::ICGTS, "flt.s"},
     };
 
-    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
+    auto [to, write_back] = _get_asm_to(inst.to);
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
@@ -330,7 +332,7 @@ void Generator::_generate_unary_inst(const ir::Inst &inst) {
     };
     // clang-format on
 
-    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
+    auto [to, write_back] = _get_asm_to(inst.to);
     auto arg = _get_asm_arg(inst.arg[0], 0);
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
@@ -347,7 +349,7 @@ void Generator::_generate_convert_inst(const ir::Inst &inst) {
         {ir::InstType::ISWTOF, "fcvt.s.w"},
     };
 
-    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
+    auto [to, write_back] = _get_asm_to(inst.to);
     auto arg = _get_asm_arg(inst.arg[0], 0);
 
     _out << INDENT << build(inst2asm.at(inst.insttype), to, arg);
@@ -385,12 +387,58 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
         }
     }
 
-    // l and s arguments (except for $fa4)
-    _generate_arguments(args, 0);
-    // $fa4 if there is
-    _generate_arguments(args, 1);
-    // w arguments
-    _generate_arguments(args, 2);
+    int arg_count = args.size() - 1;
+    for (auto it = args.rbegin(); it != args.rend(); it++, arg_count--) {
+        auto arg = *it;
+        if (arg_count <= 7) {
+            std::function<int(ir::Type, int)> get_temp_reg = _get_temp_reg;
+            if (arg_count < 4) {
+                get_temp_reg = [](ir::Type type, int no) {
+                    std::array<int, 2> reg = {10, 11};            // a0, a1
+                    std::array<int, 2> freg = {32 + 10, 32 + 11}; // fa0, fa1
+                    if (type == ir::Type::S) {
+                        return freg[no];
+                    } else {
+                        return reg[no];
+                    }
+                };
+            }
+            auto arg0 = _get_asm_arg(arg, 0, get_temp_reg);
+            switch (arg->get_type()) {
+            case ir::Type::W:
+            case ir::Type::L: {
+                _out << INDENT
+                     << build("mv", "a" + std::to_string(arg_count), arg0)
+                     << std::endl;
+            } break;
+            case ir::Type::S: {
+                _out << INDENT
+                     << build("fmv.s", "fa" + std::to_string(arg_count), arg0)
+                     << std::endl;
+            } break;
+            default:
+                throw std::logic_error("unsupported type");
+            }
+        } else {
+            static std::unordered_map<ir::Type, std::string> inst2asm = {
+                {ir::Type::W, "sw"}, {ir::Type::L, "sd"}, {ir::Type::S, "fsw"}};
+            int offset = (arg_count - 8) * 8;
+            auto arg0 = _get_asm_arg(arg, 0);
+            if (is_in_imm12_range(offset)) {
+                _out << INDENT
+                     << build(inst2asm.at(arg->get_type()), arg0,
+                              std::to_string(offset) + "(sp)")
+                     << std::endl;
+            } else {
+                _out << INDENT << build("li", "a5", std::to_string(offset))
+                     << std::endl;
+                _out << INDENT << build("add", "a5", "sp", "a5") << std::endl;
+                _out << INDENT
+                     << build(inst2asm.at(arg->get_type()), arg0, "0(a5)")
+                     << std::endl;
+            }
+        }
+    }
 
     _out << INDENT
          << build("call",
@@ -398,7 +446,7 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
          << std::endl;
 
     if (inst.to != nullptr && inst.to->uses.size() > 0) {
-        auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
+        auto [to, write_back] = _get_asm_to(inst.to);
         switch (inst.to->get_type()) {
         case ir::Type::W:
         case ir::Type::L: {
@@ -606,7 +654,9 @@ static bool is_int_compare(ir::InstType insttype) {
     }
 }
 
-std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
+std::string
+Generator::_get_asm_arg(ir::ValuePtr arg, int no,
+                        std::function<int(ir::Type, int)> get_temp_reg) {
     if (auto temp = std::dynamic_pointer_cast<ir::Temp>(arg)) {
         if (temp->reg >= 0) {
             return regno2string(temp->reg);
@@ -627,7 +677,7 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
                 throw std::logic_error("unsupported type");
             };
             int offset = _stack_manager.get_spilled_temps_offset().at(temp);
-            int reg = _get_temp_reg(temp->get_type(), no);
+            int reg = get_temp_reg(temp->get_type(), no);
             std::string reg_str = regno2string(reg);
 
             if (is_in_imm12_range(offset)) {
@@ -644,7 +694,7 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
             return reg_str;
         } else if (temp->reg == STACK) {
             int offset = _stack_manager.get_local_var_offset().at(temp);
-            int reg = _get_temp_reg(temp->get_type(), no);
+            int reg = get_temp_reg(temp->get_type(), no);
             std::string reg_str = regno2string(reg);
 
             if (is_in_imm12_range(offset)) {
@@ -663,7 +713,7 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
             throw std::logic_error("no register");
         }
     } else if (auto constbits = std::dynamic_pointer_cast<ir::ConstBits>(arg)) {
-        int reg = _get_temp_reg(constbits->get_type(), no);
+        int reg = get_temp_reg(constbits->get_type(), no);
         std::string reg_str = regno2string(reg);
 
         if (constbits->get_type() == ir::Type::S) {
@@ -687,7 +737,7 @@ std::string Generator::_get_asm_arg(ir::ValuePtr arg, int no) {
 
         return reg_str;
     } else if (auto addr = std::dynamic_pointer_cast<ir::Address>(arg)) {
-        int reg = _get_temp_reg(addr->get_type(), no);
+        int reg = get_temp_reg(addr->get_type(), no);
         std::string reg_str = regno2string(reg);
 
         _out << INDENT << build("la", reg_str, addr->get_asm_value())
@@ -759,9 +809,8 @@ std::string Generator::_get_asm_addr(ir::ValuePtr arg, int no) {
 }
 
 std::tuple<std::string, std::function<void(std::ostream &)>>
-Generator::_get_asm_to(
-    ir::TempPtr to,
-    std::function<int(ir::Type, int)> get_temp_reg) {
+Generator::_get_asm_to(ir::TempPtr to,
+                       std::function<int(ir::Type, int)> get_temp_reg) {
     if (to->reg >= 0) {
         return std::make_tuple(regno2string(to->reg),
                                [](std::ostream &out) { /* nop */ });
