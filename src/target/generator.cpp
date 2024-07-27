@@ -221,7 +221,7 @@ void Generator::_generate_load_inst(const ir::Inst &inst) {
         {ir::InstType::ILOADS, "flw"},
     };
 
-    auto [to, write_back] = _get_asm_to(inst.to);
+    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
     auto arg = _get_asm_addr(inst.arg[0], 0);
 
     _out << INDENT << build(inst2asm.at(inst.insttype), to, arg) << std::endl;
@@ -256,7 +256,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
-    auto [to, write_back] = _get_asm_to(inst.to);
+    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
     _out << INDENT << build(inst_str, to, arg0, arg1) << std::endl;
@@ -264,7 +264,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 }
 
 void Generator::_generate_compare_inst(const ir::Inst &inst) {
-    auto [to, write_back] = _get_asm_to(inst.to);
+    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
@@ -305,7 +305,7 @@ void Generator::_generate_float_compare_inst(const ir::Inst &inst) {
         {ir::InstType::ICGES, "fle.s"}, {ir::InstType::ICGTS, "flt.s"},
     };
 
-    auto [to, write_back] = _get_asm_to(inst.to);
+    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
 
@@ -330,7 +330,7 @@ void Generator::_generate_unary_inst(const ir::Inst &inst) {
     };
     // clang-format on
 
-    auto [to, write_back] = _get_asm_to(inst.to);
+    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
     auto arg = _get_asm_arg(inst.arg[0], 0);
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
@@ -347,7 +347,7 @@ void Generator::_generate_convert_inst(const ir::Inst &inst) {
         {ir::InstType::ISWTOF, "fcvt.s.w"},
     };
 
-    auto [to, write_back] = _get_asm_to(inst.to);
+    auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
     auto arg = _get_asm_arg(inst.arg[0], 0);
 
     _out << INDENT << build(inst2asm.at(inst.insttype), to, arg);
@@ -398,7 +398,7 @@ void Generator::_generate_call_inst(const ir::Inst &inst,
          << std::endl;
 
     if (inst.to != nullptr && inst.to->uses.size() > 0) {
-        auto [to, write_back] = _get_asm_to(inst.to);
+        auto [to, write_back] = _get_asm_to(inst.to, _get_temp_reg);
         switch (inst.to->get_type()) {
         case ir::Type::W:
         case ir::Type::L: {
@@ -480,7 +480,19 @@ void Generator::_generate_arguments(const std::vector<ir::ValuePtr> &args,
 }
 
 void Generator::_generate_par_inst(const ir::Inst &inst, int par_count) {
-    auto [to, write_back] = _get_asm_to(inst.to);
+    std::function<int(ir::Type, int)> get_temp_reg = _get_temp_reg;
+    if (par_count < 4) {
+        get_temp_reg = [](ir::Type type, int no) {
+            std::array<int, 2> reg = {10, 11};            // a0, a1
+            std::array<int, 2> freg = {32 + 10, 32 + 11}; // fa0, fa1
+            if (type == ir::Type::S) {
+                return freg[no];
+            } else {
+                return reg[no];
+            }
+        };
+    }
+    auto [to, write_back] = _get_asm_to(inst.to, get_temp_reg);
     if (par_count <= 7) { // in a0-a7
         switch (inst.to->get_type()) {
         case ir::Type::L:
@@ -747,7 +759,9 @@ std::string Generator::_get_asm_addr(ir::ValuePtr arg, int no) {
 }
 
 std::tuple<std::string, std::function<void(std::ostream &)>>
-Generator::_get_asm_to(ir::TempPtr to) {
+Generator::_get_asm_to(
+    ir::TempPtr to,
+    std::function<int(ir::Type, int)> get_temp_reg) {
     if (to->reg >= 0) {
         return std::make_tuple(regno2string(to->reg),
                                [](std::ostream &out) { /* nop */ });
@@ -771,7 +785,7 @@ Generator::_get_asm_to(ir::TempPtr to) {
         throw std::logic_error("unsupported type");
     }
     int offset = _stack_manager.get_spilled_temps_offset().at(to);
-    int reg = _get_temp_reg(to->get_type(), 0);
+    int reg = get_temp_reg(to->get_type(), 0);
     std::string reg_str = regno2string(reg);
 
     return std::make_tuple(

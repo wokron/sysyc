@@ -41,9 +41,9 @@ private:
     _get_asm_arg_or_w_constbits(ir::ValuePtr arg, int no);
     std::string _get_asm_addr(ir::ValuePtr addr, int no);
     std::tuple<std::string, std::function<void(std::ostream &)>>
-    _get_asm_to(ir::TempPtr to);
+    _get_asm_to(ir::TempPtr to, std::function<int(ir::Type, int)> get_temp_reg);
 
-    int _get_temp_reg(ir::Type type, int no);
+    static int _get_temp_reg(ir::Type type, int no);
 
     std::ostream &_out = std::cout;
     StackManager _stack_manager;
