@@ -155,6 +155,7 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
                     continue;
                 }
 
+                // TODO: this could be optimized
                 auto offset = ir::ConstBits::get(elm_type->get_size() * index);
                 auto elm_addr =
                     _builder.create_add(ir::Type::L, symbol->value, offset);
@@ -836,7 +837,7 @@ ExpReturn Visitor::visit_unary_exp(const UnaryExp &node) {
         if (exp_type->is_int32()) {
             // !a equal to (a == 0)
             return ExpReturn(
-                exp_type, _builder.create_ceqz(exp_val, ir::ConstBits::get(0)));
+                exp_type, _builder.create_ceqw(exp_val, ir::ConstBits::get(0)));
         } else if (exp_type->is_float()) {
             // !a equal to (a == 0)
             auto cmp_val =

@@ -122,15 +122,38 @@ void LinearScanAllocator::_find_intervals(
     std::vector<ir::TempPtr> *intervals_ptrs[2][2] = {
         {&intervals, &f_intervals}, {&local_intervals, &f_local_intervals}};
 
-    for (auto block : func.rpo) {
-        for (auto temp : block->temps_in_block) {
-            auto is_float = temp->get_type() == ir::Type::S;
-            auto is_local = temp->is_local;
-            auto &intervals_ref = *intervals_ptrs[is_local][is_float];
+    for (auto temp : func.temps_in_func) {
+        auto is_float = temp->get_type() == ir::Type::S;
+        auto is_local = temp->is_local = _is_local(temp);
+        auto &intervals_ref = *intervals_ptrs[is_local][is_float];
 
-            intervals_ref.push_back(temp);
+        intervals_ref.push_back(temp);
+    }
+}
+
+bool LinearScanAllocator::_is_local(const ir::TempPtr &temp) {
+    std::unordered_set<ir::BlockPtr> blocks;
+    for (auto def : temp->defs) {
+        if (auto inst_def = std::get_if<ir::InstDef>(&def); inst_def) {
+            blocks.insert(inst_def->blk);
+        } else if (auto phi_def = std::get_if<ir::PhiDef>(&def); phi_def) {
+            blocks.insert(phi_def->blk);
+        } else {
+            throw std::logic_error("unknown def type");
         }
     }
+    for (auto use : temp->uses) {
+        if (auto inst_use = std::get_if<ir::InstUse>(&use); inst_use) {
+            blocks.insert(inst_use->blk);
+        } else if (auto phi_use = std::get_if<ir::PhiUse>(&use); phi_use) {
+            blocks.insert(phi_use->blk);
+        } else if (auto jump_use = std::get_if<ir::JmpUse>(&use); jump_use) {
+            blocks.insert(jump_use->blk);
+        } else {
+            throw std::logic_error("unknown use type");
+        }
+    }
+    return blocks.size() <= 1;
 }
 
 } // namespace target

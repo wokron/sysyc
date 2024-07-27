@@ -11,6 +11,8 @@ void StackManager::run(const ir::Function &func) {
 
     _frame_size = 0;
 
+    // TODO: judge leaf and non-leaf function
+
     // size of callee saved registers (include ra)
     _frame_size += 8;
     _callee_saved_regs_offset[1] = -_frame_size; // ra
@@ -123,7 +125,7 @@ void StackManager::_collect_block_info(const ir::Block &block) {
         int end;
     };
     auto asc_end = [](const RegReach &a, const RegReach &b) {
-        return a.end < b.end;
+        return a.end <= b.end;
     };
     std::set<RegReach, decltype(asc_end)> reg_reach(asc_end);
     for (auto inst : block.insts) {

@@ -98,10 +98,11 @@ bool LivenessAnalysisPass::_update_live(ir::Block &block) {
     }
 
     // in[B] = in[B] ∪ (out[B] - def[B])
-    std::unordered_set<ir::TempPtr> update;
-    std::set_difference(block.live_out.begin(), block.live_out.end(),
-                        block.live_def.begin(), block.live_def.end(),
-                        std::inserter(update, update.begin()));
+    std::unordered_set<ir::TempPtr> update(block.live_out.begin(),
+                                           block.live_out.end());
+    for (const auto &elm_in_def : block.live_def) {
+        update.erase(elm_in_def);
+    }
     block.live_in.insert(update.begin(), update.end());
 
     auto improved = old_in.size() != block.live_in.size();
@@ -109,7 +110,13 @@ bool LivenessAnalysisPass::_update_live(ir::Block &block) {
 }
 
 bool FillIntervalPass::run_on_function(ir::Function &func) {
-    func.temps_in_func.clear();
+    for (auto temp : func.temps_in_func) {
+        temp->interval = {
+            .start = std::numeric_limits<int>::max(),
+            .end = -1,
+        };
+    }
+
     int number = 0;
     for (auto block : func.rpo) {
         std::unordered_map<ir::TempPtr, int> first_def;
@@ -118,38 +125,22 @@ bool FillIntervalPass::run_on_function(ir::Function &func) {
         _find_intervals_in_block(*block, first_def, last_use, number);
         int last_number = number - 1;
 
-        func.temps_in_func.insert(block->temps_in_block.begin(),
-                                 block->temps_in_block.end());
-
-        for (auto temp : block->temps_in_block) {
-            auto is_local = block->live_in.find(temp) == block->live_in.end() &&
-                            block->live_out.find(temp) == block->live_out.end();
-            temp->is_local = is_local;
-
-            temp->interval = {
-                .start = std::numeric_limits<int>::max(),
-                .end = -1,
-            };
-
-            if (block->live_in.find(temp) ==
-                block->live_in.end()) { // if temp is not in the live_in set
-                // live interval extended to the first def
-                temp->interval.start =
-                    std::min(temp->interval.start, first_def[temp]);
-            } else {
-                // first number of block is in the live interval
-                temp->interval.start =
-                    std::min(temp->interval.start, first_number);
-            }
-            if (block->live_out.find(temp) ==
-                block->live_out.end()) { // if temp is not in the live_out set
-                // live interval extended to the last use
-                temp->interval.end =
-                    std::max(temp->interval.end, last_use[temp]);
-            } else {
-                // last number of block is in the live interval
-                temp->interval.end = std::max(temp->interval.end, last_number);
-            }
+        for (auto [temp, first_def_pos] : first_def) {
+            // live interval extended to the first def
+            temp->interval.start =
+                std::min(temp->interval.start, first_def_pos);
+        }
+        for (auto [temp, last_use_pos] : last_use) {
+            // live interval extended to the last use
+            temp->interval.end = std::max(temp->interval.end, last_use_pos);
+        }
+        for (auto temp : block->live_in) {
+            // first number of block is in the live interval
+            temp->interval.start = std::min(temp->interval.start, first_number);
+        }
+        for (auto temp : block->live_out) {
+            // last number of block is in the live interval
+            temp->interval.end = std::max(temp->interval.end, last_number);
         }
     }
 
@@ -160,20 +151,16 @@ void FillIntervalPass::_find_intervals_in_block(
     ir::Block &block, std::unordered_map<ir::TempPtr, int> &first_def,
     std::unordered_map<ir::TempPtr, int> &last_use, int &number) {
 
-    block.temps_in_block.clear();
-
     // insts
     for (auto inst : block.insts) {
         for (int i = 0; i < 2; i++)
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i]);
                 temp) {
-                block.temps_in_block.insert(temp);
                 last_use[temp] = number;
             }
 
         if (inst->to) {
             auto temp = inst->to;
-            block.temps_in_block.insert(temp);
             if (first_def.find(temp) == first_def.end()) {
                 first_def[temp] = number;
             }
@@ -184,7 +171,6 @@ void FillIntervalPass::_find_intervals_in_block(
     if (block.jump.type == ir::Jump::RET || block.jump.type == ir::Jump::JNZ) {
         if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block.jump.arg);
             temp) {
-            block.temps_in_block.insert(temp);
             last_use[temp] = number;
         }
     }

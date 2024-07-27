@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ir/ir.h"
-#include "target/mem.h"
 #include "ostream"
 #include "target/mem.h"
 #include <functional>
@@ -25,8 +24,9 @@ private:
     void _generate_load_inst(const ir::Inst &inst);
     void _generate_store_inst(const ir::Inst &inst);
     void _generate_arithmetic_inst(const ir::Inst &inst);
+    void _generate_compare_inst(const ir::Inst &inst);
     void _generate_float_compare_inst(const ir::Inst &inst);
-    void _generate_copy_like_inst(const ir::Inst &inst);
+    void _generate_unary_inst(const ir::Inst &inst);
     void _generate_convert_inst(const ir::Inst &inst);
 
     void _generate_call_inst(const ir::Inst &inst,
@@ -34,16 +34,20 @@ private:
     void _generate_arguments(const std::vector<ir::ValuePtr> &args, int pass);
     void _generate_par_inst(const ir::Inst &inst, int par_count);
     void _generate_jump_inst(const ir::Jump &jump);
-    void _generate_jnz_inst(const ir::Jump &jump);
 
-    std::string _get_asm_arg(ir::ValuePtr arg, int no);
-    std::tuple<std::string, bool>
-    _get_asm_arg_or_w_constbits(ir::ValuePtr arg, int no);
+    std::string _get_asm_arg(
+        ir::ValuePtr arg, int no,
+        std::function<int(ir::Type, int)> get_temp_reg = _get_temp_reg);
+
+    std::tuple<std::string, bool> _get_asm_arg_or_w_constbits(ir::ValuePtr arg,
+                                                              int no);
     std::string _get_asm_addr(ir::ValuePtr addr, int no);
-    std::tuple<std::string, std::function<void(std::ostream &)>>
-    _get_asm_to(ir::TempPtr to);
 
-    int _get_temp_reg(ir::Type type, int no);
+    std::tuple<std::string, std::function<void(std::ostream &)>>
+    _get_asm_to(ir::TempPtr to,
+                std::function<int(ir::Type, int)> get_temp_reg = _get_temp_reg);
+
+    static int _get_temp_reg(ir::Type type, int no);
 
     std::ostream &_out = std::cout;
     StackManager _stack_manager;
