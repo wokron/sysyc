@@ -8,19 +8,22 @@
 #include <fstream>
 #include <getopt.h>
 
-
 using Passes = opt::PassPipeline<
-    opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillPredsPass,
+    opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillInlinePass,
+    opt::FunctionInliningPass, opt::FillPredsPass,
     opt::FillReversePostOrderPass, opt::FillUsesPass,
     opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
     opt::SSAConstructPass, opt::FillUsesPass, opt::GVNPass, opt::FillUsesPass,
     opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass,
     opt::SSADestructPass, opt::LocalConstAndCopyPropagationPass,
-    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass>;
+    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass,
+    opt::SimplifyCFGPass, opt::LocalConstAndCopyPropagationPass,
+    opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass,
+    opt::SimplifyCFGPass>;
 
 using RegisterPasses =
-    opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
-                      opt::FillIntervalPass>;
+    opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass,
+                      opt::LivenessAnalysisPass, opt::FillIntervalPass>;
 
 struct Options {
     bool optimize = false;
@@ -115,14 +118,16 @@ void compile(const char *name, const Options &options,
 
     //     for (auto [reg, offset] :
     //          stack_manager.get_callee_saved_regs_offset()) {
-    //         std::cerr << target::regno2string(reg) << " -> sp(" << offset << ")"
+    //         std::cerr << target::regno2string(reg) << " -> sp(" << offset <<
+    //         ")"
     //                   << std::endl;
     //     }
     //     for (auto [temp, offset] : stack_manager.get_local_var_offset()) {
     //         temp->emit(std::cerr);
     //         std::cerr << " -> sp(" << offset << ")" << std::endl;
     //     }
-    //     for (auto [temp, offset] : stack_manager.get_spilled_temps_offset()) {
+    //     for (auto [temp, offset] : stack_manager.get_spilled_temps_offset())
+    //     {
     //         temp->emit(std::cerr);
     //         std::cerr << " -> sp(" << offset << ")" << std::endl;
     //     }
