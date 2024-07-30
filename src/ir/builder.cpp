@@ -295,6 +295,9 @@ ValuePtr IRBuilder::create_cgts(ValuePtr lhs, ValuePtr rhs) {
  * format: %to =w extsw <value>
  */
 ValuePtr IRBuilder::create_extsw(ValuePtr value) {
+    if (auto const_val = _folder.fold_extsw(value); const_val) {
+        return const_val;
+    }
     auto inst = Inst::create(InstType::IEXTSW, Type::L, value, nullptr);
     return insert_inst(inst);
 }
