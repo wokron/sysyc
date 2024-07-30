@@ -137,11 +137,15 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
         symbol->value = _builder.create_alloc(elm_ir_type, type->get_size());
 
         if (symbol->initializer) {
+            auto elm_addr = symbol->value;
+            bool first_elm = true;
             auto values = symbol->initializer->get_values();
             for (int index = 0; index < initializer->get_space(); index++) {
                 // if no init value, just store zero
                 sym::TypePtr val_type = elm_type;
-                ir::ValuePtr val = val_type->is_float() ? ir::ConstBits::get(0.0f) : ir::ConstBits::get(0);
+                ir::ValuePtr val = val_type->is_float()
+                                       ? ir::ConstBits::get(0.0f)
+                                       : ir::ConstBits::get(0);
                 if (values.find(index) != values.end()) {
                     auto value = values[index];
                     val_type = std::get<0>(value);
@@ -155,10 +159,12 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
                     continue;
                 }
 
-                // TODO: this could be optimized
-                auto offset = ir::ConstBits::get(elm_type->get_size() * index);
-                auto elm_addr =
-                    _builder.create_add(ir::Type::L, symbol->value, offset);
+                if (first_elm) {
+                    first_elm = false;
+                } else {
+                    auto inc = ir::ConstBits::get(elm_type->get_size());
+                    elm_addr = _builder.create_add(ir::Type::L, elm_addr, inc);
+                }
                 val = _convert_if_needed(*elm_type, *val_type, val);
                 _builder.create_store(elm_ir_type, val, elm_addr);
             }
