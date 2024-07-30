@@ -27,24 +27,19 @@ inline std::string regno2string(int number) {
     return regnames[number];
 }
 
-// inline std::string build(std::string op, std::string rd, std::string rs1,
-//                          std::string rs2) {
-//     return op + " " + rd + ", " + rs1 + ", " + rs2;
-// }
-
-// inline std::string build(std::string op, std::string rd, std::string rs1) {
-//     return op + " " + rd + ", " + rs1;
-// }
-
-// inline std::string build(std::string op, std::string rd) {
-//     return op + " " + rd;
-// }
-
 // This method should only be called when there is no register allocation.
 inline int get_temp_reg() {
     static int choice = 0;
     choice ^= 1;
     return choice ? 14 : 15;
+}
+
+// 12-bit immediate value range
+static const int IMM12_MIN = -2048;
+static const int IMM12_MAX = 2047;
+
+inline bool is_in_imm12_range(int value) {
+    return value >= IMM12_MIN && value <= IMM12_MAX;
 }
 
 } // namespace target

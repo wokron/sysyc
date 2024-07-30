@@ -1,4 +1,7 @@
+#include <deque>
+#include <functional>
 #include <initializer_list>
+#include <list>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -28,6 +31,9 @@ struct AsmInst {
         return str;
     }
 
+    bool is_inst() const { return type == AsmInst::INST; }
+    bool is_label() const { return type == AsmInst::LABEL; }
+
     const std::string &op() const { return args[0]; }
     void op(const std::string &op) { args[0] = op; }
     const std::string &arg0() const { return args[1]; }
@@ -35,17 +41,15 @@ struct AsmInst {
     const std::string &arg1() const { return args[2]; }
     void arg1(const std::string &arg) { args[2] = arg; }
     const std::string &arg2() const { return args[3]; }
+    void arg2(const std::string &arg) { args[3] = arg; }
 
-    void swap(int i, int j) {
-        if (i < 0 || i >= args.size() || j < 0 || j >= args.size()) {
-            return;
-        }
-        std::swap(args[i], args[j]);
-    }
+    void swap(int i, int j) { std::swap(args[i + 1], args[j + 1]); }
 };
 
 class PeepholeBuffer {
   public:
+    using iterator = std::list<AsmInst>::iterator;
+
     void append(std::string op, std::string arg0) {
         _insts.emplace_back(std::initializer_list<std::string>{op, arg0});
     }
@@ -68,7 +72,33 @@ class PeepholeBuffer {
     void emit(std::ostream &out) const;
 
   private:
-    std::vector<AsmInst> _insts;
+    // Eliminate redundant load immediate.
+    void _eliminate_immediate();
+
+    // Make load following store to move.
+    void _weaken_load();
+
+    // Eliminate move to the same register.
+    // After _weaken_load.
+    void _eliminate_move();
+
+    // Eliminate redundant jump.
+    void _eliminate_jump();
+
+    // Simplify integer compare and branch to single branch.
+    // After _eliminate_jump.
+    void _simplify_cmp_branch();
+
+    // Weaken branch to remove else jump.
+    // After _simplify_cmp_branch.
+    void _weaken_branch();
+
+    void _slide(iterator begin, iterator end, int window_size, bool inst_only,
+                std::vector<std::vector<std::string>> patterns,
+                std::function<void(std::deque<iterator> &)> callback);
+
+  private:
+    std::list<AsmInst> _insts;
 };
 
 } // namespace target

@@ -8,14 +8,6 @@ namespace target {
 
 #define INDENT "    "
 
-// 12-bit immediate value range
-static const int IMM12_MIN = -2048;
-static const int IMM12_MAX = 2047;
-
-static bool is_in_imm12_range(int value) {
-    return value >= IMM12_MIN && value <= IMM12_MAX;
-}
-
 void Generator::generate(const ir::Module &module) {
     for (const auto &data : module.datas) {
         generate_data(*data);
