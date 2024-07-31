@@ -133,7 +133,7 @@ void compile(const char *name, const Options &options,
             output = "out.s";
         }
         outfile.open(output, std::ios::out);
-        target::Generator generator(outfile);
+        target::Generator generator(outfile, options.optimize);
 
         generator.generate(module);
         return;

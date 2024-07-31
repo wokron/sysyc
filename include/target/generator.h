@@ -3,22 +3,23 @@
 #include "ir/ir.h"
 #include "ostream"
 #include "target/mem.h"
+#include "target/peephole.h"
 #include <functional>
 #include <set>
 
 namespace target {
 
 class Generator {
-public:
+  public:
     Generator() = default;
-    Generator(std::ostream &out) : _out(out) {}
+    Generator(std::ostream &out, bool opt) : _out(out), _opt(opt) {}
 
     void generate(const ir::Module &module);
 
     void generate_data(const ir::Data &data);
     void generate_func(const ir::Function &func);
 
-private:
+  private:
     void _generate_inst(const ir::Inst &inst);
 
     void _generate_load_inst(const ir::Inst &inst);
@@ -59,6 +60,9 @@ private:
     };
     std::set<RegReach, std::function<bool(const RegReach &, const RegReach &)>>
         _reg_reach;
+
+    bool _opt;
+    PeepholeBuffer _buffer;
 };
 
 } // namespace target
