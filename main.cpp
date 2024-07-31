@@ -9,8 +9,7 @@
 #include <getopt.h>
 
 using Passes = opt::PassPipeline<
-    opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillInlinePass,
-    opt::FunctionInliningPass, opt::FillPredsPass,
+    opt::FillPredsPass, opt::SimplifyCFGPass, opt::FillPredsPass,
     opt::FillReversePostOrderPass, opt::FillUsesPass,
     opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
     opt::SSAConstructPass, opt::FillUsesPass, opt::GVNPass, opt::FillUsesPass,
