@@ -61,7 +61,8 @@ void PeepholeBuffer::emit(std::ostream &out) const {
 }
 
 void PeepholeBuffer::_eliminate_immediate() {
-    const static Patterns patterns = {{"li", "add"}, {"li", "sub"}};
+    const static Patterns patterns = {
+        {"li", "add"}, {"li", "sub"}, {"li", "addw"}, {"li", "subw"}};
 
     auto callback = [&](std::deque<iterator> &window) {
         auto &load = *window.front();
@@ -78,12 +79,12 @@ void PeepholeBuffer::_eliminate_immediate() {
             if (inst.arg0() == load.arg1()) {
                 inst.swap(0, 1);
             }
-            if (inst.op() == "sub") {
+            if (inst.op().front() == 's') {
                 inst.arg2("-" + load.arg1());
             } else {
                 inst.arg2(load.arg1());
             }
-            inst.op("addi");
+            inst.op(inst.op().back() == 'w' ? "addw" : "addi");
             _insts.erase(window.front());
         }
     };
@@ -131,15 +132,26 @@ void PeepholeBuffer::_weaken_load() {
 }
 
 void PeepholeBuffer::_eliminate_move() {
-    const static Patterns patterns = {{"mv"}, {"fmv.s"}};
+    const static Patterns reg_patterns = {{"mv"}, {"fmv.s"}};
+    const static Patterns imm_patterns = {{"li", "mv"}};
 
-    auto callback = [&](std::deque<iterator> &window) {
+    auto reg_callback = [&](std::deque<iterator> &window) {
         auto &move = *window.front();
         if (move.arg0() == move.arg1()) {
             _insts.erase(window.front());
         }
     };
-    _slide(_insts.begin(), _insts.end(), 1, true, patterns, callback);
+    _slide(_insts.begin(), _insts.end(), 1, true, reg_patterns, reg_callback);
+
+    auto imm_callback = [&](std::deque<iterator> &window) {
+        auto &load = *window.front();
+        auto &move = *window.back();
+        if ((load.arg0()[0] == 't') && (load.arg0() == move.arg1())) {
+            load.arg0(move.arg0());
+            _insts.erase(window.back());
+        }
+    };
+    _slide(_insts.begin(), _insts.end(), 2, true, imm_patterns, imm_callback);
 }
 
 void PeepholeBuffer::_eliminate_jump() {
