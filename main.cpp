@@ -43,9 +43,9 @@ void usage(const char *name) {
     std::cerr << "  -o, --output: Output file" << std::endl;
 }
 
-void cmd_error(const char *name, const std::string &msg) {
+void cmd_error(const char *name, const std::string &msg, int exitcode = 1) {
     std::cerr << name << ": " << msg << std::endl;
-    exit(1);
+    exit(exitcode);
 }
 
 extern FILE *yyin;
@@ -58,7 +58,7 @@ void compile(const char *name, const Options &options,
     yyin = fopen(input.c_str(), "r");
 
     if (yyin == nullptr) {
-        cmd_error(name, "failed to open file: " + input);
+        cmd_error(name, "failed to open file: " + input, 4);
     }
 
     auto root = std::make_shared<CompUnits>();
@@ -78,7 +78,7 @@ void compile(const char *name, const Options &options,
     visitor.visit(*root);
 
     if (has_error()) {
-        cmd_error(name, "compilation failed");
+        cmd_error(name, "compilation failed", 5);
     }
 
     if (options.optimize) {
@@ -143,7 +143,7 @@ void compile(const char *name, const Options &options,
         return;
     }
 
-    cmd_error(name, "nothing to do");
+    cmd_error(name, "nothing to do", 6);
 }
 
 int main(int argc, char *argv[]) {
@@ -192,13 +192,13 @@ int main(int argc, char *argv[]) {
             options.output = optarg;
             break;
         case '?':
-            cmd_error(argv[0], "unknown option");
+            cmd_error(argv[0], "unknown option", 2);
             return 1;
         }
     }
 
     if (argv[optind] == nullptr) {
-        cmd_error(argv[0], "no input file");
+        cmd_error(argv[0], "no input file", 3);
         return 1;
     }
 
