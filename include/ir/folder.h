@@ -22,7 +22,7 @@ class Folder {
 
     ValuePtr fold_stosi(ValuePtr value);
     ValuePtr fold_swtof(ValuePtr value);
-
+    ValuePtr fold_extsw(ValuePtr value);
 
   private:
     /**

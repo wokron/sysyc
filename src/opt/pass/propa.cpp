@@ -47,6 +47,12 @@ bool opt::LocalConstAndCopyPropagationPass::run_on_basic_block(ir::Block &block)
                     .blk = {block.jump.blk[1], nullptr},
                 };
             }
+        } else if (block.jump.blk[0] == block.jump.blk[1]) {
+            block.jump = {
+                .type = ir::Jump::JMP,
+                .arg = nullptr,
+                .blk = {block.jump.blk[0], nullptr},
+            };
         }
     }
 

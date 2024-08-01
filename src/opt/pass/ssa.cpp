@@ -102,11 +102,13 @@ bool opt::PhiInsertingPass::run_on_function(ir::Function &func) {
     for (auto temp : func.temps_in_func) {
         std::unordered_set<ir::BlockPtr> temp_def_blocks;
         for (auto def : temp->defs) {
-            auto instdef = std::get_if<ir::InstDef>(&def);
-            if (instdef == nullptr) {
-                throw std::runtime_error("not inst def in when inserting phi");
+            if (auto instdef = std::get_if<ir::InstDef>(&def)) {
+                temp_def_blocks.insert(instdef->blk);
+            } else if (auto phidef = std::get_if<ir::PhiDef>(&def)) {
+                temp_def_blocks.insert(phidef->blk);
+            } else {
+                throw std::logic_error("invalide def type");
             }
-            temp_def_blocks.insert(instdef->blk);
         }
 
         if (temp_def_blocks.size() == 1) {

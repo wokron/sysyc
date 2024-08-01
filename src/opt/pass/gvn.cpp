@@ -138,8 +138,10 @@ bool opt::GVNPass::run_on_function(ir::Function &func) {
     return false;
 }
 
-void opt::GVNPass::_dom_tree_traverse(const ir::BlockPtr block, std::unordered_map<int, ir::ValuePtr> hash_temp_map,
-        std::unordered_map<ir::ValuePtr, ir::ValuePtr> value_map) {
+void opt::GVNPass::_dom_tree_traverse(
+    const ir::BlockPtr block,
+    std::unordered_map<int, ir::ValuePtr> hash_temp_map,
+    std::unordered_map<ir::ValuePtr, ir::ValuePtr> value_map) {
 
     for (auto phi : block->phis) {
         std::unordered_set<ir::ValuePtr> arg_set;

@@ -375,6 +375,14 @@ ValuePtr Folder::fold_swtof(ValuePtr value) {
     return nullptr;
 }
 
+ValuePtr Folder::fold_extsw(ValuePtr value) {
+    if (auto const_val = std::dynamic_pointer_cast<ConstBits>(value);
+        const_val) {
+        return const_val;
+    }
+    return nullptr;
+}
+
 ConstBitsPtr Folder::_convert_to_const_bits(ValuePtr value) {
     if (auto constant = std::dynamic_pointer_cast<ConstBits>(value)) {
         return constant;
