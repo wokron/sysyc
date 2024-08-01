@@ -816,6 +816,13 @@ ExpReturn Visitor::visit_call_exp(const CallExp &node) {
         ir_args.push_back(exp_val);
     }
 
+    if (node.ident == "starttime" || node.ident == "stoptime") { // very ugly
+        return ExpReturn(
+            symbol->type,
+            _builder.create_call(_symtype2irtype(*func_symbol->type),
+                                 func_symbol->value, {ir::ConstBits::get(0)}));
+    }
+
     auto ir_ret = _builder.create_call(_symtype2irtype(*func_symbol->type),
                                        func_symbol->value, ir_args);
 
