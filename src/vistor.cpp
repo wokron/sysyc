@@ -364,6 +364,8 @@ ir::ValuePtr Visitor::_convert_if_needed(const sym::Type &to,
         return _builder.create_stosi(val);
     } else if (to.is_float() && from.is_int32()) {
         return _builder.create_swtof(val);
+    } else if (to.is_pointer() && (from.is_array() || from.is_pointer())) {
+        return val; // pointer force cast
     } else {
         error(-1, "type convert not supported");
         return nullptr;
