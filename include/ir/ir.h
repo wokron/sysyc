@@ -38,7 +38,7 @@ struct Function;
 
 struct Address : public Const {
     std::string name;
-    Function *ref_func;
+    Function *ref_func = nullptr;
 
     Address(std::string name) : name(name) {}
 
