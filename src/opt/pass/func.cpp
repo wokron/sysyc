@@ -148,12 +148,16 @@ void opt::FunctionInliningPass::_do_inline(
             }
 
             if (inst->to != nullptr) {
-                auto name = inst->to->name + "." + std::to_string(inst->to->id);
-                auto new_to = std::make_shared<ir::Temp>(
-                    name, inst->to->get_type(), std::vector<ir::Def>{});
-                new_to->id = temp_counter++;
-                new_inst->to = new_to;
-                value_map.insert({inst->to, new_inst->to});
+                if (auto it = value_map.find(inst->to); it != value_map.end()) {
+                    new_inst->to = std::static_pointer_cast<ir::Temp>(it->second);
+                } else {
+                    auto name = inst->to->name + "." + std::to_string(inst->to->id);
+                    auto new_to = std::make_shared<ir::Temp>(
+                        name, inst->to->get_type(), std::vector<ir::Def>{});
+                    new_to->id = temp_counter++;
+                    new_inst->to = new_to;
+                    value_map.insert({inst->to, new_inst->to});
+                }
             }
         }
         // list, just copy jump
