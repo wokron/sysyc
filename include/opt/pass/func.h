@@ -42,7 +42,7 @@ private:
     void _do_inline(ir::BlockPtr prev, ir::Function &inline_func,
                     ir::Function &target_func,
                     const std::vector<ir::ValuePtr> &args,
-                    std::vector<std::pair<ir::BlockPtr, ir::ValuePtr>> &rets);
+                    ir::TempPtr ret_target);
 };
 
 } // namespace opt

@@ -197,12 +197,19 @@ void opt::VariableRenamingPass::_dom_tree_preorder_traversal(
         }
     }
 
-    std::vector<ir::BlockPtr> succs;
+    if (auto temp = std::dynamic_pointer_cast<ir::Temp>(block->jump.arg)) {
+        if (rename_stack.at(temp).empty()) {
+            throw std::runtime_error("use before def");
+        }
+        block->jump.arg = rename_stack.at(temp).top();
+    }
+
+    std::unordered_set<ir::BlockPtr> succs;
     switch (block->jump.type) {
     case ir::Jump::JNZ:
-        succs.push_back(block->jump.blk[1]);
+        succs.insert(block->jump.blk[1]);
     case ir::Jump::JMP:
-        succs.push_back(block->jump.blk[0]);
+        succs.insert(block->jump.blk[0]);
         break;
     default:
         break;

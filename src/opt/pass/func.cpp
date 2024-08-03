@@ -78,15 +78,9 @@ bool opt::FunctionInliningPass::run_on_function(ir::Function &func) {
                         .blk = {new_block, nullptr},
                     };
 
-                    std::vector<std::pair<ir::BlockPtr, ir::ValuePtr>> rets;
-                    _do_inline(block, *addr->ref_func, func, args, rets);
+                    _do_inline(block, *addr->ref_func, func, args, ret);
 
                     block->jump.blk[0] = block->next;
-
-                    if (ret != nullptr) { // need to insert phi
-                        new_block->phis.push_back(
-                            std::make_shared<ir::Phi>(ret, rets));
-                    }
                 }
                 args.clear();
                 break;
@@ -98,8 +92,7 @@ bool opt::FunctionInliningPass::run_on_function(ir::Function &func) {
 
 void opt::FunctionInliningPass::_do_inline(
     ir::BlockPtr prev, ir::Function &inline_func, ir::Function &target_func,
-    const std::vector<ir::ValuePtr> &args,
-    std::vector<std::pair<ir::BlockPtr, ir::ValuePtr>> &rets) {
+    const std::vector<ir::ValuePtr> &args, ir::TempPtr ret_target) {
     // attention, counter is target_func's
     uint *block_counter_ptr = target_func.block_counter_ptr;
     uint &temp_counter = target_func.temp_counter;
@@ -205,7 +198,14 @@ void opt::FunctionInliningPass::_do_inline(
                 it != value_map.end()) {
                 new_block->jump.arg = it->second;
             }
-            rets.push_back({new_block, new_block->jump.arg});
+            if (new_block->jump.arg != nullptr) { // copy to ret_target
+                auto new_inst =  std::shared_ptr<ir::Inst>(new ir::Inst{
+                    .insttype = ir::InstType::ICOPY,
+                    .to = ret_target,
+                    .arg = {new_block->jump.arg},
+                });
+                new_block->insts.push_back(new_inst);
+            }
             new_block->jump = {
                 .type = ir::Jump::JMP,
                 .blk = {after, nullptr},
