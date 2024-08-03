@@ -52,12 +52,10 @@ bool opt::FunctionInliningPass::run_on_function(ir::Function &func) {
     for (auto block = func.start; block; block = block->next) {
         std::vector<ir::ValuePtr> args;
         ir::TempPtr ret = nullptr;
-        auto call_begin = block->insts.end();
         for (auto it = block->insts.begin(); it != block->insts.end(); it++) {
             auto inst = *it;
             if (inst->insttype == ir::InstType::IARG) {
                 args.push_back(inst->arg[0]);
-                call_begin = it;
             } else if (inst->insttype == ir::InstType::ICALL) {
                 ret = inst->to;
                 auto addr =
@@ -72,7 +70,7 @@ bool opt::FunctionInliningPass::run_on_function(ir::Function &func) {
                     block->next = new_block;
                     // move insts
                     new_block->insts.assign(it + 1, block->insts.end());
-                    block->insts.erase(call_begin, block->insts.end());
+                    block->insts.erase(it - args.size(), block->insts.end());
                     // move jump
                     new_block->jump = block->jump;
                     block->jump = {
@@ -203,9 +201,10 @@ void opt::FunctionInliningPass::_do_inline(
             break;
         case ir::Jump::RET: // convert ret to jmp, the target is the first block
                             // after inlining blocks
-            new_block->jump.arg = new_block->jump.arg == nullptr
-                                      ? nullptr
-                                      : value_map.at(new_block->jump.arg);
+            if (auto it = value_map.find(new_block->jump.arg);
+                it != value_map.end()) {
+                new_block->jump.arg = it->second;
+            }
             rets.push_back({new_block, new_block->jump.arg});
             new_block->jump = {
                 .type = ir::Jump::JMP,
