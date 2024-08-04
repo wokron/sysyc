@@ -308,6 +308,9 @@ void Visitor::visit_func_def(const FuncDef &node) {
 
     if (ir_func->end->jump.type == ir::Jump::NONE) {
         ir_func->end->jump.type = ir::Jump::RET;
+        if (node.ident == "main") {
+            ir_func->end->jump.arg = ir::ConstBits::get(0);
+        }
     }
 
     _current_scope = _current_scope->pop_scope();
