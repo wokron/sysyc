@@ -19,17 +19,18 @@ bool opt::MemoryToRegisterPass::_mem_to_reg(ir::InstPtr alloc_inst) {
 
     // just use to as new temp, and replace alloc
     // before: %temp =l allocn <bytes>
-    // after: %temp =t copy 0
+    // after: nop
     auto temp = alloc_inst->to;
     temp->type = ir::Type::W; // default type for var that never use or define
     std::vector<ir::Use> uses(temp->uses.begin(), temp->uses.end());
     temp->uses.clear();
 
-    // attention, here we use copy instead of nop because we need to keep the
-    // life range of temp, this is important for phi inserting pass
-    alloc_inst->insttype = ir::InstType::ICOPY;
-    alloc_inst->arg[0] = ir::ConstBits::get(0);
-    alloc_inst->arg[1] = nullptr;
+    // alloc no longer needed, so replace it with nop
+    *alloc_inst = {
+        .insttype = ir::InstType::INOP,
+        .to = nullptr,
+        .arg = {nullptr, nullptr},
+    };
 
     for (auto use : uses) {
         auto instuse = std::get_if<ir::InstUse>(&use);
