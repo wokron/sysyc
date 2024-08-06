@@ -4,6 +4,7 @@
 #include "ostream"
 #include "target/mem.h"
 #include "target/peephole.h"
+#include <cmath>
 #include <functional>
 #include <set>
 
@@ -18,6 +19,41 @@ class Generator {
 
     void generate_data(const ir::Data &data);
     void generate_func(const ir::Function &func);
+
+    bool is_power_of_two(int x) { return x > 0 && (x & (x - 1)) == 0; }
+
+    int calculate_exponent(int x) { return (int)(log(x) / log(2)); }
+
+    bool is_power_of_two_all(int x) {
+        return is_power_of_two(x) || is_power_of_two(x + 1) ||
+               is_power_of_two(x - 1);
+    }
+
+    std::pair<uint64_t, int> choose_pair(int d, int prec) {
+        uint64_t nc = (1ULL << prec) - ((1ULL << prec) % d) - 1;
+        uint64_t p = 32;
+        while ((1ULL << p) <= nc * (d - (1ULL << p) % d)) {
+            p++;
+        }
+        uint64_t m = (((1ULL << p) + d - (1ULL << p) % d) / d);
+        uint64_t n = ((m << 32) >> 32);
+        return std::make_pair(n, static_cast<int>(p - 32));
+    }
+
+    int getCTZ(int num) {
+        unsigned int r = 0;
+        unsigned int unsigned_num =
+            static_cast<unsigned int>(num); 
+
+        unsigned_num >>= 1; 
+
+        while (unsigned_num > 0) {
+            r++;
+            unsigned_num >>= 1;
+        }
+
+        return r;
+    }
 
   private:
     void _generate_inst(const ir::Inst &inst);

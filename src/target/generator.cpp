@@ -253,8 +253,146 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
     auto [to, write_back] = _get_asm_to(inst.to);
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
-    _buffer.append(inst_str, to, arg0, arg1);
+    bool wflag = inst_str == "mulw" || inst_str == "divw" || inst_str == "remw";
+    if (inst_str == "mul" || inst_str == "mulw") {
+        if (auto constbits =
+                std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[0])) {
+            if (auto value = std::get_if<int>(&constbits->value)) {
+                if (is_power_of_two(*value)) {
+                    _buffer.append(wflag ? "slliw" : "slli", to, arg1,
+                                   std::to_string(calculate_exponent(*value)));
+                } else if (is_power_of_two(*value + 1)) {
+                    _buffer.append(
+                        wflag ? "slliw" : "slli", "a5", arg1,
+                        std::to_string(calculate_exponent(*value + 1)));
+                    _buffer.append(wflag ? "subw" : "sub", to, "a5", arg1);
+                } else if (is_power_of_two(*value - 1)) {
+                    _buffer.append(
+                        wflag ? "slliw" : "slli", "a5", arg1,
+                        std::to_string(calculate_exponent(*value - 1)));
+                    _buffer.append(wflag ? "subw" : "sub", to, "a5", arg1);
+                }
+            }
+        } else if (auto constbits =
+                       std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
+            if (auto value = std::get_if<int>(&constbits->value)) {
+                if (is_power_of_two(*value)) {
+                    _buffer.append(wflag ? "slliw" : "slli", to, arg0,
+                                   std::to_string(calculate_exponent(*value)));
+                } else if (is_power_of_two(*value + 1)) {
+                    _buffer.append(
+                        wflag ? "slliw" : "slli", "a5", arg0,
+                        std::to_string(calculate_exponent(*value + 1)));
+                    _buffer.append(wflag ? "subw" : "sub", to, "a5", arg0);
+                } else if (is_power_of_two(*value - 1)) {
+                    _buffer.append(
+                        wflag ? "slliw" : "slli", "a5", arg0,
+                        std::to_string(calculate_exponent(*value - 1)));
+                    _buffer.append(wflag ? "subw" : "sub", to, "a5", arg0);
+                }
+            }
+        }
+    } else if (inst_str == "div" || inst_str == "divw") {
+        if (auto constbits =
+                std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
+            if (auto value = std::get_if<int>(&constbits->value)) {
+                int value_num = *value;
+                int abs = value_num;
+                if (abs < 0) {
+                    abs = -abs;
+                }
+                if ((abs & (abs - 1)) == 0) {
+                    _buffer.append(wflag ? "sraiw" : "srai", "a5", arg0, "31");
+                    int l = getCTZ(abs);
+                    _buffer.append(wflag ? "srliw" : "srli", "a5", "a5",
+                                   std::to_string(32 - l));
+                    _buffer.append(wflag ? "addw" : "add", "a5", "a5", arg0);
+                    _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
+                                   std::to_string(l));
+                } else {
+                    auto res = choose_pair(abs, 31);
+                    int64_t m = res.first;
+                    int sh = res.second;
+                    if (m < 2147483648ULL) {
+                        _buffer.append("li", "a5", std::to_string(m));
+                        _buffer.append("mulh", "a5", arg0, "a5");
+                    } else {
+                        _buffer.append("li", "a5",
+                                       std::to_string(m - (1ULL << 32)));
+                        _buffer.append("mulh", "a5", arg0, "a5");
+                        _buffer.append("add", "a5", arg0, "a5");
+                    }
+                    _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
+                                   std::to_string(sh));
+                    _buffer.append(wflag ? "srliw" : "srli", "a6", arg0,
+                                   std::to_string(31));
+                    _buffer.append(wflag ? "addw" : "add", "a5", "a5", "a6");
+                }
+                if (value_num < 0) {
+                    _buffer.append(wflag ? "subw" : "sub", "a5", "zero", "a5");
+                }
+                _buffer.append(wflag ? "addw" : "add", to, "zero", "a5");
+            }
+        }
+    } else if (inst_str == "rem" || inst_str == "remw") {
+        if (auto constbits =
+                std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
+            if (auto value = std::get_if<int>(&constbits->value)) {
+                int value_num = *value;
+                int abs = value_num;
+                if (abs < 0) {
+                    abs = -abs;
+                }
+                if ((abs & (abs - 1)) == 0) {
+                    _buffer.append(wflag ? "sraiw" : "srai", "a5", arg0, "31");
+                    int l = getCTZ(abs);
+                    _buffer.append(wflag ? "srliw" : "srli", "a5", "a5",
+                                   std::to_string(32 - l));
+                    _buffer.append(wflag ? "addw" : "add", "a5", "a5", arg0);
+                    _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
+                                   std::to_string(l));
+                } else {
+                    auto res = choose_pair(abs, 31);
+                    int64_t m = res.first;
+                    int sh = res.second;
+                    if (m < 2147483648ULL) {
+                        _buffer.append("li", "a5", std::to_string(m));
+                        _buffer.append("mulh", "a5", arg0, "a5");
+                    } else {
+                        _buffer.append("li", "a5",
+                                       std::to_string(m - (1ULL << 32)));
+                        _buffer.append("mulh", "a5", arg0, "a5");
+                        _buffer.append("add", "a5", arg0, "a5");
+                    }
+                    _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
+                                   std::to_string(sh));
+                    _buffer.append(wflag ? "srliw" : "srli", "a6", arg0,
+                                   std::to_string(31));
+                    _buffer.append(wflag ? "addw" : "add", "a5", "a5", "a6");
+                }
+                if (value_num < 0) {
+                    _buffer.append(wflag ? "subw" : "sub", "a5", "zero", "a5");
+                }
+                _buffer.append(wflag ? "mulw" : "mul", "a5", "zero", "a5");
+                _buffer.append("li", "a6", std::to_string(value_num));
+                _buffer.append(wflag ? "subw" : "sub", to, arg0, "a5");
+            }
+        }
+    } else {
+        _buffer.append(inst_str, to, arg0, arg1);
+    }
+
     write_back(_out);
+}
+
+int getCTZ(int num) {
+    int r = 0;
+    num >>= 1;
+    while (num > 0) {
+        r++;
+        num >>= 1;
+    }
+    return r;
 }
 
 void Generator::_generate_compare_inst(const ir::Inst &inst) {
