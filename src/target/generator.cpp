@@ -78,6 +78,8 @@ void Generator::generate_func(const ir::Function &func) {
     LinearScanAllocator regalloc;
     regalloc.allocate_registers(func);
 
+    bool minimum_stack = true;
+
     _stack_manager = StackManager();
     _stack_manager.run(func);
 
@@ -92,6 +94,10 @@ void Generator::generate_func(const ir::Function &func) {
     _out << func.name << ":" << std::endl;
 
     int frame_size = _stack_manager.get_frame_size();
+    if (frame_size > 16) {
+        minimum_stack = false;
+    }
+
     if (is_in_imm12_range(frame_size)) {
         _buffer.append("addi", "sp", "sp", std::to_string(-frame_size))
             .set_entry();
@@ -103,6 +109,9 @@ void Generator::generate_func(const ir::Function &func) {
 
     for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
         std::string store = (reg >= 32 ? "fsd" : "sd");
+        if (reg != 1) {
+            minimum_stack = false;
+        }
         if (is_in_imm12_range(offset)) {
             auto &inst = _buffer.append(store, regno2string(reg),
                                         std::to_string(offset) + "(sp)");
@@ -150,8 +159,9 @@ void Generator::generate_func(const ir::Function &func) {
     }
 
     if (_opt) {
-        _buffer.optimize();
+        _buffer.optimize(minimum_stack);
     }
+
     _buffer.emit(_out);
 
     _out << ".type " << func.name << ", @function" << std::endl;

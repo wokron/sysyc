@@ -83,7 +83,7 @@ class PeepholeBuffer {
 
     void clear() { _insts.clear(); }
 
-    void optimize();
+    void optimize(bool minimum_stack);
     void emit(std::ostream &out) const;
 
   private:
@@ -113,6 +113,8 @@ class PeepholeBuffer {
 
     // Remove redundant stack management for leaf function.
     void _eliminate_entry_exit();
+
+    bool _is_temp_reg(const std::string &reg) const;
 
     void _slide(iterator begin, iterator end, int window_size, bool inst_only,
                 std::vector<std::vector<std::string>> patterns,
