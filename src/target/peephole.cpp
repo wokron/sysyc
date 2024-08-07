@@ -293,13 +293,18 @@ void PeepholeBuffer::_weaken_arithmetic() {
         auto &inst = *window.back();
 
         if (_is_temp_reg(move.arg0())) {
+            bool match = false;
             if (inst.arg1() == move.arg0()) {
                 inst.arg1(move.arg1());
+                match = true;
             }
             if (inst.arg2() == move.arg0()) {
                 inst.arg2(move.arg1());
+                match = true;
             }
-            _insts.erase(window.front());
+            if (match) {
+                _insts.erase(window.front());
+            }
         }
     };
 
@@ -313,13 +318,18 @@ void PeepholeBuffer::_weaken_arithmetic() {
         auto &inst = *window.back();
 
         if (_is_temp_reg(move.arg0())) {
+            bool match = false;
             if (move.arg0() == inst.arg1()) {
                 inst.arg1(move.arg1());
+                match = true;
             }
             if (move.arg0() == inst.arg2()) {
                 inst.arg2(move.arg1());
+                match = true;
             }
-            _insts.erase(window.front());
+            if (match) {
+                _insts.erase(window.front());
+            }
         }
     };
 
@@ -332,7 +342,7 @@ void PeepholeBuffer::_weaken_arithmetic() {
     _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
 
     // This is buggy, commented out for now.
-    // _slide(_insts.begin(), _insts.end(), 3, true, pattern3, callback3);
+    _slide(_insts.begin(), _insts.end(), 3, true, pattern3, callback3);
 }
 
 void PeepholeBuffer::_eliminate_entry_exit() {
