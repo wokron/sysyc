@@ -49,6 +49,8 @@ void PeepholeBuffer::optimize() {
     _eliminate_jump();
     _simplify_cmp_branch();
     _weaken_branch();
+    _weaken_arithmetic();
+    _eliminate_entry_exit();
 }
 
 void PeepholeBuffer::emit(std::ostream &out) const {
@@ -246,6 +248,64 @@ void PeepholeBuffer::_weaken_branch() {
         }
     };
     _slide(_insts.begin(), _insts.end(), 3, false, patterns, callback);
+}
+
+void PeepholeBuffer::_weaken_arithmetic() {
+    static const Patterns pattern1 = {
+        {"add", "mv"}, {"addw", "mv"}, {"sub", "mv"}, {"subw", "mv"},
+        {"mul", "mv"}, {"mulw", "mv"}, {"div", "mv"}, {"divw", "mv"},
+        {"rem", "mv"}, {"remw", "mv"}};
+    auto callback1 = [&](std::deque<iterator> &window) {
+        auto &inst = *window.front();
+        auto &move = *window.back();
+
+        if ((inst.arg0().front() == 't') && (inst.arg0() == move.arg1())) {
+            inst.arg0(move.arg0());
+            _insts.erase(window.back());
+        }
+    };
+
+    static const Patterns pattern2 = {
+        {"mv", "add"}, {"mv", "addw"}, {"mv", "sub"}, {"mv", "subw"},
+        {"mv", "mul"}, {"mv", "mulw"}, {"mv", "div"}, {"mv", "divw"},
+        {"mv", "rem"}, {"mv", "remw"}};
+    auto callback2 = [&](std::deque<iterator> &window) {
+        auto &move = *window.front();
+        auto &inst = *window.back();
+
+        if ((move.arg0().front() == 't')) {
+            if (inst.arg1() == move.arg0()) {
+                inst.arg1(move.arg1());
+            }
+            if (inst.arg2() == move.arg0()) {
+                inst.arg2(move.arg1());
+            }
+            _insts.erase(window.front());
+        }
+    };
+
+    _slide(_insts.begin(), _insts.end(), 2, true, pattern1, callback1);
+
+    // It is possible for pattern2 to match twice if the argument comes from
+    // two mv instructions.
+    _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
+    _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
+}
+
+void PeepholeBuffer::_eliminate_entry_exit() {
+    for (auto it = _insts.begin(); it != _insts.end(); it++) {
+        if (it->op() == "call") {
+            return;
+        }
+    }
+
+    for (auto it = _insts.begin(); it != _insts.end();) {
+        if (it->is_entry() || it->is_exit()) {
+            it = _insts.erase(it);
+        } else {
+            it++;
+        }
+    }
 }
 
 void PeepholeBuffer::_slide(

@@ -93,18 +93,22 @@ void Generator::generate_func(const ir::Function &func) {
 
     int frame_size = _stack_manager.get_frame_size();
     if (is_in_imm12_range(frame_size)) {
-        _buffer.append("addi", "sp", "sp", std::to_string(-frame_size));
+        _buffer.append("addi", "sp", "sp", std::to_string(-frame_size))
+            .set_entry();
     } else { // since a5-a6 may still store value here, we use t0 as
              // intermediate reg
-        _buffer.append("li", "t0", std::to_string(frame_size));
-        _buffer.append("sub", "sp", "sp", "t0");
+        _buffer.append("li", "t0", std::to_string(frame_size)).set_entry();
+        _buffer.append("sub", "sp", "sp", "t0").set_entry();
     }
 
     for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
         std::string store = (reg >= 32 ? "fsd" : "sd");
         if (is_in_imm12_range(offset)) {
-            _buffer.append(store, regno2string(reg),
-                           std::to_string(offset) + "(sp)");
+            auto &inst = _buffer.append(store, regno2string(reg),
+                                        std::to_string(offset) + "(sp)");
+            if (reg == 1) { // ra
+                inst.set_entry();
+            }
         } else {
             _buffer.append("li", "t0", std::to_string(offset));
             _buffer.append("add", "t0", "sp", "t0");
@@ -709,8 +713,11 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
              _stack_manager.get_callee_saved_regs_offset()) {
             std::string load = (reg >= 32 ? "fld" : "ld");
             if (is_in_imm12_range(offset)) {
-                _buffer.append(load, regno2string(reg),
-                               std::to_string(offset) + "(sp)");
+                auto &inst = _buffer.append(load, regno2string(reg),
+                                            std::to_string(offset) + "(sp)");
+                if (reg == 1) {
+                    inst.set_exit();
+                }
             } else {
                 _buffer.append("li", "a5", std::to_string(offset));
                 _buffer.append("add", "a5", "sp", "a5");
@@ -720,10 +727,11 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
 
         auto frame_size = _stack_manager.get_frame_size();
         if (is_in_imm12_range(frame_size)) {
-            _buffer.append("addi", "sp", "sp", std::to_string(frame_size));
+            _buffer.append("addi", "sp", "sp", std::to_string(frame_size))
+                .set_exit();
         } else {
-            _buffer.append("li", "a5", std::to_string(frame_size));
-            _buffer.append("add", "sp", "sp", "a5");
+            _buffer.append("li", "a5", std::to_string(frame_size)).set_exit();
+            _buffer.append("add", "sp", "sp", "a5").set_exit();
         }
 
         _buffer.append("jr", "ra");
