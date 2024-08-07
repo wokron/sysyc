@@ -81,9 +81,9 @@ bool opt::FunctionInliningPass::run_on_function(ir::Function &func) {
                     _do_inline(block, *addr->ref_func, func, args, ret);
 
                     block->jump.blk[0] = block->next;
+                    break;
                 }
                 args.clear();
-                break;
             }
         }
     }
