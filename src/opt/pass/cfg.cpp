@@ -122,8 +122,8 @@ void FillReversePostOrderPass::_post_order_traverse(
         _post_order_traverse(block->jump.blk[0], visited, post_order);
         break;
     case ir::Jump::JNZ:
-        _post_order_traverse(block->jump.blk[0], visited, post_order);
         _post_order_traverse(block->jump.blk[1], visited, post_order);
+        _post_order_traverse(block->jump.blk[0], visited, post_order);
         break;
     case ir::Jump::RET:
         break;
