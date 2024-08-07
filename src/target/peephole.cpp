@@ -259,6 +259,30 @@ void PeepholeBuffer::_weaken_branch() {
         }
     };
     _slide(_insts.begin(), _insts.end(), 3, false, patterns, callback);
+
+    static const Patterns zpatterns = {{"li", "blt"}, {"li", "ble"},
+                                       {"li", "bgt"}, {"li", "bge"},
+                                       {"li", "beq"}, {"li", "bne"}};
+    static const std::unordered_map<std::string, std::string> zops = {
+        {"blt", "bgtz"}, {"bgt", "bltz"}, {"ble", "bgez"},
+        {"bge", "blez"}, {"beq", "beqz"}, {"bne", "bnez"}};
+    auto zcallback = [&](std::deque<iterator> &window) {
+        auto &load = *window.front();
+        auto &branch = *window.back();
+
+        if ((!_is_temp_reg(load.arg0())) || (load.arg1() != "0")) {
+            return;
+        }
+        if (load.arg0() == branch.arg1()) {
+            branch = AsmInst({branch.op() + "z", branch.arg0(), branch.arg2()});
+            _insts.erase(window.front());
+        } else if (load.arg0() == branch.arg0()) {
+            branch =
+                AsmInst({zops.at(branch.op()), branch.arg1(), branch.arg2()});
+            _insts.erase(window.front());
+        }
+    };
+    _slide(_insts.begin(), _insts.end(), 2, true, zpatterns, zcallback);
 }
 
 void PeepholeBuffer::_weaken_arithmetic() {
