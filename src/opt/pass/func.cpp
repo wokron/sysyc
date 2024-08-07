@@ -45,7 +45,7 @@ bool opt::FillInlinePass::_is_inline(const ir::Function &func) {
         }
     }
 
-    return block_count < 5; // very simple
+    return true; // very aggressive
 }
 
 bool opt::FunctionInliningPass::run_on_function(ir::Function &func) {
