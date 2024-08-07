@@ -271,9 +271,11 @@ void PeepholeBuffer::_weaken_arithmetic() {
     };
 
     static const Patterns pattern1 = {
-        {"add", "mv"}, {"addw", "mv"}, {"sub", "mv"}, {"subw", "mv"},
-        {"mul", "mv"}, {"mulw", "mv"}, {"div", "mv"}, {"divw", "mv"},
-        {"rem", "mv"}, {"remw", "mv"}, {"addi", "mv"}};
+        {"add", "mv"},       {"addw", "mv"},      {"sub", "mv"},
+        {"subw", "mv"},      {"mul", "mv"},       {"mulw", "mv"},
+        {"div", "mv"},       {"divw", "mv"},      {"rem", "mv"},
+        {"remw", "mv"},      {"addi", "mv"},      {"fadd.s", "fmv.s"},
+        {"fsub.s", "fmv.s"}, {"fmul.s", "fmv.s"}, {"fdiv.s", "fmv.s"}};
     auto callback1 = [&](std::deque<iterator> &window) {
         auto &inst = *window.front();
         auto &move = *window.back();
@@ -285,9 +287,11 @@ void PeepholeBuffer::_weaken_arithmetic() {
     };
 
     static const Patterns pattern2 = {
-        {"mv", "add"}, {"mv", "addw"}, {"mv", "sub"}, {"mv", "subw"},
-        {"mv", "mul"}, {"mv", "mulw"}, {"mv", "div"}, {"mv", "divw"},
-        {"mv", "rem"}, {"mv", "remw"}, {"mv", "addi"}};
+        {"mv", "add"},       {"mv", "addw"},      {"mv", "sub"},
+        {"mv", "subw"},      {"mv", "mul"},       {"mv", "mulw"},
+        {"mv", "div"},       {"mv", "divw"},      {"mv", "rem"},
+        {"mv", "remw"},      {"mv", "addi"},      {"fmv.s", "fadd.s"},
+        {"fmv.s", "fsub.s"}, {"fmv.s", "fmul.s"}, {"fmv.s", "fdiv.s"}};
     auto callback2 = [&](std::deque<iterator> &window) {
         auto &move = *window.front();
         auto &inst = *window.back();
@@ -309,10 +313,14 @@ void PeepholeBuffer::_weaken_arithmetic() {
     };
 
     static const Patterns pattern3 = {
-        {"mv", "*", "add"},  {"mv", "*", "addw"}, {"mv", "*", "sub"},
-        {"mv", "*", "subw"}, {"mv", "*", "mul"},  {"mv", "*", "mulw"},
-        {"mv", "*", "div"},  {"mv", "*", "divw"}, {"mv", "*", "rem"},
-        {"mv", "*", "remw"}, {"mv", "*", "addi"}};
+        {"mv", "*", "add"},       {"mv", "*", "addw"},
+        {"mv", "*", "sub"},       {"mv", "*", "subw"},
+        {"mv", "*", "mul"},       {"mv", "*", "mulw"},
+        {"mv", "*", "div"},       {"mv", "*", "divw"},
+        {"mv", "*", "rem"},       {"mv", "*", "remw"},
+        {"mv", "*", "addi"},      {"fmv.s", "*", "fadd.s"},
+        {"fmv.s", "*", "fsub.s"}, {"fmv.s", "*", "fmul.s"},
+        {"fmv.s", "*", "fdiv.s"}};
     auto callback3 = [&](std::deque<iterator> &window) {
         auto &move = *window.front();
         auto &inst = *window.back();
@@ -368,6 +376,10 @@ bool PeepholeBuffer::_is_temp_reg(const std::string &reg) const {
     if ((reg == "a4") || (reg == "a5")) {
         return true;
     }
+    if ((reg[0] == 'f') && (reg[1] == 't')) {
+        return true;
+    }
+
     return false;
 }
 

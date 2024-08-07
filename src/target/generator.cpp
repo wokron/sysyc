@@ -829,16 +829,21 @@ Generator::_get_asm_arg(ir::ValuePtr arg, int no,
         std::string reg_str = regno2string(reg);
 
         if (constbits->get_type() == ir::Type::S) {
-            std::string local_data_name =
-                ".LC" + std::to_string(_local_data.size());
+            if (constbits->get_asm_value() == "0x0") {
+                _buffer.append("fmv.w.x", reg_str, "zero");
+            } else {
+                std::string local_data_name =
+                    ".LC" + std::to_string(_local_data.size());
 
-            auto local_data = std::shared_ptr<ir::Data>(
-                new ir::Data{false, local_data_name, 4});
-            local_data->append_const(ir::Type::S, {constbits});
-            _local_data.push_back(local_data);
+                auto local_data = std::shared_ptr<ir::Data>(
+                    new ir::Data{false, local_data_name, 4});
+                local_data->append_const(ir::Type::S, {constbits});
+                _local_data.push_back(local_data);
 
-            _buffer.append("lui", "a5", "%hi(" + local_data_name + ")");
-            _buffer.append("flw", reg_str, "%lo(" + local_data_name + ")(a5)");
+                _buffer.append("lui", "a5", "%hi(" + local_data_name + ")");
+                _buffer.append("flw", reg_str,
+                               "%lo(" + local_data_name + ")(a5)");
+            }
         } else {
             _buffer.append("li", reg_str, constbits->get_asm_value());
         }
