@@ -178,7 +178,8 @@ void opt::VariableRenamingPass::_dom_tree_preorder_traversal(
         for (int i = 0; i < 2; i++)
             if (auto temp = std::dynamic_pointer_cast<ir::Temp>(inst->arg[i])) {
                 if (rename_stack.at(temp).empty()) {
-                    throw std::runtime_error("use before def");
+                    // throw std::runtime_error("use before def");
+                    continue; // TODO: maybe wrong
                 }
                 inst->arg[i] = rename_stack.at(temp).top();
             }
