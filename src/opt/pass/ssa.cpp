@@ -421,6 +421,9 @@ bool opt::SimpleRemoveCopyAfterSSADestructPass::run_on_function(
                         std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
                     temp && temp->defs.size() == 1 && temp->uses.size() == 1) {
                     auto instdef = std::get<ir::InstDef>(temp->defs[0]);
+                    if (instdef.blk != block) {
+                        continue;
+                    }
                     instdef.ins->to = inst->to;
                     *inst = {
                         .insttype = ir::InstType::INOP,
