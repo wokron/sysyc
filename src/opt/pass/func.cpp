@@ -149,9 +149,11 @@ void opt::FunctionInliningPass::_do_inline(
 
             if (inst->to != nullptr) {
                 if (auto it = value_map.find(inst->to); it != value_map.end()) {
-                    new_inst->to = std::static_pointer_cast<ir::Temp>(it->second);
+                    new_inst->to =
+                        std::static_pointer_cast<ir::Temp>(it->second);
                 } else {
-                    auto name = inst->to->name + "." + std::to_string(inst->to->id);
+                    auto name =
+                        inst->to->name + "." + std::to_string(inst->to->id);
                     auto new_to = std::make_shared<ir::Temp>(
                         name, inst->to->get_type(), std::vector<ir::Def>{});
                     new_to->id = temp_counter++;
@@ -203,7 +205,7 @@ void opt::FunctionInliningPass::_do_inline(
                 new_block->jump.arg = it->second;
             }
             if (new_block->jump.arg != nullptr) { // copy to ret_target
-                auto new_inst =  std::shared_ptr<ir::Inst>(new ir::Inst{
+                auto new_inst = std::shared_ptr<ir::Inst>(new ir::Inst{
                     .insttype = ir::InstType::ICOPY,
                     .to = ret_target,
                     .arg = {new_block->jump.arg},

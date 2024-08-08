@@ -86,4 +86,11 @@ private:
                       ir::BlockPtr new_block);
 };
 
+
+class SimpleRemoveCopyAfterSSADestructPass : public FunctionPass {
+public:
+    bool run_on_function(ir::Function &func) override;
+
+};
+
 } // namespace opt

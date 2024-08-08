@@ -411,3 +411,26 @@ void opt::SSADestructPass::_update_phis(std::vector<ir::PhiPtr> &phis,
         }
     }
 }
+
+bool opt::SimpleRemoveCopyAfterSSADestructPass::run_on_function(
+    ir::Function &func) {
+    for (auto block = func.start; block; block = block->next) {
+        for (auto inst : block->insts) {
+            if (inst->insttype == ir::InstType::ICOPY) {
+                if (auto temp =
+                        std::dynamic_pointer_cast<ir::Temp>(inst->arg[0]);
+                    temp && temp->defs.size() == 1 && temp->uses.size() == 1) {
+                    auto instdef = std::get<ir::InstDef>(temp->defs[0]);
+                    instdef.ins->to = inst->to;
+                    *inst = {
+                        .insttype = ir::InstType::INOP,
+                        .to = nullptr,
+                        .arg = {nullptr, nullptr},
+                    };
+                }
+            }
+        }
+    }
+
+    return true;
+}
