@@ -280,7 +280,6 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
         } else if (auto constbits =
                        std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
-                std::cout << *value << std::endl;
                 if (is_power_of_two(*value)) {
                     _buffer.append(wflag ? "slliw" : "slli", to, arg0,
                                    std::to_string(calculate_exponent(*value)));
