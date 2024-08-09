@@ -23,7 +23,7 @@ using Passes = opt::PassPipeline<
     opt::SimplifyCFGPass>;
 
 using RegisterPasses =
-    opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass,
+    opt::PassPipeline<opt::FillLeafPass, opt::FillUsesPass, opt::FillReversePostOrderPass,
                       opt::LivenessAnalysisPass, opt::FillIntervalPass>;
 
 struct Options {
