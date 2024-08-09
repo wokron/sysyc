@@ -254,7 +254,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
     bool wflag = inst_str == "mulw" || inst_str == "divw" || inst_str == "remw";
-    if (inst_str == "mul" || inst_str == "mulw") {
+    if (inst_str == "mulw") {
         if (auto constbits =
                 std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[0])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
@@ -270,12 +270,17 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                     _buffer.append(
                         wflag ? "slliw" : "slli", "a5", arg1,
                         std::to_string(calculate_exponent(*value - 1)));
-                    _buffer.append(wflag ? "subw" : "sub", to, "a5", arg1);
+                    _buffer.append(wflag ? "addw" : "add", to, "a5", arg1);
+                } else {
+                    _buffer.append(inst_str, to, arg0, arg1);
                 }
+            } else {
+                _buffer.append(inst_str, to, arg0, arg1);
             }
         } else if (auto constbits =
                        std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
+                std::cout << *value << std::endl;
                 if (is_power_of_two(*value)) {
                     _buffer.append(wflag ? "slliw" : "slli", to, arg0,
                                    std::to_string(calculate_exponent(*value)));
@@ -288,11 +293,17 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                     _buffer.append(
                         wflag ? "slliw" : "slli", "a5", arg0,
                         std::to_string(calculate_exponent(*value - 1)));
-                    _buffer.append(wflag ? "subw" : "sub", to, "a5", arg0);
+                    _buffer.append(wflag ? "addw" : "add", to, "a5", arg0);
+                } else {
+                    _buffer.append(inst_str, to, arg0, arg1);
                 }
+            } else {
+                _buffer.append(inst_str, to, arg0, arg1);
             }
+        } else {
+            _buffer.append(inst_str, to, arg0, arg1);
         }
-    } else if (inst_str == "div" || inst_str == "divw") {
+    } else if (inst_str == "divw") {
         if (auto constbits =
                 std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
@@ -320,7 +331,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                         _buffer.append("li", "a5",
                                        std::to_string(m - (1ULL << 32)));
                         _buffer.append("mulh", "a5", arg0, "a5");
-                        _buffer.append("add", "a5", arg0, "a5");
+                        _buffer.append("addw", "a5", arg0, "a5");
                     }
                     _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
                                    std::to_string(sh));
@@ -332,9 +343,13 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                     _buffer.append(wflag ? "subw" : "sub", "a5", "zero", "a5");
                 }
                 _buffer.append(wflag ? "addw" : "add", to, "zero", "a5");
+            } else {
+                _buffer.append(inst_str, to, arg0, arg1);
             }
+        } else {
+            _buffer.append(inst_str, to, arg0, arg1);
         }
-    } else if (inst_str == "rem" || inst_str == "remw") {
+    } else if (inst_str == "remw") {
         if (auto constbits =
                 std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
@@ -362,7 +377,7 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                         _buffer.append("li", "a5",
                                        std::to_string(m - (1ULL << 32)));
                         _buffer.append("mulh", "a5", arg0, "a5");
-                        _buffer.append("add", "a5", arg0, "a5");
+                        _buffer.append("addw", "a5", arg0, "a5");
                     }
                     _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
                                    std::to_string(sh));
@@ -376,7 +391,11 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                 _buffer.append(wflag ? "mulw" : "mul", "a5", "zero", "a5");
                 _buffer.append("li", "a6", std::to_string(value_num));
                 _buffer.append(wflag ? "subw" : "sub", to, arg0, "a5");
+            } else {
+                _buffer.append(inst_str, to, arg0, arg1);
             }
+        } else {
+            _buffer.append(inst_str, to, arg0, arg1);
         }
     } else {
         _buffer.append(inst_str, to, arg0, arg1);
