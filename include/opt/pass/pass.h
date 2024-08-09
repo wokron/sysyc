@@ -6,6 +6,7 @@
 #include "opt/pass/func.h"
 #include "opt/pass/gvn.h"
 #include "opt/pass/live.h"
+#include "opt/pass/loop.h"
 #include "opt/pass/propa.h"
 #include "opt/pass/simplify_cfg.h"
 #include "opt/pass/ssa.h"
