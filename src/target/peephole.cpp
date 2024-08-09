@@ -298,8 +298,9 @@ void PeepholeBuffer::_weaken_arithmetic() {
         {"add", "mv"},       {"addw", "mv"},      {"sub", "mv"},
         {"subw", "mv"},      {"mul", "mv"},       {"mulw", "mv"},
         {"div", "mv"},       {"divw", "mv"},      {"rem", "mv"},
-        {"remw", "mv"},      {"addi", "mv"},      {"fadd.s", "fmv.s"},
-        {"fsub.s", "fmv.s"}, {"fmul.s", "fmv.s"}, {"fdiv.s", "fmv.s"}};
+        {"remw", "mv"},      {"addi", "mv"},      {"addiw", "mv"},
+        {"fadd.s", "fmv.s"}, {"fsub.s", "fmv.s"}, {"fmul.s", "fmv.s"},
+        {"fdiv.s", "fmv.s"}};
     auto callback1 = [&](std::deque<iterator> &window) {
         auto &inst = *window.front();
         auto &move = *window.back();
@@ -314,8 +315,9 @@ void PeepholeBuffer::_weaken_arithmetic() {
         {"mv", "add"},       {"mv", "addw"},      {"mv", "sub"},
         {"mv", "subw"},      {"mv", "mul"},       {"mv", "mulw"},
         {"mv", "div"},       {"mv", "divw"},      {"mv", "rem"},
-        {"mv", "remw"},      {"mv", "addi"},      {"fmv.s", "fadd.s"},
-        {"fmv.s", "fsub.s"}, {"fmv.s", "fmul.s"}, {"fmv.s", "fdiv.s"}};
+        {"mv", "remw"},      {"mv", "addi"},      {"mv", "addiw"},
+        {"fmv.s", "fadd.s"}, {"fmv.s", "fsub.s"}, {"fmv.s", "fmul.s"},
+        {"fmv.s", "fdiv.s"}};
     auto callback2 = [&](std::deque<iterator> &window) {
         auto &move = *window.front();
         auto &inst = *window.back();
@@ -342,9 +344,9 @@ void PeepholeBuffer::_weaken_arithmetic() {
         {"mv", "*", "mul"},       {"mv", "*", "mulw"},
         {"mv", "*", "div"},       {"mv", "*", "divw"},
         {"mv", "*", "rem"},       {"mv", "*", "remw"},
-        {"mv", "*", "addi"},      {"fmv.s", "*", "fadd.s"},
-        {"fmv.s", "*", "fsub.s"}, {"fmv.s", "*", "fmul.s"},
-        {"fmv.s", "*", "fdiv.s"}};
+        {"mv", "*", "addi"},      {"mv", "*", "addiw"},
+        {"fmv.s", "*", "fadd.s"}, {"fmv.s", "*", "fsub.s"},
+        {"fmv.s", "*", "fmul.s"}, {"fmv.s", "*", "fdiv.s"}};
     auto callback3 = [&](std::deque<iterator> &window) {
         auto &move = *window.front();
         auto &inst = *window.back();
