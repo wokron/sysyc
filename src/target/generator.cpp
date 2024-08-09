@@ -326,11 +326,13 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                     int sh = res.second;
                     if (m < 2147483648ULL) {
                         _buffer.append("li", "a5", std::to_string(m));
-                        _buffer.append("mulh", "a5", arg0, "a5");
+                        _buffer.append("mul", "a5", arg0, "a5");
+                        _buffer.append("srli", "a5", "a5", "32");
                     } else {
                         _buffer.append("li", "a5",
                                        std::to_string(m - (1ULL << 32)));
-                        _buffer.append("mulh", "a5", arg0, "a5");
+                        _buffer.append("mul", "a5", arg0, "a5");
+                        _buffer.append("srli", "a5", "a5", "32");
                         _buffer.append("addw", "a5", arg0, "a5");
                     }
                     _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
@@ -372,11 +374,13 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                     int sh = res.second;
                     if (m < 2147483648ULL) {
                         _buffer.append("li", "a5", std::to_string(m));
-                        _buffer.append("mulh", "a5", arg0, "a5");
+                        _buffer.append("mul", "a5", arg0, "a5");
+                        _buffer.append("srli", "a5", "a5", "32");
                     } else {
                         _buffer.append("li", "a5",
                                        std::to_string(m - (1ULL << 32)));
-                        _buffer.append("mulh", "a5", arg0, "a5");
+                        _buffer.append("mul", "a5", arg0, "a5");
+                        _buffer.append("srli", "a5", "a5", "32");
                         _buffer.append("addw", "a5", arg0, "a5");
                     }
                     _buffer.append(wflag ? "sraiw" : "srai", "a5", "a5",
@@ -388,8 +392,8 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                 if (value_num < 0) {
                     _buffer.append(wflag ? "subw" : "sub", "a5", "zero", "a5");
                 }
-                _buffer.append(wflag ? "mulw" : "mul", "a5", "zero", "a5");
                 _buffer.append("li", "a6", std::to_string(value_num));
+                _buffer.append(wflag ? "mulw" : "mul", "a5", "a6", "a5");
                 _buffer.append(wflag ? "subw" : "sub", to, arg0, "a5");
             } else {
                 _buffer.append(inst_str, to, arg0, arg1);
