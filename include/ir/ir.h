@@ -199,9 +199,10 @@ struct Block {
     std::unordered_set<std::shared_ptr<Temp>> temps_in_block;
     int rpo_id; // number of reverse post order (use in cooper's fill dom)
     // dominator tree
-    std::shared_ptr<Block> idom;               // father node
-    std::vector<std::shared_ptr<Block>> doms;  // child nodes
-    std::vector<std::shared_ptr<Block>> dfron; // dominance frontier
+    std::shared_ptr<Block> idom;                // father node
+    std::vector<std::shared_ptr<Block>> doms;   // child nodes
+    std::vector<std::shared_ptr<Block>> dfron;  // dominance frontier
+    std::vector<std::shared_ptr<Block>> indoms; // indirect doms
 
     static std::shared_ptr<Block> create(std::string name, Function &func);
 
@@ -227,7 +228,7 @@ struct Function {
     // fields below are used for optimization
     std::vector<std::shared_ptr<Block>> rpo; // reverse post order
     std::unordered_set<std::shared_ptr<Temp>> temps_in_func;
-    bool is_leaf = false; // whether the function is a leaf function
+    bool is_leaf = false;   // whether the function is a leaf function
     bool is_inline = false; // whether the function should be inlined
 
     using TempPtrList = std::vector<std::shared_ptr<Temp>>;

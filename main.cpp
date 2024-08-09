@@ -23,8 +23,9 @@ using Passes = opt::PassPipeline<
     opt::FillUsesPass, opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass,
     opt::SimplifyCFGPass, opt::FillPredsPass, opt::FillReversePostOrderPass,
     opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
-    opt::LoopInvariantCodeMotionPass, opt::SimpleDeadCodeEliminationPass,
-    opt::FillPredsPass, opt::SimplifyCFGPass>;
+    opt::LivenessAnalysisPass, opt::LoopInvariantCodeMotionPass,
+    opt::SimpleDeadCodeEliminationPass, opt::FillPredsPass,
+    opt::SimplifyCFGPass>;
 
 using RegisterPasses =
     opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass,

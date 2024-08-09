@@ -51,10 +51,21 @@ bool static is_loop_invariant(
         ir::InstType::ICEQS,  ir::InstType::ICNES,  ir::InstType::ICLES,
         ir::InstType::ICLTS,  ir::InstType::ICGES,  ir::InstType::ICGTS,
         ir::InstType::ICEQW,  ir::InstType::ICNEW,  ir::InstType::ICSLEW,
-        ir::InstType::ICSLTW, ir::InstType::ICSGEW, ir::InstType::ICSGTW};
+        ir::InstType::ICSLTW, ir::InstType::ICSGEW, ir::InstType::ICSGTW,
+        ir::InstType::ILOADL, ir::InstType::ILOADW, ir::InstType::ILOADS};
+
+    // FIXME: store insts may cause some errors.
+    static std::unordered_set<ir::InstType> store_insts = {
+        ir::InstType::ISTOREL, ir::InstType::ISTOREW, ir::InstType::ISTORES};
 
     if (in(non_invariant_insts, inst->insttype)) {
         return false;
+    }
+    if (in(store_insts, inst->insttype)) {
+        if (auto address =
+                std::dynamic_pointer_cast<ir::Address>(inst->arg[1])) {
+            return false;
+        }
     }
 
     std::vector<ir::ValuePtr> candidates = {inst->to, inst->arg[0],
@@ -94,15 +105,18 @@ bool static is_loop_invariant(
 }
 
 std::unordered_set<ir::InstPtr> static find_loop_invariants(
-    const LoopInvariantCodeMotionPass::Loop &loop) {
-    std::unordered_set<ir::InstPtr> invariants;
-    std::unordered_set<ir::BlockPtr> loop_blocks;
+    const LicmPass::Loop &loop,
+    const std::unordered_set<ir::BlockPtr> &loop_blocks) {
 
-    for (auto block : loop) {
-        loop_blocks.insert(block);
+    std::unordered_set<ir::InstPtr> invariants;
+
+    if (loop.front()->preds.size() > 2) {
+        // not a natural loop
+        return invariants;
     }
 
     bool changed;
+    int i = 0;
     do {
         changed = false;
         for (auto block : loop) {
@@ -121,101 +135,232 @@ std::unordered_set<ir::InstPtr> static find_loop_invariants(
     return invariants;
 }
 
-static ir::BlockPtr insert_pre_header(ir::Function &func, ir::BlockPtr header) {
-    auto pre_header = std::shared_ptr<ir::Block>(
-        new ir::Block{(*func.block_counter_ptr)++, "pre_header"});
-
-    for (auto block = func.start; block; block = block->next) {
-        if (block->next == header) {
-            block->next = pre_header;
-            pre_header->next = header;
+static void insert_before(ir::Function &func, ir::BlockPtr before,
+                          ir::BlockPtr block) {
+    for (auto blk = func.start; blk; blk = blk->next) {
+        if (blk->next == before) {
+            blk->next = block;
+            block->next = before;
             break;
         }
     }
+}
 
-    for (auto pred : header->preds) {
-        pre_header->preds.push_back(pred);
-        if (pred->jump.blk[0] == header) {
-            pred->jump.blk[0] = pre_header;
-        }
-        if (pred->jump.blk[1] == header) {
-            pred->jump.blk[1] = pre_header;
-        }
+static ir::BlockPtr insert_pre_header(ir::Function &func, ir::BlockPtr header,
+                                      ir::BlockPtr body, ir::BlockPtr back) {
+    auto pre_header = std::shared_ptr<ir::Block>(
+        new ir::Block{(*func.block_counter_ptr)++, "pre_header"});
 
-        // update dominance to keep the loop structure
-        // but it still destroys the original CFG
-        for (auto &dom : pred->doms) {
-            if (dom == header) {
-                dom = pre_header;
+    insert_before(func, header, pre_header);
+
+    // duplicate the header block if it can jumps outside
+    if (header->jump.type != ir::Jump::JMP) {
+        auto decoy = std::shared_ptr<ir::Block>(
+            new ir::Block{(*func.block_counter_ptr)++, "decoy"});
+
+        insert_before(func, pre_header, decoy);
+
+        decoy->phis = header->phis;
+        decoy->insts = header->insts;
+        decoy->jump = header->jump;
+
+        for (auto pred : header->preds) {
+            if (pred == back) {
+                continue;
+            }
+            decoy->preds.push_back(pred);
+            if (pred->jump.blk[0] == header) {
+                pred->jump.blk[0] = decoy;
+            }
+            if (pred->jump.blk[1] == header) {
+                pred->jump.blk[1] = decoy;
+            }
+            if (in(pred->doms, header)) {
+                std::remove(pred->doms.begin(), pred->doms.end(), header);
+                pred->doms.push_back(decoy);
             }
         }
+
+        if (decoy->jump.blk[0] == body) {
+            decoy->jump.blk[0] = pre_header;
+        }
+        if (decoy->jump.blk[1] == body) {
+            decoy->jump.blk[1] = pre_header;
+        }
+        pre_header->jump.type = ir::Jump::JMP;
+        pre_header->jump.blk[0] = body;
+
+        if (in(header->doms, body)) {
+            std::remove(header->doms.begin(), header->doms.end(), body);
+            pre_header->doms.push_back(body);
+        }
+        body->preds.push_back(pre_header);
+    } else {
+        for (auto pred : header->preds) {
+            if (pred == back) {
+                continue;
+            }
+            if (pred->jump.blk[0] == header) {
+                pred->jump.blk[0] = pre_header;
+            }
+            if (pred->jump.blk[1] == header) {
+                pred->jump.blk[1] = pre_header;
+            }
+            if (in(pred->doms, header)) {
+                std::remove(pred->doms.begin(), pred->doms.end(), header);
+                std::remove(pred->indoms.begin(), pred->indoms.end(), header);
+                pred->doms.push_back(pre_header);
+                pred->indoms.push_back(pre_header);
+            }
+        }
+        pre_header->jump.type = ir::Jump::JMP;
+        pre_header->jump.blk[0] = header;
     }
-    header->preds.clear();
-    header->preds.push_back(pre_header);
 
     return pre_header;
 }
 
-bool LoopInvariantCodeMotionPass::run_on_function(ir::Function &func) {
-    auto back_edges = _find_back_edges(func);
+static bool is_nested(ir::BlockPtr block, LicmPass::BackEdge &outer,
+                      const std::vector<LicmPass::BackEdge> &back_edges) {
+    for (auto back_edge : back_edges) {
+        // if wraps around the outer loop
+        if (in(back_edge.second->doms, outer.second) &&
+            in(outer.first->doms, back_edge.first)) {
+            continue;
+        }
 
-    for (auto &back_edge : back_edges) {
-        _move_invariant(func, back_edge);
+        // if the block is in the inner loop
+        if (in(back_edge.second->doms, block) &&
+            in(block->doms, back_edge.first)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static bool dominates_uses(ir::InstPtr inst, ir::BlockPtr block) {
+    if (!inst->to) {
+        return true;
+    }
+
+    for (auto use : inst->to->uses) {
+        if (auto inst_use = std::get_if<ir::InstUse>(&use)) {
+            if (!in(block->indoms, inst_use->blk)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+static bool dominates_blocks(ir::BlockPtr block,
+                             const std::unordered_set<ir::BlockPtr> &exits) {
+    for (auto exit : exits) {
+        if (!in(block->indoms, exit)) {
+            return false;
+        }
     }
 
     return true;
 }
 
-std::vector<LoopInvariantCodeMotionPass::BackEdge>
-LoopInvariantCodeMotionPass::_find_back_edges(ir::Function &func) {
+bool FillIndirectDominatePass::run_on_function(ir::Function &func) {
+    for (auto block = func.start; block; block = block->next) {
+        block->indoms = find_dominates(block);
+    }
+    return true;
+}
+
+bool LicmPass::run_on_function(ir::Function &func) {
+    auto back_edges = _find_back_edges(func);
+
+    for (auto &back_edge : back_edges) {
+        _move_invariant(func, back_edge, back_edges);
+    }
+
+    return true;
+}
+
+std::vector<LicmPass::BackEdge> LicmPass::_find_back_edges(ir::Function &func) {
     std::vector<BackEdge> back_edges;
     for (auto block = func.start; block; block = block->next) {
-        if (block->preds.size() > 2) {
-            continue; // avoid shared-header loops
-        }
-
-        auto dominates = find_dominates(block);
-        for (auto dom : dominates) {
+        for (auto dom : block->indoms) {
             if (in(block->preds, dom)) {
                 back_edges.push_back({dom, block});
             }
         }
     }
+
+    std::sort(back_edges.begin(), back_edges.end(),
+              [](const BackEdge &a, const BackEdge &b) {
+                  return a.second->rpo_id < b.second->rpo_id;
+              });
+
     return back_edges;
 }
 
-bool LoopInvariantCodeMotionPass::_move_invariant(ir::Function &func,
-                                                  BackEdge &back_edge) {
+bool LicmPass::_move_invariant(ir::Function &func, BackEdge &back_edge,
+                               const std::vector<BackEdge> &back_edges) {
     ir::BlockPtr header = back_edge.second;
     ir::BlockPtr back = back_edge.first;
+
     Loop loop = _fill_loop(header, back);
 
-    auto invariants = find_loop_invariants(loop);
+    std::unordered_set<ir::BlockPtr> loop_blocks;
+    for (auto block : loop) {
+        loop_blocks.insert(block);
+    }
+
+    auto invariants = find_loop_invariants(loop, loop_blocks);
     if (invariants.empty()) {
         return false;
     }
-    
+
     // create a new block before the loop header
-    auto pre_header = insert_pre_header(func, header);
+    auto pre_header = insert_pre_header(
+        func, header, (loop.size() > 1) ? *std::next(loop.begin()) : header,
+        back);
+
+    std::unordered_set<ir::BlockPtr> exists;
     for (auto block : loop) {
+        if (block->jump.blk[0] && !in(loop_blocks, block->jump.blk[0])) {
+            exists.insert(block->jump.blk[0]);
+        }
+        if (block->jump.blk[1] && !in(loop_blocks, block->jump.blk[1])) {
+            exists.insert(block->jump.blk[1]);
+        }
+    }
+
+    for (auto block : loop) {
+        if (is_nested(block, back_edge, back_edges)) {
+            continue; // skip nested loop
+        }
         for (auto it = block->insts.begin(); it != block->insts.end();) {
-            if (in(invariants, *it)) {
-                pre_header->insts.push_back(*it);
+            auto inst = *it;
+            if (in(invariants, inst) && dominates_uses(inst, block)) {
+                std::unordered_set<ir::BlockPtr> liveout;
+                for (auto exit : exists) {
+                    if (in(exit->live_out, inst->to)) {
+                        liveout.insert(exit);
+                    }
+                }
+                if (!dominates_blocks(block, liveout)) {
+                    ++it;
+                    continue;
+                }
+                pre_header->insts.push_back(inst);
                 it = block->insts.erase(it);
             } else {
                 ++it;
             }
         }
     }
-    pre_header->jump.type = ir::Jump::JMP;
-    pre_header->jump.blk[0] = header;
 
     return true;
 }
 
-LoopInvariantCodeMotionPass::Loop
-LoopInvariantCodeMotionPass::_fill_loop(ir::BlockPtr header,
-                                        ir::BlockPtr back) {
+LicmPass::Loop LicmPass::_fill_loop(ir::BlockPtr header, ir::BlockPtr back) {
     Loop loop;
     std::queue<ir::BlockPtr> queue;
     std::unordered_set<ir::BlockPtr> loop_blocks;
