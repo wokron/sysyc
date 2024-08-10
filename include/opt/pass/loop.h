@@ -20,8 +20,8 @@ class FillIndirectDominatePass : public FunctionPass {
 
 /**
  * @brief A pass that performs loop invariant code motion on a function.
- * @note This pass requires `FillIndirectDominatePass` amd
- * `LivenessAnalysisPass`.
+ * @note This pass requires `FillIndirectDominatePass`,
+ * `LivenessAnalysisPass` and `FillUsesPass`.
  */
 class LicmPass : public FunctionPass {
   public:
@@ -32,6 +32,10 @@ class LicmPass : public FunctionPass {
 
   private:
     std::vector<BackEdge> _find_back_edges(ir::Function &func);
+    std::unordered_set<ir::InstPtr>
+    _find_loop_invariants(const Loop &loop,
+                          const std::unordered_set<ir::BlockPtr> &loop_blocks,
+                          bool aggresive);
     bool _move_invariant(ir::Function &func, BackEdge &back_edge,
                          const std::vector<BackEdge> &back_edges);
     Loop _fill_loop(ir::BlockPtr header, ir::BlockPtr back);

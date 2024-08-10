@@ -5,6 +5,17 @@
 
 namespace opt {
 
+static std::unordered_set<ir::InstType> non_invariant_insts = {
+    ir::InstType::IPAR,   ir::InstType::IARG,   ir::InstType::ICALL,
+    ir::InstType::ICEQS,  ir::InstType::ICNES,  ir::InstType::ICLES,
+    ir::InstType::ICLTS,  ir::InstType::ICGES,  ir::InstType::ICGTS,
+    ir::InstType::ICEQW,  ir::InstType::ICNEW,  ir::InstType::ICSLEW,
+    ir::InstType::ICSLTW, ir::InstType::ICSGEW, ir::InstType::ICSGTW,
+    ir::InstType::ILOADL, ir::InstType::ILOADW, ir::InstType::ILOADS};
+
+static std::unordered_set<ir::InstType> aggresive_insts = {
+    ir::InstType::ISTOREL, ir::InstType::ISTOREW, ir::InstType::ISTORES};
+
 template <typename T> static bool in(const std::vector<T> &container, T &elem) {
     return std::find(container.begin(), container.end(), elem) !=
            container.end();
@@ -43,29 +54,15 @@ std::vector<ir::BlockPtr> static find_dominates(ir::BlockPtr block) {
 // 2. There is exactly one reaching definition of var and the definition is
 // loop-invariant.
 bool static is_loop_invariant(
-    ir::InstPtr inst, const std::unordered_set<ir::BlockPtr> &loop_blocks,
-    const std::unordered_set<ir::InstPtr> &invariants) {
-
-    static std::unordered_set<ir::InstType> non_invariant_insts = {
-        ir::InstType::IPAR,   ir::InstType::IARG,   ir::InstType::ICALL,
-        ir::InstType::ICEQS,  ir::InstType::ICNES,  ir::InstType::ICLES,
-        ir::InstType::ICLTS,  ir::InstType::ICGES,  ir::InstType::ICGTS,
-        ir::InstType::ICEQW,  ir::InstType::ICNEW,  ir::InstType::ICSLEW,
-        ir::InstType::ICSLTW, ir::InstType::ICSGEW, ir::InstType::ICSGTW,
-        ir::InstType::ILOADL, ir::InstType::ILOADW, ir::InstType::ILOADS};
-
-    // FIXME: store insts may cause some errors.
-    static std::unordered_set<ir::InstType> store_insts = {
-        ir::InstType::ISTOREL, ir::InstType::ISTOREW, ir::InstType::ISTORES};
+    ir::InstPtr inst, ir::BlockPtr block,
+    const std::unordered_set<ir::BlockPtr> &loop_blocks,
+    const std::unordered_set<ir::InstPtr> &invariants, bool aggresive) {
 
     if (in(non_invariant_insts, inst->insttype)) {
         return false;
     }
-    if (in(store_insts, inst->insttype)) {
-        if (auto address =
-                std::dynamic_pointer_cast<ir::Address>(inst->arg[1])) {
-            return false;
-        }
+    if ((!aggresive) && in(aggresive_insts, inst->insttype)) {
+        return false;
     }
 
     std::vector<ir::ValuePtr> candidates = {inst->to, inst->arg[0],
@@ -73,6 +70,9 @@ bool static is_loop_invariant(
     ir::InstPtr inside_def_ins = nullptr;
 
     for (auto value : candidates) {
+        if (!value) {
+            continue;
+        }
         auto temp = std::dynamic_pointer_cast<ir::Temp>(value);
         if (!temp) {
             continue;
@@ -95,44 +95,20 @@ bool static is_loop_invariant(
                 }
                 inside_def_ins = def_ins;
             }
-        }
-    }
-    if ((!inside_def_ins) || in(invariants, inside_def_ins)) {
-        return true;
-    }
-
-    return false;
-}
-
-std::unordered_set<ir::InstPtr> static find_loop_invariants(
-    const LicmPass::Loop &loop,
-    const std::unordered_set<ir::BlockPtr> &loop_blocks) {
-
-    std::unordered_set<ir::InstPtr> invariants;
-
-    if (loop.front()->preds.size() > 2) {
-        // not a natural loop
-        return invariants;
-    }
-
-    bool changed;
-    int i = 0;
-    do {
-        changed = false;
-        for (auto block : loop) {
-            for (auto inst : block->insts) {
-                if (in(invariants, inst)) {
-                    continue;
-                }
-                if (is_loop_invariant(inst, loop_blocks, invariants)) {
-                    invariants.insert(inst);
-                    changed = true;
+            if (def_blk == block) {
+                for (auto ins : block->insts) {
+                    if (ins == def_ins) {
+                        break; // def must be before inst
+                    }
+                    if (ins == inst) {
+                        return false;
+                    }
                 }
             }
         }
-    } while (changed);
+    }
 
-    return invariants;
+    return ((!inside_def_ins) || in(invariants, inside_def_ins));
 }
 
 static void insert_before(ir::Function &func, ir::BlockPtr before,
@@ -240,26 +216,49 @@ static bool is_nested(ir::BlockPtr block, LicmPass::BackEdge &outer,
 }
 
 static bool dominates_uses(ir::InstPtr inst, ir::BlockPtr block) {
-    if (!inst->to) {
-        return true;
-    }
-
-    for (auto use : inst->to->uses) {
-        if (auto inst_use = std::get_if<ir::InstUse>(&use)) {
-            if (!in(block->indoms, inst_use->blk)) {
-                return false;
+    if (inst->to) {
+        for (auto use : inst->to->uses) {
+            if (auto inst_use = std::get_if<ir::InstUse>(&use)) {
+                if (!in(block->indoms, inst_use->blk)) {
+                    return false;
+                }
             }
         }
     }
+
     return true;
 }
 
 static bool dominates_blocks(ir::BlockPtr block,
-                             const std::unordered_set<ir::BlockPtr> &exits) {
-    for (auto exit : exits) {
-        if (!in(block->indoms, exit)) {
+                             const std::unordered_set<ir::BlockPtr> &blocks) {
+    for (auto blk : blocks) {
+        if (!in(block->indoms, blk)) {
             return false;
         }
+    }
+
+    return true;
+}
+
+static bool is_safe_to_hoist(ir::InstPtr inst, ir::BlockPtr block,
+                             const std::unordered_set<ir::InstPtr> &invariant,
+                             const std::unordered_set<ir::BlockPtr> &exits) {
+    if (!in(invariant, inst)) {
+        return false;
+    }
+
+    if (!dominates_uses(inst, block)) {
+        return false;
+    }
+
+    std::unordered_set<ir::BlockPtr> liveout;
+    for (auto exit : exits) {
+        if (in(exit->live_out, inst->to)) {
+            liveout.insert(exit);
+        }
+    }
+    if (!dominates_blocks(block, liveout)) {
+        return false;
     }
 
     return true;
@@ -300,6 +299,38 @@ std::vector<LicmPass::BackEdge> LicmPass::_find_back_edges(ir::Function &func) {
     return back_edges;
 }
 
+std::unordered_set<ir::InstPtr> LicmPass::_find_loop_invariants(
+    const Loop &loop, const std::unordered_set<ir::BlockPtr> &loop_blocks,
+    bool aggresive) {
+
+    std::unordered_set<ir::InstPtr> invariants;
+
+    if (loop.front()->preds.size() > 2) {
+        // not a natural loop
+        return invariants;
+    }
+
+    bool changed;
+    int i = 0;
+    do {
+        changed = false;
+        for (auto block : loop) {
+            for (auto inst : block->insts) {
+                if (in(invariants, inst)) {
+                    continue;
+                }
+                if (is_loop_invariant(inst, block, loop_blocks, invariants,
+                                      aggresive)) {
+                    invariants.insert(inst);
+                    changed = true;
+                }
+            }
+        }
+    } while (changed);
+
+    return invariants;
+}
+
 bool LicmPass::_move_invariant(ir::Function &func, BackEdge &back_edge,
                                const std::vector<BackEdge> &back_edges) {
     ir::BlockPtr header = back_edge.second;
@@ -308,11 +339,19 @@ bool LicmPass::_move_invariant(ir::Function &func, BackEdge &back_edge,
     Loop loop = _fill_loop(header, back);
 
     std::unordered_set<ir::BlockPtr> loop_blocks;
+    int critical_block_cnt = 0;
     for (auto block : loop) {
         loop_blocks.insert(block);
+        for (auto inst : block->insts) {
+            if (in(aggresive_insts, inst->insttype)) {
+                critical_block_cnt++;
+                break;
+            }
+        }
     }
 
-    auto invariants = find_loop_invariants(loop, loop_blocks);
+    auto invariants =
+        _find_loop_invariants(loop, loop_blocks, critical_block_cnt < 2);
     if (invariants.empty()) {
         return false;
     }
@@ -322,13 +361,17 @@ bool LicmPass::_move_invariant(ir::Function &func, BackEdge &back_edge,
         func, header, (loop.size() > 1) ? *std::next(loop.begin()) : header,
         back);
 
-    std::unordered_set<ir::BlockPtr> exists;
+    std::unordered_set<ir::BlockPtr> exits;
     for (auto block : loop) {
-        if (block->jump.blk[0] && !in(loop_blocks, block->jump.blk[0])) {
-            exists.insert(block->jump.blk[0]);
+        if (block->jump.blk[0]) {
+            if (!in(loop_blocks, block->jump.blk[0])) {
+                exits.insert(block->jump.blk[0]);
+            }
         }
-        if (block->jump.blk[1] && !in(loop_blocks, block->jump.blk[1])) {
-            exists.insert(block->jump.blk[1]);
+        if (block->jump.blk[1]) {
+            if (!in(loop_blocks, block->jump.blk[1])) {
+                exits.insert(block->jump.blk[1]);
+            }
         }
     }
 
@@ -338,17 +381,7 @@ bool LicmPass::_move_invariant(ir::Function &func, BackEdge &back_edge,
         }
         for (auto it = block->insts.begin(); it != block->insts.end();) {
             auto inst = *it;
-            if (in(invariants, inst) && dominates_uses(inst, block)) {
-                std::unordered_set<ir::BlockPtr> liveout;
-                for (auto exit : exists) {
-                    if (in(exit->live_out, inst->to)) {
-                        liveout.insert(exit);
-                    }
-                }
-                if (!dominates_blocks(block, liveout)) {
-                    ++it;
-                    continue;
-                }
+            if (is_safe_to_hoist(inst, block, invariants, exits)) {
                 pre_header->insts.push_back(inst);
                 it = block->insts.erase(it);
             } else {
