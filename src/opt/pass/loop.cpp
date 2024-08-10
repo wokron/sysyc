@@ -69,6 +69,7 @@ bool static is_loop_invariant(
                                             inst->arg[1]};
     ir::InstPtr inside_def_ins = nullptr;
 
+    bool first = true;
     for (auto value : candidates) {
         if (!value) {
             continue;
@@ -85,7 +86,8 @@ bool static is_loop_invariant(
             }
 
             auto def_ins = inst_def->ins;
-            if ((def_ins == inst) && (value == inst->to)) {
+            if (first && (def_ins == inst)) {
+                first = false;
                 continue;
             }
             auto def_blk = inst_def->blk;
@@ -95,13 +97,15 @@ bool static is_loop_invariant(
                 }
                 inside_def_ins = def_ins;
             }
+
             if (def_blk == block) {
                 for (auto ins : block->insts) {
+                    if (ins == inst) {
+                        // if are the same inst, return false first
+                        return false;
+                    }
                     if (ins == def_ins) {
                         break; // def must be before inst
-                    }
-                    if (ins == inst) {
-                        return false;
                     }
                 }
             }
@@ -139,6 +143,9 @@ static ir::BlockPtr insert_pre_header(ir::Function &func, ir::BlockPtr header,
         decoy->phis = header->phis;
         decoy->insts = header->insts;
         decoy->jump = header->jump;
+        decoy->doms.push_back(pre_header);
+        decoy->indoms = header->indoms;
+        decoy->indoms.push_back(pre_header);
 
         for (auto pred : header->preds) {
             if (pred == back) {
@@ -154,6 +161,7 @@ static ir::BlockPtr insert_pre_header(ir::Function &func, ir::BlockPtr header,
             if (in(pred->doms, header)) {
                 std::remove(pred->doms.begin(), pred->doms.end(), header);
                 pred->doms.push_back(decoy);
+                pred->indoms.push_back(decoy);
             }
         }
 
@@ -163,8 +171,7 @@ static ir::BlockPtr insert_pre_header(ir::Function &func, ir::BlockPtr header,
         if (decoy->jump.blk[1] == body) {
             decoy->jump.blk[1] = pre_header;
         }
-        pre_header->jump.type = ir::Jump::JMP;
-        pre_header->jump.blk[0] = body;
+        pre_header->jump = {ir::Jump::JMP, nullptr, {body, nullptr}};
 
         if (in(header->doms, body)) {
             std::remove(header->doms.begin(), header->doms.end(), body);
@@ -182,15 +189,18 @@ static ir::BlockPtr insert_pre_header(ir::Function &func, ir::BlockPtr header,
             if (pred->jump.blk[1] == header) {
                 pred->jump.blk[1] = pre_header;
             }
+
             if (in(pred->doms, header)) {
                 std::remove(pred->doms.begin(), pred->doms.end(), header);
-                std::remove(pred->indoms.begin(), pred->indoms.end(), header);
                 pred->doms.push_back(pre_header);
                 pred->indoms.push_back(pre_header);
             }
         }
-        pre_header->jump.type = ir::Jump::JMP;
-        pre_header->jump.blk[0] = header;
+        pre_header->jump = {ir::Jump::JMP, nullptr, {header, nullptr}};
+
+        pre_header->doms.push_back(header);
+        pre_header->indoms = header->indoms;
+        pre_header->indoms.push_back(header);
     }
 
     return pre_header;
@@ -291,10 +301,10 @@ std::vector<LicmPass::BackEdge> LicmPass::_find_back_edges(ir::Function &func) {
         }
     }
 
-    std::sort(back_edges.begin(), back_edges.end(),
-              [](const BackEdge &a, const BackEdge &b) {
-                  return a.second->rpo_id < b.second->rpo_id;
-              });
+    auto forward = [](const BackEdge &a, const BackEdge &b) {
+        return a.second->rpo_id < b.second->rpo_id;
+    };
+    std::sort(back_edges.begin(), back_edges.end(), forward);
 
     return back_edges;
 }
@@ -335,7 +345,6 @@ bool LicmPass::_move_invariant(ir::Function &func, BackEdge &back_edge,
                                const std::vector<BackEdge> &back_edges) {
     ir::BlockPtr header = back_edge.second;
     ir::BlockPtr back = back_edge.first;
-
     Loop loop = _fill_loop(header, back);
 
     std::unordered_set<ir::BlockPtr> loop_blocks;
