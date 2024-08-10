@@ -50,6 +50,7 @@ void PeepholeBuffer::optimize(bool minimum_stack) {
     _simplify_cmp_branch();
     _weaken_branch();
     _weaken_arithmetic();
+    _eliminate_move();
     if (minimum_stack) {
         _eliminate_entry_exit();
     }
@@ -333,6 +334,16 @@ void PeepholeBuffer::_weaken_arithmetic() {
                 match = true;
             }
             if (match) {
+                // special case for trailing mv
+                auto next = std::next(window.back());
+                if (next != _insts.end() && next->op() == "mv") {
+                    if ((next->arg0() == move.arg1()) &&
+                        (next->arg1() == move.arg0())) {
+                        if (inst.arg0() != next->arg1()) {
+                            next->arg1(move.arg1());
+                        }
+                    }
+                }
                 _insts.erase(window.front());
             }
         }
