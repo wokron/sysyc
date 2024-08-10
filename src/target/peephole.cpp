@@ -381,13 +381,14 @@ void PeepholeBuffer::_weaken_arithmetic() {
     _slide(_insts.begin(), _insts.end(), 1, true, pattern0, callback0);
     _slide(_insts.begin(), _insts.end(), 2, true, pattern1, callback1);
 
+    // pattern 2 and 3 may misuse temporay registers, comment out for now
+
     // It is possible for pattern2 to match twice if the argument comes
     // from two mv instructions.
-    _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
-    _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
+    // _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
+    // _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
 
-    // This is buggy, commented out for now.
-    _slide(_insts.begin(), _insts.end(), 3, true, pattern3, callback3);
+    // _slide(_insts.begin(), _insts.end(), 3, true, pattern3, callback3);
 }
 
 void PeepholeBuffer::_eliminate_entry_exit() {
