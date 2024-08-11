@@ -78,6 +78,8 @@ void Generator::generate_func(const ir::Function &func) {
     LinearScanAllocator regalloc;
     regalloc.allocate_registers(func);
 
+    bool minimum_stack = true;
+
     _stack_manager = StackManager();
     _stack_manager.run(func);
 
@@ -92,19 +94,30 @@ void Generator::generate_func(const ir::Function &func) {
     _out << func.name << ":" << std::endl;
 
     int frame_size = _stack_manager.get_frame_size();
+    if (frame_size > 16) {
+        minimum_stack = false;
+    }
+
     if (is_in_imm12_range(frame_size)) {
-        _buffer.append("addi", "sp", "sp", std::to_string(-frame_size));
+        _buffer.append("addi", "sp", "sp", std::to_string(-frame_size))
+            .set_entry();
     } else { // since a5-a6 may still store value here, we use t0 as
              // intermediate reg
-        _buffer.append("li", "t0", std::to_string(frame_size));
-        _buffer.append("sub", "sp", "sp", "t0");
+        _buffer.append("li", "t0", std::to_string(frame_size)).set_entry();
+        _buffer.append("sub", "sp", "sp", "t0").set_entry();
     }
 
     for (auto [reg, offset] : _stack_manager.get_callee_saved_regs_offset()) {
         std::string store = (reg >= 32 ? "fsd" : "sd");
+        if (reg != 1) {
+            minimum_stack = false;
+        }
         if (is_in_imm12_range(offset)) {
-            _buffer.append(store, regno2string(reg),
-                           std::to_string(offset) + "(sp)");
+            auto &inst = _buffer.append(store, regno2string(reg),
+                                        std::to_string(offset) + "(sp)");
+            if (reg == 1) { // ra
+                inst.set_entry();
+            }
         } else {
             _buffer.append("li", "t0", std::to_string(offset));
             _buffer.append("add", "t0", "sp", "t0");
@@ -146,8 +159,9 @@ void Generator::generate_func(const ir::Function &func) {
     }
 
     if (_opt) {
-        _buffer.optimize();
+        _buffer.optimize(minimum_stack);
     }
+
     _buffer.emit(_out);
 
     _out << ".type " << func.name << ", @function" << std::endl;
@@ -709,8 +723,11 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
              _stack_manager.get_callee_saved_regs_offset()) {
             std::string load = (reg >= 32 ? "fld" : "ld");
             if (is_in_imm12_range(offset)) {
-                _buffer.append(load, regno2string(reg),
-                               std::to_string(offset) + "(sp)");
+                auto &inst = _buffer.append(load, regno2string(reg),
+                                            std::to_string(offset) + "(sp)");
+                if (reg == 1) {
+                    inst.set_exit();
+                }
             } else {
                 _buffer.append("li", "a5", std::to_string(offset));
                 _buffer.append("add", "a5", "sp", "a5");
@@ -720,10 +737,11 @@ void Generator::_generate_jump_inst(const ir::Jump &jump) {
 
         auto frame_size = _stack_manager.get_frame_size();
         if (is_in_imm12_range(frame_size)) {
-            _buffer.append("addi", "sp", "sp", std::to_string(frame_size));
+            _buffer.append("addi", "sp", "sp", std::to_string(frame_size))
+                .set_exit();
         } else {
-            _buffer.append("li", "a5", std::to_string(frame_size));
-            _buffer.append("add", "sp", "sp", "a5");
+            _buffer.append("li", "a5", std::to_string(frame_size)).set_exit();
+            _buffer.append("add", "sp", "sp", "a5").set_exit();
         }
 
         _buffer.append("jr", "ra");
@@ -811,16 +829,21 @@ Generator::_get_asm_arg(ir::ValuePtr arg, int no,
         std::string reg_str = regno2string(reg);
 
         if (constbits->get_type() == ir::Type::S) {
-            std::string local_data_name =
-                ".LC" + std::to_string(_local_data.size());
+            if (constbits->get_asm_value() == "0x0") {
+                _buffer.append("fmv.w.x", reg_str, "zero");
+            } else {
+                std::string local_data_name =
+                    ".LC" + std::to_string(_local_data.size());
 
-            auto local_data = std::shared_ptr<ir::Data>(
-                new ir::Data{false, local_data_name, 4});
-            local_data->append_const(ir::Type::S, {constbits});
-            _local_data.push_back(local_data);
+                auto local_data = std::shared_ptr<ir::Data>(
+                    new ir::Data{false, local_data_name, 4});
+                local_data->append_const(ir::Type::S, {constbits});
+                _local_data.push_back(local_data);
 
-            _buffer.append("lui", "a5", "%hi(" + local_data_name + ")");
-            _buffer.append("flw", reg_str, "%lo(" + local_data_name + ")(a5)");
+                _buffer.append("lui", "a5", "%hi(" + local_data_name + ")");
+                _buffer.append("flw", reg_str,
+                               "%lo(" + local_data_name + ")(a5)");
+            }
         } else {
             _buffer.append("li", reg_str, constbits->get_asm_value());
         }

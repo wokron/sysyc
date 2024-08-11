@@ -42,13 +42,18 @@ static bool match(const std::deque<PeepholeBuffer::iterator> &window,
     return true;
 }
 
-void PeepholeBuffer::optimize() {
+void PeepholeBuffer::optimize(bool minimum_stack) {
     _eliminate_immediate();
     _weaken_load();
     _eliminate_move();
     _eliminate_jump();
     _simplify_cmp_branch();
     _weaken_branch();
+    _weaken_arithmetic();
+    _eliminate_move();
+    if (minimum_stack) {
+        _eliminate_entry_exit();
+    }
 }
 
 void PeepholeBuffer::emit(std::ostream &out) const {
@@ -68,24 +73,33 @@ void PeepholeBuffer::_eliminate_immediate() {
         auto &load = *window.front();
         auto &inst = *window.back();
         int imm = std::stoi(load.arg1());
-        if (load.arg0()[0] != 't') {
+        if (!_is_temp_reg(load.arg0())) {
             return;
         }
-        if ((inst.arg1() == inst.arg2()) && (is_in_imm12_range(imm * 2))) {
-            inst.op("li");
-            inst.arg1(std::to_string(imm * 2));
-            _insts.erase(window.front());
-        } else if (is_in_imm12_range(imm)) {
-            if (inst.arg0() == load.arg1()) {
-                inst.swap(0, 1);
-            }
-            if (inst.op().front() == 's') {
-                inst.arg2("-" + load.arg1());
+        if ((load.arg0() != inst.arg1()) && (load.arg0() != inst.arg2())) {
+            return;
+        }
+        if (inst.arg1() == inst.arg2()) {
+            if ((inst.op().front() == 'a') && is_in_imm12_range(imm * 2)) {
+                inst = AsmInst({"li", inst.arg0(), std::to_string(imm * 2)});
+                _insts.erase(window.front());
             } else {
-                inst.arg2(load.arg1());
+                inst = AsmInst({"mv", inst.arg0(), "zero"});
+                _insts.erase(window.front());
             }
-            inst.op(inst.op().back() == 'w' ? "addw" : "addi");
-            _insts.erase(window.front());
+        } else if (is_in_imm12_range(imm)) {
+            if ((inst.op().front() == 'a') && (inst.arg1() == load.arg0())) {
+                inst.swap(1, 2);
+            }
+            if (inst.arg2() == load.arg0()) {
+                if (inst.op().front() == 's') {
+                    inst.arg2("-" + load.arg1());
+                } else {
+                    inst.arg2(load.arg1());
+                }
+                inst.op(inst.op().back() == 'w' ? "addiw" : "addi");
+                _insts.erase(window.front());
+            }
         }
     };
 
@@ -146,7 +160,7 @@ void PeepholeBuffer::_eliminate_move() {
     auto imm_callback = [&](std::deque<iterator> &window) {
         auto &load = *window.front();
         auto &move = *window.back();
-        if ((load.arg0()[0] == 't') && (load.arg0() == move.arg1())) {
+        if (_is_temp_reg(load.arg0()) && (load.arg0() == move.arg1())) {
             load.arg0(move.arg0());
             _insts.erase(window.back());
         }
@@ -182,7 +196,7 @@ void PeepholeBuffer::_simplify_cmp_branch() {
         auto &cmp = *window.front();
         auto &branch = *window.back();
 
-        if ((branch.arg0()[0] == 't') && (cmp.arg0() == branch.arg0())) {
+        if (_is_temp_reg(branch.arg0()) && (cmp.arg0() == branch.arg0())) {
             branch = AsmInst({"blt", cmp.arg1(), cmp.arg2(), branch.arg1()});
             _insts.erase(window.front());
         }
@@ -194,7 +208,7 @@ void PeepholeBuffer::_simplify_cmp_branch() {
         auto &xori = **std::next(window.begin());
         auto &branch = *window.back();
 
-        if ((branch.arg0()[0] == 't') && (cmp.arg0() == branch.arg0()) &&
+        if (_is_temp_reg(branch.arg0()) && (cmp.arg0() == branch.arg0()) &&
             (cmp.arg1() == xori.arg0())) {
             branch = AsmInst({"ble", cmp.arg2(), cmp.arg1(), branch.arg1()});
             _insts.erase(*std::next(window.begin()));
@@ -208,7 +222,7 @@ void PeepholeBuffer::_simplify_cmp_branch() {
         auto &cmp = **std::next(window.begin());
         auto &branch = *window.back();
 
-        if ((branch.arg0()[0] == 't') && (xori.arg0() == branch.arg0()) &&
+        if (_is_temp_reg(branch.arg0()) && (xori.arg0() == branch.arg0()) &&
             (xori.arg0() == cmp.arg0())) {
             auto op = (cmp.op() == "sltiu") ? "beq" : "bne";
             branch = AsmInst({op, xori.arg1(), xori.arg2(), branch.arg1()});
@@ -246,6 +260,165 @@ void PeepholeBuffer::_weaken_branch() {
         }
     };
     _slide(_insts.begin(), _insts.end(), 3, false, patterns, callback);
+
+    static const Patterns zpatterns = {{"li", "blt"}, {"li", "ble"},
+                                       {"li", "bgt"}, {"li", "bge"},
+                                       {"li", "beq"}, {"li", "bne"}};
+    static const std::unordered_map<std::string, std::string> zops = {
+        {"blt", "bgtz"}, {"bgt", "bltz"}, {"ble", "bgez"},
+        {"bge", "blez"}, {"beq", "beqz"}, {"bne", "bnez"}};
+    auto zcallback = [&](std::deque<iterator> &window) {
+        auto &load = *window.front();
+        auto &branch = *window.back();
+
+        if ((!_is_temp_reg(load.arg0())) || (load.arg1() != "0")) {
+            return;
+        }
+        if (load.arg0() == branch.arg1()) {
+            branch = AsmInst({branch.op() + "z", branch.arg0(), branch.arg2()});
+            _insts.erase(window.front());
+        } else if (load.arg0() == branch.arg0()) {
+            branch =
+                AsmInst({zops.at(branch.op()), branch.arg1(), branch.arg2()});
+            _insts.erase(window.front());
+        }
+    };
+    _slide(_insts.begin(), _insts.end(), 2, true, zpatterns, zcallback);
+}
+
+void PeepholeBuffer::_weaken_arithmetic() {
+    static const Patterns pattern0 = {{"addi"}};
+    auto callback0 = [&](std::deque<iterator> &window) {
+        auto &inst = *window.front();
+        if (inst.arg2() == "0") {
+            inst = AsmInst({"mv", inst.arg0(), inst.arg1()});
+        }
+    };
+
+    static const Patterns pattern1 = {
+        {"add", "mv"},       {"addw", "mv"},      {"sub", "mv"},
+        {"subw", "mv"},      {"mul", "mv"},       {"mulw", "mv"},
+        {"div", "mv"},       {"divw", "mv"},      {"rem", "mv"},
+        {"remw", "mv"},      {"addi", "mv"},      {"addiw", "mv"},
+        {"fadd.s", "fmv.s"}, {"fsub.s", "fmv.s"}, {"fmul.s", "fmv.s"},
+        {"fdiv.s", "fmv.s"}};
+    auto callback1 = [&](std::deque<iterator> &window) {
+        auto &inst = *window.front();
+        auto &move = *window.back();
+
+        if (_is_temp_reg(inst.arg0()) && (inst.arg0() == move.arg1())) {
+            inst.arg0(move.arg0());
+            _insts.erase(window.back());
+        }
+    };
+
+    static const Patterns pattern2 = {
+        {"mv", "add"},       {"mv", "addw"},      {"mv", "sub"},
+        {"mv", "subw"},      {"mv", "mul"},       {"mv", "mulw"},
+        {"mv", "div"},       {"mv", "divw"},      {"mv", "rem"},
+        {"mv", "remw"},      {"mv", "addi"},      {"mv", "addiw"},
+        {"fmv.s", "fadd.s"}, {"fmv.s", "fsub.s"}, {"fmv.s", "fmul.s"},
+        {"fmv.s", "fdiv.s"}};
+    auto callback2 = [&](std::deque<iterator> &window) {
+        auto &move = *window.front();
+        auto &inst = *window.back();
+
+        if (_is_temp_reg(move.arg0())) {
+            bool match = false;
+            if (inst.arg1() == move.arg0()) {
+                inst.arg1(move.arg1());
+                match = true;
+            }
+            if (inst.arg2() == move.arg0()) {
+                inst.arg2(move.arg1());
+                match = true;
+            }
+            if (match) {
+                // special case for trailing mv
+                auto next = std::next(window.back());
+                if (next != _insts.end() && next->op() == "mv") {
+                    if ((next->arg0() == move.arg1()) &&
+                        (next->arg1() == move.arg0())) {
+                        if (inst.arg0() != next->arg1()) {
+                            next->arg1(move.arg1());
+                        }
+                    }
+                }
+                _insts.erase(window.front());
+            }
+        }
+    };
+
+    static const Patterns pattern3 = {
+        {"mv", "*", "add"},       {"mv", "*", "addw"},
+        {"mv", "*", "sub"},       {"mv", "*", "subw"},
+        {"mv", "*", "mul"},       {"mv", "*", "mulw"},
+        {"mv", "*", "div"},       {"mv", "*", "divw"},
+        {"mv", "*", "rem"},       {"mv", "*", "remw"},
+        {"mv", "*", "addi"},      {"mv", "*", "addiw"},
+        {"fmv.s", "*", "fadd.s"}, {"fmv.s", "*", "fsub.s"},
+        {"fmv.s", "*", "fmul.s"}, {"fmv.s", "*", "fdiv.s"}};
+    auto callback3 = [&](std::deque<iterator> &window) {
+        auto &move = *window.front();
+        auto &inst = *window.back();
+
+        if (_is_temp_reg(move.arg0())) {
+            bool match = false;
+            if (move.arg0() == inst.arg1()) {
+                inst.arg1(move.arg1());
+                match = true;
+            }
+            if (move.arg0() == inst.arg2()) {
+                inst.arg2(move.arg1());
+                match = true;
+            }
+            if (match) {
+                _insts.erase(window.front());
+            }
+        }
+    };
+
+    _slide(_insts.begin(), _insts.end(), 1, true, pattern0, callback0);
+    _slide(_insts.begin(), _insts.end(), 2, true, pattern1, callback1);
+
+    // pattern 2 and 3 may misuse temporay registers, comment out for now
+
+    // It is possible for pattern2 to match twice if the argument comes
+    // from two mv instructions.
+    // _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
+    // _slide(_insts.begin(), _insts.end(), 2, true, pattern2, callback2);
+
+    // _slide(_insts.begin(), _insts.end(), 3, true, pattern3, callback3);
+}
+
+void PeepholeBuffer::_eliminate_entry_exit() {
+    for (auto it = _insts.begin(); it != _insts.end(); it++) {
+        if (it->op() == "call") {
+            return;
+        }
+    }
+
+    for (auto it = _insts.begin(); it != _insts.end();) {
+        if (it->is_entry() || it->is_exit()) {
+            it = _insts.erase(it);
+        } else {
+            it++;
+        }
+    }
+}
+
+bool PeepholeBuffer::_is_temp_reg(const std::string &reg) const {
+    if (reg.front() == 't') {
+        return true;
+    }
+    if ((reg == "a4") || (reg == "a5")) {
+        return true;
+    }
+    if ((reg[0] == 'f') && (reg[1] == 't')) {
+        return true;
+    }
+
+    return false;
 }
 
 void PeepholeBuffer::_slide(
@@ -258,7 +431,8 @@ void PeepholeBuffer::_slide(
     while (it != end) {
         auto next = std::next(it);
 
-        if (it->is_label() && inst_only) {
+        // only on body instructions
+        if ((!it->is_body()) || (it->is_label() && inst_only)) {
             window.clear();
             it = next;
             continue;
@@ -271,10 +445,12 @@ void PeepholeBuffer::_slide(
         if (window.size() == window_size) {
             if (patterns.empty()) {
                 callback(window);
+                window.clear();
             } else {
                 for (const auto &pattern : patterns) {
                     if (match(window, pattern)) {
                         callback(window);
+                        window.clear();
                         break;
                     }
                 }
