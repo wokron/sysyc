@@ -45,4 +45,13 @@ private:
                     ir::TempPtr ret_target);
 };
 
+class TailRecursionElimination : public FunctionPass {
+public:
+    bool run_on_function(ir::Function &func) override;
+
+private:
+    void _create_jump_target_block(ir::Function &func);
+    bool _is_tail_recursive(const ir::Function &func, const ir::Block &block);
+};
+
 } // namespace opt
