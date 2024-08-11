@@ -79,12 +79,33 @@ void LinearScanAllocator::_allocate_temps_with_intervals(
             reg_set.insert(front_active->reg);
         }
 
+        constexpr auto is_stack = [=](const ir::InstPtr &def_inst) {
+            constexpr auto is_indirect_stack = [](const ir::InstPtr &def_inst) {
+                if (def_inst->insttype == ir::InstType::IADD) {
+                    auto temp_arg0 =
+                        std::dynamic_pointer_cast<ir::Temp>(def_inst->arg[0]);
+                    if (temp_arg0 == nullptr)
+                        return false;
+                    auto alloc_inst =
+                        std::get<ir::InstDef>(temp_arg0->defs[0]).ins;
+                    auto const_arg1 = std::dynamic_pointer_cast<ir::ConstBits>(
+                        def_inst->arg[1]);
+                    return (alloc_inst->insttype == ir::InstType::IALLOC4 ||
+                            alloc_inst->insttype == ir::InstType::IALLOC8) &&
+                           const_arg1 != nullptr;
+                } else {
+                    return false;
+                }
+            };
+            return def_inst->insttype == ir::InstType::IALLOC4 ||
+                   def_inst->insttype == ir::InstType::IALLOC8 ||
+                   is_indirect_stack(def_inst);
+        };
+
         // if is stack slot, just spill
         if (temp->defs.size() == 1)
             if (auto inst_def = std::get_if<ir::InstDef>(&temp->defs[0]);
-                inst_def &&
-                (inst_def->ins->insttype == ir::InstType::IALLOC4 ||
-                 inst_def->ins->insttype == ir::InstType::IALLOC8)) {
+                inst_def && is_stack(inst_def->ins)) {
                 temp->reg = STACK;
                 continue;
             }

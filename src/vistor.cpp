@@ -137,8 +137,6 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
         symbol->value = _builder.create_alloc(elm_ir_type, type->get_size());
 
         if (symbol->initializer) {
-            auto elm_addr = symbol->value;
-            bool first_elm = true;
             auto values = symbol->initializer->get_values();
             for (int index = 0; index < initializer->get_space(); index++) {
                 // if no init value, just store zero
@@ -159,12 +157,9 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
                     continue;
                 }
 
-                if (first_elm) {
-                    first_elm = false;
-                } else {
-                    auto inc = ir::ConstBits::get(elm_type->get_size());
-                    elm_addr = _builder.create_add(ir::Type::L, elm_addr, inc);
-                }
+                auto offset = ir::ConstBits::get(elm_type->get_size() * index);
+                auto elm_addr =
+                    _builder.create_add(ir::Type::L, symbol->value, offset);
                 val = _convert_if_needed(*elm_type, *val_type, val);
                 _builder.create_store(elm_ir_type, val, elm_addr);
             }

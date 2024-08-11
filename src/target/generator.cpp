@@ -262,6 +262,10 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
     };
     // clang-format on
 
+    if (inst.to->reg == STACK) {
+        return;
+    }
+
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_arg(inst.arg[1], 1);
     auto [to, write_back] = _get_asm_to(inst.to);
@@ -809,7 +813,19 @@ Generator::_get_asm_arg(ir::ValuePtr arg, int no,
 
             return reg_str;
         } else if (temp->reg == STACK) {
-            int offset = _stack_manager.get_local_var_offset().at(temp);
+            int offset;
+            if (auto def_inst = std::get<ir::InstDef>(temp->defs[0]).ins;
+                def_inst->insttype == ir::InstType::IADD) {
+                auto alloc_temp =
+                    std::static_pointer_cast<ir::Temp>(def_inst->arg[0]);
+                auto add_const = std::get<int>(
+                    std::static_pointer_cast<ir::ConstBits>(def_inst->arg[1])
+                        ->value);
+                offset = _stack_manager.get_local_var_offset().at(alloc_temp) +
+                         add_const;
+            } else {
+                offset = _stack_manager.get_local_var_offset().at(temp);
+            }
             int reg = get_temp_reg(temp->get_type(), no);
             std::string reg_str = regno2string(reg);
 
@@ -892,7 +908,19 @@ std::string Generator::_get_asm_addr(ir::ValuePtr arg, int no) {
 
             return "0(" + reg_str + ")";
         } else if (temp->reg == STACK) {
-            int offset = _stack_manager.get_local_var_offset().at(temp);
+            int offset;
+            if (auto def_inst = std::get<ir::InstDef>(temp->defs[0]).ins;
+                def_inst->insttype == ir::InstType::IADD) {
+                auto alloc_temp =
+                    std::static_pointer_cast<ir::Temp>(def_inst->arg[0]);
+                auto add_const = std::get<int>(
+                    std::static_pointer_cast<ir::ConstBits>(def_inst->arg[1])
+                        ->value);
+                offset = _stack_manager.get_local_var_offset().at(alloc_temp) +
+                         add_const;
+            } else {
+                offset = _stack_manager.get_local_var_offset().at(temp);
+            }
             if (is_in_imm12_range(offset)) {
                 return std::to_string(offset) + "(sp)";
             } else {
