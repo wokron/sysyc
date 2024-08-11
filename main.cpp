@@ -28,8 +28,9 @@ using Passes = opt::PassPipeline<
     opt::FillPredsPass, opt::SimplifyCFGPass>;
 
 using RegisterPasses =
-    opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass,
-                      opt::LivenessAnalysisPass, opt::FillIntervalPass>;
+    opt::PassPipeline<opt::FillLeafPass, opt::FillUsesPass,
+                      opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+                      opt::FillIntervalPass>;
 
 struct Options {
     bool optimize = false;

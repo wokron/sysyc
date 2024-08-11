@@ -11,11 +11,11 @@ void StackManager::run(const ir::Function &func) {
 
     _frame_size = 0;
 
-    // TODO: judge leaf and non-leaf function
-
-    // size of callee saved registers (include ra)
+    // size of callee saved registers (include ra if not leaf)
     _frame_size += 8;
-    _callee_saved_regs_offset[1] = -_frame_size; // ra
+    if (!func.is_leaf) {
+        _callee_saved_regs_offset[1] = -_frame_size; // ra
+    }
     for (auto reg : _callee_saved_regs) {
         _frame_size += 8;
         _callee_saved_regs_offset[reg] = -_frame_size;
