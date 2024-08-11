@@ -245,6 +245,19 @@ void Generator::_generate_store_inst(const ir::Inst &inst) {
         {ir::InstType::ISTORES, "fsw"},
     };
 
+    if (auto const_arg0 =
+            std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[0])) {
+        if (auto int_value = std::get_if<int>(&const_arg0->value);
+            int_value != nullptr && *int_value == 0) {
+            _buffer.append("sw", "zero", _get_asm_addr(inst.arg[1], 1));
+            return;
+        } else if (auto float_value = std::get_if<float>(&const_arg0->value);
+                   float_value != nullptr && *float_value == 0.0f) {
+            _buffer.append("sw", "zero", _get_asm_addr(inst.arg[1], 1));
+            return;
+        }
+    }
+
     auto arg0 = _get_asm_arg(inst.arg[0], 0);
     auto arg1 = _get_asm_addr(inst.arg[1], 1);
 
