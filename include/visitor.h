@@ -37,6 +37,8 @@ private:
 
     bool _optimize = false;
 
+    std::unordered_map<ir::ValuePtr, ir::ValuePtr> _last_store;
+
 public:
     Visitor(ir::Module &module, bool optimize = false)
         : _module(module),
@@ -142,4 +144,7 @@ private:
      */
     static void _init_global(ir::Data &data, const sym::Type &elm_type,
                              const sym::Initializer &initializer);
+
+
+    bool _can_unroll_loop(const WhileStmt &node, int &from, int &to);
 };

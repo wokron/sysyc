@@ -99,6 +99,112 @@ void Visitor::_init_global(ir::Data &data, const sym::Type &elm_type,
     }
 }
 
+bool Visitor::_can_unroll_loop(const WhileStmt &node, int &from, int &to) {
+    auto temp = std::get_if<Exp>(node.cond.get());
+    if (!temp) {
+        return false;
+    }
+    auto cmp_cond = std::get_if<CompareExp>(temp);
+    if (cmp_cond == nullptr || cmp_cond->op != CompareExp::LT) {
+        return false;
+    }
+    auto temp2 = std::get_if<LValExp>(cmp_cond->left.get());
+    if (!temp2) {
+        return false;
+    }
+    auto ident = std::get_if<Ident>(temp2->lval.get());
+    if (ident == nullptr) {
+        return false;
+    }
+    auto symbol = _current_scope->get_symbol(*ident);
+    auto it = _last_store.find(symbol->value);
+    if (it == _last_store.end()) {
+        return false;
+    }
+    auto const_bits = std::dynamic_pointer_cast<ir::ConstBits>(it->second);
+    if (const_bits == nullptr) {
+        return false;
+    }
+    if (auto int_val = std::get_if<int>(&const_bits->value)) {
+        from = *int_val;
+    } else {
+        return false;
+    }
+
+    auto temp3 = std::get_if<Number>(cmp_cond->right.get());
+    if (!temp3) {
+        return false;
+    }
+    auto max_val = std::get_if<int>(temp3);
+    if (max_val != nullptr) {
+        to = *max_val;
+    } else {
+        return false;
+    }
+
+    auto block_stmt = std::get_if<BlockStmt>(node.stmt.get());
+    if (block_stmt == nullptr) {
+        return false;
+    }
+
+    if (block_stmt->block->empty()) {
+        return false;
+    }
+
+    auto temp4 = std::get_if<Stmt>(block_stmt->block->back().get());
+    if (!temp4) {
+        return false;
+    }
+    auto assign = std::get_if<AssignStmt>(temp4);
+    if (assign == nullptr) {
+        return false;
+    }
+
+    auto ident2 = std::get_if<Ident>(assign->lval.get());
+    if (ident2 == nullptr) {
+        return false;
+    }
+
+    auto add = std::get_if<BinaryExp>(assign->exp.get());
+    if (add == nullptr || add->op != BinaryExp::ADD) {
+        return false;
+    }
+
+    auto temp5 = std::get_if<LValExp>(add->left.get());
+    if (!temp5) {
+        return false;
+    }
+    auto ident3 = std::get_if<Ident>(temp5->lval.get());
+    if (ident3 == nullptr) {
+        return false;
+    }
+
+    auto temp6 = std::get_if<Number>(add->right.get());
+    if (!temp6) {
+        return false;
+    }
+    auto one = std::get_if<int>(temp6);
+    if (one == nullptr || *one != 1) {
+        return false;
+    }
+
+    if (!(*ident == *ident2 && *ident2 == *ident3)) {
+        return false;
+    }
+
+    for (auto block_item : *block_stmt->block) {
+        auto temp = std::get_if<Stmt>(block_item.get());
+        if (!temp) {
+            continue;
+        }
+        if (auto control_stmt = std::get_if<ControlStmt>(temp)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
     auto type = visit_dims(*node.dims, btype);
 
@@ -162,6 +268,7 @@ void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {
                     _builder.create_add(ir::Type::L, symbol->value, offset);
                 val = _convert_if_needed(*elm_type, *val_type, val);
                 _builder.create_store(elm_ir_type, val, elm_addr);
+                _last_store[elm_addr] = val;
             }
         }
     }
@@ -293,6 +400,7 @@ void Visitor::visit_func_def(const FuncDef &node) {
             param_ir_type, param_symbol->type->get_size());
         _builder.create_store(param_ir_type, ir_params[no],
                               param_symbol->value);
+        _last_store[param_symbol->value] = ir_params[no];
 
         no++;
     }
@@ -390,6 +498,7 @@ void Visitor::visit_assign_stmt(const AssignStmt &node) {
     }
 
     _builder.create_store(_symtype2irtype(*lval_type), exp_val, lval_val);
+    _last_store[lval_val] = exp_val;
 }
 
 void Visitor::visit_exp_stmt(const ExpStmt &node) {
@@ -441,6 +550,17 @@ void Visitor::visit_if_stmt(const IfStmt &node) {
 
 void Visitor::visit_while_stmt(const WhileStmt &node) {
     if (_optimize) {
+        int from, to;
+        auto can_unroll_loop = _can_unroll_loop(node, from, to);
+        if (can_unroll_loop && to - from <= 10) {
+            for (int i = from; i < to; i++) {
+                _current_scope = _current_scope->push_scope();
+                visit_stmt(*node.stmt);
+                _current_scope = _current_scope->pop_scope();
+            }
+            return;
+        }
+
         // while with loop rotation
         auto jump_to_cond = _builder.create_jmp(nullptr);
 
@@ -448,9 +568,29 @@ void Visitor::visit_while_stmt(const WhileStmt &node) {
 
         _while_stack.push(ContinueBreak({}, {}));
 
-        _current_scope = _current_scope->push_scope();
-        visit_stmt(*node.stmt);
-        _current_scope = _current_scope->pop_scope();
+        if (int from, to; _can_unroll_loop(node, from, to)) {
+            constexpr auto get_max_factor = [](int num, int less_than=10) {
+                int max_factor = 1;
+                for (int i = 2; i < num && i < less_than; i++) {
+                    if (num % i == 0) {
+                        max_factor = i;
+                    }
+                }
+                return max_factor;
+            };
+
+            auto max_factor = get_max_factor(to - from);
+
+            for (int i = 0; i < max_factor; i++) {
+                _current_scope = _current_scope->push_scope();
+                visit_stmt(*node.stmt);
+                _current_scope = _current_scope->pop_scope();
+            }
+        } else {
+            _current_scope = _current_scope->push_scope();
+            visit_stmt(*node.stmt);
+            _current_scope = _current_scope->pop_scope();
+        }
 
         auto [continue_jmp, break_jmp] = _while_stack.top();
         _while_stack.pop();
