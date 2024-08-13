@@ -266,6 +266,8 @@ ir::ValuePtr opt::GVNPass::_fold_if_can(const ir::Inst &inst) {
     case ir::InstType::ICSGTW:
     case ir::InstType::ICGTS:
         return _folder.fold_gt(inst.arg[0], inst.arg[1]);
+    case ir::InstType::IEXTSW:
+        return _folder.fold_extsw(inst.arg[0]);
     default:
         return nullptr;
     }
