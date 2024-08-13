@@ -99,7 +99,8 @@ void Visitor::_init_global(ir::Data &data, const sym::Type &elm_type,
     }
 }
 
-bool Visitor::_can_unroll_loop(const WhileStmt &node, int &from, int &to) {
+bool Visitor::_can_unroll_loop(const WhileStmt &node, int &from, int &to,
+                               bool &is_mini_loop) {
     auto temp = std::get_if<Exp>(node.cond.get());
     if (!temp) {
         return false;
@@ -150,6 +151,8 @@ bool Visitor::_can_unroll_loop(const WhileStmt &node, int &from, int &to) {
     if (block_stmt->block->empty()) {
         return false;
     }
+
+    is_mini_loop = block_stmt->block->size() < 4;
 
     auto temp4 = std::get_if<Stmt>(block_stmt->block->back().get());
     if (!temp4) {
@@ -551,8 +554,9 @@ void Visitor::visit_if_stmt(const IfStmt &node) {
 void Visitor::visit_while_stmt(const WhileStmt &node) {
     if (_optimize) {
         int from, to;
-        auto can_unroll_loop = _can_unroll_loop(node, from, to);
-        if (can_unroll_loop && to - from <= 10) {
+        bool is_mini_loop;
+        auto can_unroll_loop = _can_unroll_loop(node, from, to, is_mini_loop);
+        if (can_unroll_loop && (to - from <= 10 || is_mini_loop)) {
             for (int i = from; i < to; i++) {
                 _current_scope = _current_scope->push_scope();
                 visit_stmt(*node.stmt);
@@ -568,8 +572,8 @@ void Visitor::visit_while_stmt(const WhileStmt &node) {
 
         _while_stack.push(ContinueBreak({}, {}));
 
-        if (int from, to; _can_unroll_loop(node, from, to)) {
-            constexpr auto get_max_factor = [](int num, int less_than=10) {
+        if (can_unroll_loop) {
+            constexpr auto get_max_factor = [](int num, int less_than = 10) {
                 int max_factor = 1;
                 for (int i = 2; i < num && i < less_than; i++) {
                     if (num % i == 0) {
