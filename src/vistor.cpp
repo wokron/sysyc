@@ -580,13 +580,17 @@ void Visitor::visit_while_stmt(const WhileStmt &node) {
     if (_optimize) {
         int from, to;
         bool is_mini_loop;
-        auto can_unroll_loop = _can_unroll_loop(node, from, to, is_mini_loop);
-        if (can_unroll_loop && (to - from <= 10 || is_mini_loop)) {
+        auto can_unroll_loop =
+            !_in_unroll_loop && _can_unroll_loop(node, from, to, is_mini_loop);
+        if (can_unroll_loop &&
+            (to - from <= 10 || (is_mini_loop && to - from <= 110))) {
+            _in_unroll_loop = true;
             for (int i = from; i < to; i++) {
                 _current_scope = _current_scope->push_scope();
                 visit_stmt(*node.stmt);
                 _current_scope = _current_scope->pop_scope();
             }
+            _in_unroll_loop = false;
             return;
         }
 
@@ -598,6 +602,7 @@ void Visitor::visit_while_stmt(const WhileStmt &node) {
         _while_stack.push(ContinueBreak({}, {}));
 
         if (can_unroll_loop) {
+            _in_unroll_loop = true;
             constexpr auto get_max_factor = [](int num, int less_than = 10) {
                 int max_factor = 1;
                 for (int i = 2; i < num && i < less_than; i++) {
@@ -615,6 +620,7 @@ void Visitor::visit_while_stmt(const WhileStmt &node) {
                 visit_stmt(*node.stmt);
                 _current_scope = _current_scope->pop_scope();
             }
+            _in_unroll_loop = false;
         } else {
             _current_scope = _current_scope->push_scope();
             visit_stmt(*node.stmt);

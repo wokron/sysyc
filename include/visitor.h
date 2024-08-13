@@ -38,6 +38,7 @@ private:
     bool _optimize = false;
 
     std::unordered_map<ir::ValuePtr, ir::ValuePtr> _last_store;
+    bool _in_unroll_loop = false;
 
 public:
     Visitor(ir::Module &module, bool optimize = false)
