@@ -195,17 +195,42 @@ bool Visitor::_can_unroll_loop(const WhileStmt &node, int &from, int &to,
         return false;
     }
 
-    for (auto block_item : *block_stmt->block) {
-        auto temp = std::get_if<Stmt>(block_item.get());
-        if (!temp) {
-            continue;
-        }
-        if (auto control_stmt = std::get_if<ControlStmt>(temp)) {
-            return false;
-        }
+    if (_has_control_stmt(*(node.stmt))) {
+        return false;
     }
 
     return true;
+}
+
+bool Visitor::_has_control_stmt(const Stmt &node) {
+    return std::visit(
+        overloaded{
+            [this](const AssignStmt &node) { return false; },
+            [this](const ExpStmt &node) { return false; },
+            [this](const BlockStmt &node) {
+                for (auto block_item : *node.block) {
+                    if (auto stmt_item = std::get_if<Stmt>(block_item.get());
+                        stmt_item != nullptr && _has_control_stmt(*stmt_item)) {
+                        return true;
+                    }
+                }
+                return false;
+            },
+            [this](const IfStmt &node) {
+                if (_has_control_stmt(*(node.if_stmt))) {
+                    return true;
+                }
+                if (node.else_stmt != nullptr &&
+                    _has_control_stmt(*(node.else_stmt))) {
+                    return true;
+                }
+                return false;
+            },
+            [this](const WhileStmt &node) { return false; },
+            [this](const ControlStmt &node) { return true; },
+            [this](const ReturnStmt &node) { return false; },
+        },
+        node);
 }
 
 void Visitor::visit_var_def(const VarDef &node, ASTType btype, bool is_const) {

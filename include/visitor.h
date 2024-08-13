@@ -147,4 +147,6 @@ private:
 
 
     bool _can_unroll_loop(const WhileStmt &node, int &from, int &to, bool &is_mini_loop);
+
+    bool _has_control_stmt(const Stmt &node);
 };
