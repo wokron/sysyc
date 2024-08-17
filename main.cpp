@@ -25,11 +25,13 @@ using Passes = opt::PassPipeline<
     opt::CooperFillDominatorsPass, opt::FillDominanceFrontierPass,
     opt::LivenessAnalysisPass, opt::FillUsesPass,
     opt::LoopInvariantCodeMotionPass, opt::SimpleDeadCodeEliminationPass,
+    opt::FillPredsPass, opt::SimplifyCFGPass, opt::TailRecursionElimination,
     opt::FillPredsPass, opt::SimplifyCFGPass>;
 
 using RegisterPasses =
-    opt::PassPipeline<opt::FillUsesPass, opt::FillReversePostOrderPass,
-                      opt::LivenessAnalysisPass, opt::FillIntervalPass>;
+    opt::PassPipeline<opt::FillLeafPass, opt::FillUsesPass,
+                      opt::FillReversePostOrderPass, opt::LivenessAnalysisPass,
+                      opt::FillIntervalPass>;
 
 struct Options {
     bool optimize = false;

@@ -1,4 +1,5 @@
 #include "opt/pass/func.h"
+#include <algorithm>
 
 namespace opt {
 
@@ -221,4 +222,94 @@ void opt::FunctionInliningPass::_do_inline(
             throw std::logic_error("unexpected jump type");
         }
     }
+}
+
+bool opt::TailRecursionElimination::run_on_function(ir::Function &func) {
+    _create_jump_target_block(func);
+    auto target = func.start->next;
+
+    std::vector<ir::TempPtr> args;
+    for (auto inst : func.start->insts) {
+        if (inst->insttype == ir::InstType::IPAR) {
+            args.push_back(inst->to);
+        }
+    }
+
+    for (auto block = func.start; block; block = block->next) {
+        if (_is_tail_recursive(func, *block)) {
+            // replace args
+            // before: arg %arg
+            // after: %par =t copy %arg
+            for (int i = 0; i < args.size(); i++) {
+                auto dst_idx = args.size() - i - 1;
+                auto src_idx = block->insts.size() - i - 2;
+                auto inst = block->insts[src_idx];
+                auto arg = args[dst_idx];
+                *inst = {
+                    .insttype = ir::InstType::ICOPY,
+                    .to = arg,
+                    .arg = {inst->arg[0]},
+                };
+            }
+
+            // don't forget to remove the last call
+            block->insts.pop_back();
+
+            // replace jump
+            block->jump = {
+                .type = ir::Jump::JMP,
+                .blk = {target, nullptr},
+            };
+        }
+    }
+
+    return false;
+}
+
+void opt::TailRecursionElimination::_create_jump_target_block(
+    ir::Function &func) {
+    // create a new block after start
+    uint *block_counter_ptr = func.block_counter_ptr;
+    auto new_block = std::shared_ptr<ir::Block>(
+        new ir::Block{(*block_counter_ptr)++, "tail_recursion_target"});
+    new_block->next = func.start->next;
+    func.start->next = new_block;
+    // manage jump
+    new_block->jump = func.start->jump;
+    func.start->jump = {
+        .type = ir::Jump::JMP,
+        .blk = {new_block, nullptr},
+    };
+
+    // move insts in start to new block, except par and alloc
+    for (auto inst : func.start->insts) {
+        if (inst->insttype == ir::InstType::IPAR ||
+            inst->insttype == ir::InstType::IALLOC4 ||
+            inst->insttype == ir::InstType::IALLOC8) {
+            continue;
+        }
+        new_block->insts.push_back(inst);
+    }
+    func.start->insts.erase(
+        std::remove_if(func.start->insts.begin(), func.start->insts.end(),
+                       [](const ir::InstPtr &inst) {
+                           return inst->insttype != ir::InstType::IPAR &&
+                                  inst->insttype != ir::InstType::IALLOC4 &&
+                                  inst->insttype != ir::InstType::IALLOC8;
+                       }),
+        func.start->insts.end());
+}
+
+bool opt::TailRecursionElimination::_is_tail_recursive(const ir::Function &func,
+                                                       const ir::Block &block) {
+    auto func_name = func.name;
+    if (block.insts.empty() ||
+        block.insts.back()->insttype != ir::InstType::ICALL ||
+        block.jump.type != ir::Jump::RET) {
+        return false;
+    }
+
+    auto inst = block.insts.back();
+    auto addr = std::static_pointer_cast<ir::Address>(inst->arg[0]);
+    return addr->name == func_name && func.start->next;
 }
