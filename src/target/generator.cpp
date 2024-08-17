@@ -279,16 +279,15 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
         return;
     }
 
-    auto arg0 = _get_asm_arg(inst.arg[0], 0);
-    auto arg1 = _get_asm_arg(inst.arg[1], 1);
     auto [to, write_back] = _get_asm_to(inst.to);
 
     auto inst_str = inst2asm.at(inst.insttype).at(inst.to->get_type());
     bool wflag = inst_str == "mulw" || inst_str == "divw" || inst_str == "remw";
-    if (inst_str == "mulw") {
+    if (inst_str == "mulw" || inst_str == "mul") {
         if (auto constbits =
                 std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[0])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
+                auto arg1 = _get_asm_arg(inst.arg[1], 1);
                 if (is_power_of_two(*value)) {
                     _buffer.append(wflag ? "slliw" : "slli", to, arg1,
                                    std::to_string(calculate_exponent(*value)));
@@ -303,14 +302,18 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                         std::to_string(calculate_exponent(*value - 1)));
                     _buffer.append(wflag ? "addw" : "add", to, "a5", arg1);
                 } else {
+                    auto arg0 = _get_asm_arg(inst.arg[0], 0);
                     _buffer.append(inst_str, to, arg0, arg1);
                 }
             } else {
+                auto arg0 = _get_asm_arg(inst.arg[0], 0);
+                auto arg1 = _get_asm_arg(inst.arg[1], 1);
                 _buffer.append(inst_str, to, arg0, arg1);
             }
         } else if (auto constbits =
                        std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
+                auto arg0 = _get_asm_arg(inst.arg[0], 0);
                 if (is_power_of_two(*value)) {
                     _buffer.append(wflag ? "slliw" : "slli", to, arg0,
                                    std::to_string(calculate_exponent(*value)));
@@ -325,18 +328,24 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                         std::to_string(calculate_exponent(*value - 1)));
                     _buffer.append(wflag ? "addw" : "add", to, "a5", arg0);
                 } else {
+                    auto arg1 = _get_asm_arg(inst.arg[1], 1);
                     _buffer.append(inst_str, to, arg0, arg1);
                 }
             } else {
+                auto arg0 = _get_asm_arg(inst.arg[0], 0);
+                auto arg1 = _get_asm_arg(inst.arg[1], 1);
                 _buffer.append(inst_str, to, arg0, arg1);
             }
         } else {
+            auto arg0 = _get_asm_arg(inst.arg[0], 0);
+            auto arg1 = _get_asm_arg(inst.arg[1], 1);
             _buffer.append(inst_str, to, arg0, arg1);
         }
     } else if (inst_str == "divw") {
         if (auto constbits =
                 std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
+                auto arg0 = _get_asm_arg(inst.arg[0], 0);
                 int value_num = *value;
                 int abs = value_num;
                 if (abs < 0) {
@@ -376,15 +385,20 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                 }
                 _buffer.append(wflag ? "addw" : "add", to, "zero", "a5");
             } else {
+                auto arg0 = _get_asm_arg(inst.arg[0], 0);
+                auto arg1 = _get_asm_arg(inst.arg[1], 1);
                 _buffer.append(inst_str, to, arg0, arg1);
             }
         } else {
+            auto arg0 = _get_asm_arg(inst.arg[0], 0);
+            auto arg1 = _get_asm_arg(inst.arg[1], 1);
             _buffer.append(inst_str, to, arg0, arg1);
         }
     } else if (inst_str == "remw") {
         if (auto constbits =
                 std::dynamic_pointer_cast<ir::ConstBits>(inst.arg[1])) {
             if (auto value = std::get_if<int>(&constbits->value)) {
+                auto arg0 = _get_asm_arg(inst.arg[0], 0);
                 int value_num = *value;
                 int abs = value_num;
                 if (abs < 0) {
@@ -426,12 +440,18 @@ void Generator::_generate_arithmetic_inst(const ir::Inst &inst) {
                 _buffer.append(wflag ? "mulw" : "mul", "a5", "a6", "a5");
                 _buffer.append(wflag ? "subw" : "sub", to, arg0, "a5");
             } else {
+                auto arg0 = _get_asm_arg(inst.arg[0], 0);
+                auto arg1 = _get_asm_arg(inst.arg[1], 1);
                 _buffer.append(inst_str, to, arg0, arg1);
             }
         } else {
+            auto arg0 = _get_asm_arg(inst.arg[0], 0);
+            auto arg1 = _get_asm_arg(inst.arg[1], 1);
             _buffer.append(inst_str, to, arg0, arg1);
         }
     } else {
+        auto arg0 = _get_asm_arg(inst.arg[0], 0);
+        auto arg1 = _get_asm_arg(inst.arg[1], 1);
         _buffer.append(inst_str, to, arg0, arg1);
     }
 
