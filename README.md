@@ -23,7 +23,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 - [ ] Phase Three: Compiler Optimization
   - [X] SSA construction and elimination
   - [ ] Other optimization algorithms
-     - [ ] Peephole Optimization
+     - [X] Peephole Optimization
      - [X] Constant Folding and Constant Propagation
      - [X] Function Inlining
      - [ ] GCM
@@ -31,5 +31,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
      - [X] Loop Rotation
      - [X] CFG Simplifying
      - [X] Deadcode Elimination
-     - [ ] Strength Reduction
-     - [ ] Tail Recursion Optimization
+     - [X] Strength Reduction
+     - [X] Tail Recursion Optimization
